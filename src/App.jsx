@@ -395,7 +395,7 @@ function ResumenPrecios({ prendas, anticipo, pagos }) {
   );
 }
 
-function PedidoCardOperario({ p, miProceso, pedidos, usuario, marcarEtapa, subirImagenes, setPedidos, showToast, puedeVerTejido, puedeVerPrecios }) {
+function PedidoCardOperario({ p, miProceso, pedidos, usuario, marcarEtapa, subirImagenes, setPedidos, showToast, puedeVerTejido, puedeVerPrecios, dbPatchFn }) {
   const [expandido, setExpandido] = useState(false);
   const pedidoActual = pedidos.find(x => x.id === p.id) || p;
   const etapa = (pedidoActual.procesos||{})[miProceso] || "pendiente";
@@ -1007,64 +1007,8 @@ export default function App() {
                     <span style={{ marginLeft:"auto",fontSize:11,color:grupo.color }}>{grupo.items.length}</span>
                   </div>
                   {grupo.items.map(p => (
-                    <PedidoCardOperario key={p.id} p={p} miProceso={miProceso} pedidos={pedidos} usuario={usuario} marcarEtapa={marcarEtapa} subirImagenes={subirImagenes} setPedidos={setPedidos} showToast={showToast} puedeVerTejido={puedeVerTejido} puedeVerPrecios={puedeVerPrecios} />
+                    <PedidoCardOperario key={p.id} p={p} miProceso={miProceso} pedidos={pedidos} usuario={usuario} marcarEtapa={marcarEtapa} subirImagenes={subirImagenes} setPedidos={setPedidos} showToast={showToast} puedeVerTejido={puedeVerTejido} puedeVerPrecios={puedeVerPrecios} dbPatchFn={dbPatch} />
                   ))}
-                            </div>
-                          </div>
-                          {/* Prendas */}
-                          {(pedidoActual.prendas||[]).filter(pr=>pr.tipoPrenda).map((pr,i) => (
-                            <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={puedeVerTejido(usuario)} showPrecios={verPrecios} />
-                          ))}
-                          {(pedidoActual.imagenes_urls||[]).length > 0 && (
-                            <div style={{ marginBottom:8,padding:"8px 10px",background:"#f5f0e8" }}>
-                              <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:6 }}>IMÁGENES DEL DISEÑO</div>
-                              <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-                                {(pedidoActual.imagenes_urls||[]).map((url,i) => (
-                                  <a key={i} href={url} target="_blank" rel="noreferrer">
-                                    <img src={url} alt="" style={{ width:80,height:80,objectFit:"cover",border:"1.5px solid #d8d0c0" }} />
-                                  </a>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          <div style={{ marginBottom:10,padding:"10px 14px",background:ETAPA_COLOR[etapa]+"15",border:`1.5px solid ${ETAPA_COLOR[etapa]}33`,display:"flex",alignItems:"center",gap:10 }}>
-                            <span style={{ fontSize:20 }}>{proc?.icon}</span>
-                            <div>
-                              <div style={{ fontSize:10,color:"#8a7a6a",letterSpacing:1 }}>ESTADO ACTUAL</div>
-                              <div style={{ fontSize:15,fontWeight:500,color:ETAPA_COLOR[etapa] }}>{ETAPA_LABEL[etapa]}</div>
-                            </div>
-                          </div>
-                          <div style={{ fontSize:11,color:"#8a7a6a",marginBottom:10 }}>📅 Entrega: {formatFecha(pedidoActual.fecha_entrega)}</div>
-                          {miProceso === "diseno" && (
-                            <div style={{ marginBottom:10 }}>
-                              <label style={{ fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:6 }}>SUBIR IMÁGENES (máx. 3)</label>
-                              <input type="file" accept="image/*" multiple
-                                style={{ width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:11,color:"#1a1208" }}
-                                onChange={async e => {
-                                  const files = Array.from(e.target.files).slice(0,3);
-                                  const urls = await subirImagenes(pedidoActual.id, files);
-                                  if (urls.length > 0) {
-                                    const existentes = pedidoActual.imagenes_urls || [];
-                                    const nuevasUrls = [...existentes, ...urls].slice(0,3);
-                                    await dbPatch("pedidos", pedidoActual.id, { imagenes_urls: nuevasUrls });
-                                    setPedidos(prev => prev.map(x => x.id === pedidoActual.id ? { ...x, imagenes_urls: nuevasUrls } : x));
-                                  }
-                                }}
-                              />
-                            </div>
-                          )}
-                          {etapa !== "listo" && (
-                            <div style={{ display:"flex",gap:8 }}>
-                              {etapa === "pendiente" && (
-                                <button className="etapa-btn" onClick={() => marcarEtapa(pedidoActual.id,miProceso,"en_proceso")} style={{ borderColor:"#f59e0b",color:"#f59e0b",background:"transparent",letterSpacing:1 }}>▶ INICIAR</button>
-                              )}
-                              {etapa === "en_proceso" && (
-                                <button className="etapa-btn" onClick={() => marcarEtapa(pedidoActual.id,miProceso,"pendiente")} style={{ borderColor:"#c8bfaf",color:"#8a7a6a",background:"transparent",letterSpacing:1 }}>◀ PAUSAR</button>
-                              )}
-                              <button className="etapa-btn" onClick={() => marcarEtapa(pedidoActual.id,miProceso,"listo")} style={{ borderColor:"#10b981",color:"#10b981",background:"transparent",letterSpacing:1,flex:2 }}>✓ MARCAR LISTO</button>
-                            </div>
-                          )}
-                  })}
                 </div>
               ));
             })()}
