@@ -387,6 +387,45 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
             </div>
           )}
 
+          {/* Archivos adjuntos */}
+          {(p.archivos_urls||[]).length>0&&(
+            <div style={{marginTop:8,padding:"8px 10px",background:"#f5f0e8"}}>
+              <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:6}}>ARCHIVOS ADJUNTOS</div>
+              {(p.archivos_urls||[]).map((archivo,i)=>(
+                <a key={i} href={archivo.url} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:4,textDecoration:"none",color:"#1a1208"}}>
+                  <span style={{fontSize:16}}>📎</span>
+                  <span style={{fontSize:12,flex:1}}>{archivo.nombre}</span>
+                  <span style={{fontSize:10,color:"#e85d26"}}>Descargar</span>
+                </a>
+              ))}
+            </div>
+          )}
+          {/* Subir archivos - para diseno y orden */}
+          {(miProceso==="diseno"||(miProceso==="orden"&&(usuario?.nombre==="Vivi"||usuario?.nombre===p.creado_por)))&&(
+            <div style={{marginTop:8}}>
+              <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:6}}>SUBIR ARCHIVOS (PDF, Excel, Word)</label>
+              <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/*" multiple
+                style={{width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:11}}
+                onChange={async e=>{
+                  const files=Array.from(e.target.files).slice(0,5);
+                  const aurls=[];
+                  for(let i=0;i<files.length;i++){
+                    const f=files[i];const ext=f.name.split('.').pop().toLowerCase();
+                    const path=`${p.id}/archivo_${Date.now()}_${i}.${ext}`;
+                    const res=await fetch(`${SUPABASE_URL}/storage/v1/object/imagenes-pedidos/${path}`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':f.type||'application/octet-stream','x-upsert':'true'},body:f});
+                    if(res.ok)aurls.push({nombre:f.name,url:`${SUPABASE_URL}/storage/v1/object/public/imagenes-pedidos/${path}`});
+                  }
+                  if(aurls.length>0){
+                    const existentes=p.archivos_urls||[];
+                    const nuevos=[...existentes,...aurls];
+                    await dbPatch("pedidos",p.id,{archivos_urls:nuevos});
+                    setPedidos(prev=>prev.map(x=>x.id===p.id?{...x,archivos_urls:nuevos}:x));
+                    showToast("✓ Archivos subidos");
+                  }
+                }}
+              />
+            </div>
+          )}
           {/* Botones admin */}
           {!miProceso&&(
             <div style={{marginTop:10,display:"flex",gap:8,justifyContent:"flex-end"}}>
@@ -486,6 +525,11 @@ export default function App(){
       const urls=[];
       for(let i=0;i<formPedido.imagenes.length;i++){const f=formPedido.imagenes[i];const ext=f.name.split('.').pop().toLowerCase();const path=`${nuevo.id}/img_${Date.now()}_${i}.${ext}`;const res=await fetch(`${SUPABASE_URL}/storage/v1/object/imagenes-pedidos/${path}`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':f.type,'x-upsert':'true'},body:f});if(res.ok)urls.push(`${SUPABASE_URL}/storage/v1/object/public/imagenes-pedidos/${path}`);}
       if(urls.length>0){await dbPatch("pedidos",nuevo.id,{imagenes_urls:urls});nuevo.imagenes_urls=urls;}
+    }
+    if((formPedido.archivos||[]).length>0){
+      const aurls=[];
+      for(let i=0;i<formPedido.archivos.length;i++){const f=formPedido.archivos[i];const ext=f.name.split('.').pop().toLowerCase();const path=`${nuevo.id}/archivo_${Date.now()}_${i}.${ext}`;const res=await fetch(`${SUPABASE_URL}/storage/v1/object/imagenes-pedidos/${path}`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':f.type||'application/octet-stream','x-upsert':'true'},body:f});if(res.ok)aurls.push({nombre:f.name,url:`${SUPABASE_URL}/storage/v1/object/public/imagenes-pedidos/${path}`});}
+      if(aurls.length>0){await dbPatch("pedidos",nuevo.id,{archivos_urls:aurls});nuevo.archivos_urls=aurls;}
     }
     setPedidos(prev=>[...prev,nuevo]);
     enviarEmailPedido(nuevo);
@@ -782,6 +826,10 @@ export default function App(){
               <div>
                 <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:8}}>IMÁGENES DEL DISEÑO (máx. 3)</label>
                 <input type="file" accept="image/*" multiple style={{width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:12}} onChange={e=>setFormPedido(prev=>({...prev,imagenes:Array.from(e.target.files).slice(0,3)}))}/>
+              </div>
+              <div>
+                <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:8}}>ARCHIVOS ADJUNTOS (PDF, Excel, Word, etc.)</label>
+                <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple style={{width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:12}} onChange={e=>setFormPedido(prev=>({...prev,archivos:Array.from(e.target.files).slice(0,5)}))}/>
               </div>
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button className="btn" onClick={()=>setShowNuevoPedido(false)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
