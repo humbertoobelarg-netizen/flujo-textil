@@ -133,7 +133,22 @@ function calcTejidoRemera(talles) {
   return { a90: Math.ceil(a90 * 100) / 100, a120: Math.ceil(a120 * 100) / 100 };
 }
 
-const PRENDA_INIT = { tipoPrenda:"", tipoTejido:"", molderia:"", cuerpo:"", manga:"", color:"", puno:"", cuello:"", colorCuello:"", talles:{}, precioUnit:"", cantidad:"" };
+const TIPOS_PRENDA = [
+  "Remera cuello redondo",
+  "Remera cuello V",
+  "Remera Polo",
+  "Camisilla",
+  "Pantalón Buzo",
+  "Campera Buzo",
+  "Canguro",
+  "Campera",
+  "Chaleco",
+  "Bermuda",
+  "Short",
+  "Otro",
+];
+
+const PRENDA_INIT = { tipoPrenda:"", tipoPrendaOtro:"", tipoTejido:"", molderia:"", cuerpo:"", manga:"", color:"", puno:"", cuello:"", colorCuello:"", talles:{}, precioUnit:"", cantidad:"" };
 
 function pedidoProgreso(p) {
   const activos = p.procesos_activos || [];
@@ -190,7 +205,13 @@ function PrendaForm({ prenda, idx, onChange }) {
         <div style={{ padding:"14px",borderTop:"1px solid #e8e0d0",display:"flex",flexDirection:"column",gap:10 }}>
           <div>
             <label style={{ fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4 }}>TIPO DE PRENDA</label>
-            <input type="text" style={{ width:"100%" }} placeholder="Ej: Remeras, buzos..." value={prenda.tipoPrenda||""} onChange={e=>onChange({...prenda,tipoPrenda:e.target.value})} />
+            <select style={{ width:"100%",marginBottom:prenda.tipoPrenda==="Otro"?6:0 }} value={prenda.tipoPrenda||""} onChange={e=>onChange({...prenda,tipoPrenda:e.target.value,tipoPrendaOtro:""})}>
+              <option value="">Seleccionar...</option>
+              {TIPOS_PRENDA.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+            {prenda.tipoPrenda==="Otro" && (
+              <input type="text" style={{ width:"100%" }} placeholder="Especificar tipo de prenda..." value={prenda.tipoPrendaOtro||""} onChange={e=>onChange({...prenda,tipoPrendaOtro:e.target.value})} />
+            )}
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
             <div>
@@ -277,7 +298,7 @@ function PrendaDetalle({ prenda, idx, showTejido=false, showPrecios=false }) {
     <div style={{ border:"1.5px solid #d8d0c0",marginBottom:6 }}>
       <div onClick={()=>setAbierto(!abierto)} style={{ padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:"#fef3ee" }}>
         <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:1,color:"#e85d26" }}>
-          PRENDA {idx+1} {prenda.tipoPrenda ? `— ${prenda.tipoPrenda}` : ""} 
+          PRENDA {idx+1} {prenda.tipoPrenda ? `— ${prenda.tipoPrenda==="Otro" ? (prenda.tipoPrendaOtro||"Otro") : prenda.tipoPrenda}` : ""} 
         </span>
         <span style={{ color:"#8a7a6a",fontSize:12 }}>{abierto?"▲":"▼"}</span>
       </div>
@@ -313,7 +334,7 @@ function PrendaDetalle({ prenda, idx, showTejido=false, showPrecios=false }) {
               <span style={{ fontWeight:600 }}>${total.toLocaleString("es-AR")}</span>
             </div>
           )}
-          {prenda.tipoPrenda && prenda.tipoPrenda.toLowerCase().includes("remera") && Object.keys(prenda.talles||{}).some(k=>parseInt(prenda.talles[k])>0) && showTejido && (
+          {prenda.tipoPrenda && (prenda.tipoPrenda.toLowerCase().includes("remera") || prenda.tipoPrenda.toLowerCase().includes("camisilla")) && Object.keys(prenda.talles||{}).some(k=>parseInt(prenda.talles[k])>0) && showTejido && (
             <div style={{ marginTop:6,padding:"8px 10px",background:"#e8f4fd",border:"1.5px solid #06b6d444" }}>
               <div style={{ fontSize:9,color:"#06b6d4",letterSpacing:1,marginBottom:6,fontWeight:600 }}>🧶 CONSUMO DE TEJIDO</div>
               {(() => {
