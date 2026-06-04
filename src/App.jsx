@@ -513,6 +513,250 @@ function PedidoCardOperario({ p, miProceso, pedidos, usuario, marcarEtapa, subir
   );
 }
 
+function PedidoCardOrden({ p, usuario, pedidos, puedeVerPrecios, puedeVerTejido, setShowAgregado, setFormAgregado, PRENDA_INIT, showPagos, setShowPagos, nuevoPago, setNuevoPago, agregarPago }) {
+  const [expandido, setExpandido] = useState(false);
+  const pedidoActual = pedidos.find(x => x.id === p.id) || p;
+  const prog = pedidoProgreso(pedidoActual);
+  const pri = PRIORIDADES.find(pr=>pr.key===pedidoActual.prioridad);
+  const vencido = pedidoActual.fecha_entrega < new Date().toISOString().split("T")[0] && prog < 100;
+  const verPrecios = puedeVerPrecios(usuario);
+  const verTejido = puedeVerTejido(usuario);
+  const borderColor = prog===100?"#10b981":prog>0?"#f59e0b":pri?.color;
+  return (
+    <div className="card fade" style={{ marginBottom:8,overflow:"hidden",borderLeft:`4px solid ${borderColor}`,background:prog===0?"#fff0f4":"#f0fff4",cursor:"pointer" }}>
+      <div style={{ padding:"12px 16px" }} onClick={()=>setExpandido(!expandido)}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4 }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontWeight:500,fontSize:14 }}>{pedidoActual.cliente}</div>
+            <div style={{ fontSize:11,color:"#8a7a6a",marginTop:1 }}>{pedidoActual.id} · {pedidoActual.cantidad} uds · 📅 {formatFecha(pedidoActual.fecha_entrega)}</div>
+          </div>
+          <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+            <span className="badge" style={{ background:pri?.color+"22",color:pri?.color }}>{pri?.label?.toUpperCase()}</span>
+            {vencido && <span className="badge" style={{ background:"#ef444422",color:"#ef4444" }}>⚠</span>}
+            <span style={{ color:"#8a7a6a",fontSize:12 }}>{expandido?"▲":"▼"}</span>
+          </div>
+        </div>
+        <div className="prog-bar"><div className="prog-fill" style={{ width:prog+"%",background:prog===100?"#10b981":"#e85d26" }} /></div>
+        <div style={{ display:"flex",justifyContent:"space-between",marginTop:2 }}>
+          <span style={{ fontSize:10,color:"#8a7a6a" }}>{prog}% completado</span>
+          {vencido && <span style={{ fontSize:10,color:"#ef4444" }}>⚠ VENCIDO</span>}
+        </div>
+      </div>
+      {expandido && (
+        <div style={{ padding:"0 16px 14px",borderTop:"1px solid #e8e0d0",paddingTop:10 }}>
+          {(pedidoActual.prendas||[]).filter(pr=>pr.tipoPrenda).map((pr,i) => (
+            <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={verTejido} showPrecios={verPrecios} />
+          ))}
+          {verPrecios && <ResumenPrecios prendas={pedidoActual.prendas||[]} anticipo={pedidoActual.anticipo} pagos={pedidoActual.pagos||[]} />}
+          {pedidoActual.descripcion && <div style={{ fontSize:12,color:"#5a4a3a",marginTop:8,padding:"8px 10px",background:"#f5f0e8",borderLeft:"3px solid #c8bfaf" }}>{pedidoActual.descripcion}</div>}
+          {pedidoActual.datos_factura && (usuario?.nombre==="Vivi"||usuario?.nombre===pedidoActual.creado_por) && (
+            <div style={{ marginTop:6,padding:"8px 10px",background:"#fff8e1",border:"1.5px solid #f59e0b44" }}>
+              <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4 }}>DATOS PARA FACTURA</div>
+              <div style={{ fontSize:12,whiteSpace:"pre-wrap" }}>{pedidoActual.datos_factura}</div>
+            </div>
+          )}
+          {(pedidoActual.imagenes_urls||[]).length > 0 && (
+            <div style={{ marginTop:8,padding:"8px 10px",background:"#f5f0e8" }}>
+              <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:6 }}>IMÁGENES</div>
+              <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+                {(pedidoActual.imagenes_urls||[]).map((url,i) => (
+                  <a key={i} href={url} target="_blank" rel="noreferrer">
+                    <img src={url} alt="" style={{ width:80,height:80,objectFit:"cover",border:"1.5px solid #d8d0c0" }} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{ marginTop:10,fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:6 }}>ESTADO DE PROCESOS</div>
+          <div style={{ display:"flex",flexDirection:"column",gap:3,marginBottom:10 }}>
+            {PROCESOS.filter(pr=>(pedidoActual.procesos_activos||[]).includes(pr.key)).map(pr => {
+              const etapa = (pedidoActual.procesos||{})[pr.key]||"pendiente";
+              return (
+                <div key={pr.key} style={{ display:"flex",alignItems:"center",gap:6,padding:"5px 8px",background:"#f5f0e8",border:`1px solid ${ETAPA_COLOR[etapa]}44` }}>
+                  <span>{pr.icon}</span>
+                  <span style={{ fontSize:11,flex:1 }}>{pr.label}</span>
+                  <span className="badge" style={{ background:ETAPA_COLOR[etapa]+"22",color:ETAPA_COLOR[etapa],fontSize:9 }}>{ETAPA_LABEL[etapa].toUpperCase()}</span>
+                </div>
+              );
+            })}
+          </div>
+          {verPrecios && (() => {
+            const totalGral = (pedidoActual.prendas||[]).reduce((s,p)=>s+(parseFloat(p?.precioUnit)||0)*(parseFloat(p?.cantidad)||0),0);
+            const pagos = pedidoActual.pagos||[];
+            const totalPagado = pagos.reduce((s,pg)=>s+(parseFloat(pg.monto)||0),0);
+            const ant = parseFloat(pedidoActual.anticipo)||0;
+            const saldo = totalGral - ant - totalPagado;
+            return totalGral > 0 ? (
+              <div style={{ padding:"10px",background:"#f5f0e8",border:"1.5px solid #d8d0c0",marginBottom:8 }}>
+                <div style={{ fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:6 }}>PAGOS</div>
+                {pagos.map((pg,i) => (
+                  <div key={i} style={{ display:"flex",justifyContent:"space-between",padding:"4px 8px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:3,fontSize:11 }}>
+                    <span style={{ fontWeight:600 }}>${parseFloat(pg.monto).toLocaleString("es-AR")}</span>
+                    <span style={{ color:"#8a7a6a" }}>{pg.tipo} · {formatFecha(pg.fecha)}</span>
+                  </div>
+                ))}
+                <div style={{ display:"flex",justifyContent:"space-between",padding:"5px 8px",background:"#1a1208",color:"#f5f0e8",fontSize:11,marginTop:4,marginBottom:6 }}>
+                  <span>Pagado: ${(ant+totalPagado).toLocaleString("es-AR")}</span>
+                  <span style={{ color:"#e85d26",fontWeight:600 }}>Saldo: ${saldo.toLocaleString("es-AR")}</span>
+                </div>
+                {showPagos === pedidoActual.id ? (
+                  <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
+                    <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+                      <div><label style={{ fontSize:9,color:"#8a7a6a",display:"block",marginBottom:3 }}>MONTO</label><input type="number" style={{ width:"100%" }} placeholder="0.00" value={nuevoPago.monto} onChange={e=>setNuevoPago({...nuevoPago,monto:e.target.value})} /></div>
+                      <div><label style={{ fontSize:9,color:"#8a7a6a",display:"block",marginBottom:3 }}>TIPO</label><select style={{ width:"100%" }} value={nuevoPago.tipo} onChange={e=>setNuevoPago({...nuevoPago,tipo:e.target.value})}><option value="efectivo">Efectivo</option><option value="cheque">Cheque</option><option value="transferencia">Transferencia</option></select></div>
+                    </div>
+                    <input type="date" style={{ width:"100%" }} value={nuevoPago.fecha} onChange={e=>setNuevoPago({...nuevoPago,fecha:e.target.value})} />
+                    <div style={{ display:"flex",gap:8 }}>
+                      <button className="btn" onClick={()=>setShowPagos(null)} style={{ flex:1,padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a" }}>CANCELAR</button>
+                      <button className="btn" onClick={()=>agregarPago(pedidoActual.id)} style={{ flex:2,padding:"8px",fontSize:11,background:"#10b981",color:"#fff" }}>✓ REGISTRAR PAGO</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button className="btn" onClick={()=>setShowPagos(pedidoActual.id)} style={{ width:"100%",padding:"8px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1 }}>+ AGREGAR PAGO</button>
+                )}
+              </div>
+            ) : null;
+          })()}
+          {(usuario?.nombre==="Vivi"||usuario?.nombre===pedidoActual.creado_por) && (
+            <button className="btn" onClick={()=>{ setShowAgregado(pedidoActual); setFormAgregado({prendas:[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],anticipo:""}); }} style={{ width:"100%",padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #10b981",color:"#10b981",letterSpacing:1,marginTop:6 }}>+ AGREGAR AL PEDIDO</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PedidoCardAdmin({ p, usuario, usuarios, pedidos, setPedidos, eliminarPedido, setEditandoPedido, setFormEditar, setSelectedPedido, setShowAgregado, setFormAgregado, PRENDA_INIT, showPagos, setShowPagos, nuevoPago, setNuevoPago, agregarPago, puedeVerPrecios, puedeVerTejido }) {
+  const [expandido, setExpandido] = useState(false);
+  const prog = pedidoProgreso(p);
+  const pri = PRIORIDADES.find(pr=>pr.key===p.prioridad);
+  const vencido = p.fecha_entrega < new Date().toISOString().split("T")[0] && prog < 100;
+  const verPrecios = puedeVerPrecios(usuario);
+  const verTejido = puedeVerTejido(usuario);
+  return (
+    <div className="card fade" style={{ marginBottom:8,overflow:"hidden",borderLeft:`4px solid ${pri?.color}`,background:prog===0?"#fff0f4":"#f0fff4",cursor:"pointer" }}>
+      <div style={{ padding:"12px 18px" }} onClick={()=>setExpandido(!expandido)}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6 }}>
+          <div>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1 }}>{p.cliente}</span>
+            <span style={{ fontSize:11,color:"#8a7a6a",marginLeft:8 }}>{p.id} · {p.cantidad} uds</span>
+            {p.creado_por && <span style={{ marginLeft:8,background:"#e85d26",color:"#fff",fontSize:9,padding:"1px 6px",fontWeight:600 }}>{p.creado_por.toUpperCase()}</span>}
+          </div>
+          <div style={{ display:"flex",gap:6,alignItems:"center" }}>
+            {vencido && <span className="badge" style={{ background:"#ef444422",color:"#ef4444" }}>⚠</span>}
+            <span className="badge" style={{ background:pri?.color+"22",color:pri?.color }}>{pri?.label?.toUpperCase()}</span>
+            <span style={{ fontSize:12,color:"#8a7a6a" }}>{expandido?"▲":"▼"}</span>
+          </div>
+        </div>
+        <div className="prog-bar"><div className="prog-fill" style={{ width:prog+"%",background:prog===100?"#10b981":"#e85d26" }} /></div>
+        <div style={{ display:"flex",justifyContent:"space-between",marginTop:3 }}>
+          <span style={{ fontSize:10,color:"#8a7a6a" }}>📅 {formatFecha(p.fecha_entrega)}</span>
+          <span style={{ fontSize:10,color:prog===100?"#10b981":"#e85d26",fontWeight:500 }}>{prog}% completado</span>
+        </div>
+      </div>
+      {expandido && (
+        <div style={{ padding:"0 18px 14px",borderTop:"1.5px solid #e8e0d0",paddingTop:10 }} onClick={e=>e.stopPropagation()}>
+          <div style={{ fontSize:10,letterSpacing:2,color:"#8a7a6a",marginBottom:8 }}>PROCESOS</div>
+          {PROCESOS.filter(pr=>(p.procesos_activos||[]).includes(pr.key)).map(pr => {
+            const etapa = (p.procesos||{})[pr.key]||"pendiente";
+            const op = usuarios.find(u=>u.proceso===pr.key&&u.rol==="operario");
+            return (
+              <div key={pr.key} style={{ display:"flex",alignItems:"center",gap:10,padding:"7px 10px",background:"#f5f0e8",border:`1.5px solid ${ETAPA_COLOR[etapa]}44`,marginBottom:3 }}>
+                <span style={{ fontSize:16 }}>{pr.icon}</span>
+                <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:500 }}>{pr.label}</div>{op && <div style={{ fontSize:10,color:"#8a7a6a" }}>{op.nombre}</div>}</div>
+                <span className="badge" style={{ background:ETAPA_COLOR[etapa]+"22",color:ETAPA_COLOR[etapa] }}>{ETAPA_LABEL[etapa].toUpperCase()}</span>
+              </div>
+            );
+          })}
+          <div style={{ marginTop:8 }}>
+            {(p.prendas||[]).filter(pr=>pr.tipoPrenda).map((pr,i) => (
+              <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={verTejido} showPrecios={verPrecios} />
+            ))}
+            {verPrecios && <ResumenPrecios prendas={p.prendas||[]} anticipo={p.anticipo} pagos={p.pagos||[]} />}
+          </div>
+          {p.descripcion && <div style={{ marginTop:8,fontSize:12,color:"#5a4a3a",padding:"8px 12px",background:"#f5f0e8",borderLeft:"3px solid #c8bfaf" }}>{p.descripcion}</div>}
+          {p.datos_factura && (usuario?.rol==="admin"||usuario?.nombre==="Vivi"||usuario?.nombre===p.creado_por) && (
+            <div style={{ marginTop:6,padding:"8px 12px",background:"#fff8e1",border:"1.5px solid #f59e0b44" }}>
+              <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4 }}>DATOS PARA FACTURA</div>
+              <div style={{ fontSize:12,whiteSpace:"pre-wrap" }}>{p.datos_factura}</div>
+            </div>
+          )}
+          {(p.imagenes_urls||[]).length > 0 && (
+            <div style={{ marginTop:8,padding:"8px 12px",background:"#f5f0e8" }}>
+              <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:6 }}>IMÁGENES</div>
+              <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+                {(p.imagenes_urls||[]).map((url,i) => (
+                  <a key={i} href={url} target="_blank" rel="noreferrer"><img src={url} alt="" style={{ width:90,height:90,objectFit:"cover",border:"1.5px solid #d8d0c0" }} /></a>
+                ))}
+              </div>
+            </div>
+          )}
+          {verPrecios && (() => {
+            const totalGral = (p.prendas||[]).reduce((s,pr)=>s+(parseFloat(pr?.precioUnit)||0)*(parseFloat(pr?.cantidad)||0),0);
+            const pagos = p.pagos||[];
+            const totalPagado = pagos.reduce((s,pg)=>s+(parseFloat(pg.monto)||0),0);
+            const ant = parseFloat(p.anticipo)||0;
+            const saldo = totalGral - ant - totalPagado;
+            return totalGral > 0 ? (
+              <div style={{ marginTop:8,padding:"10px 12px",background:"#f5f0e8",border:"1.5px solid #d8d0c0" }}>
+                <div style={{ fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:6 }}>PAGOS</div>
+                {pagos.length===0 && <div style={{ fontSize:11,color:"#b0a898",marginBottom:6 }}>Sin pagos registrados</div>}
+                {pagos.map((pg,i) => (
+                  <div key={i} style={{ display:"flex",justifyContent:"space-between",padding:"5px 8px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:3,fontSize:11 }}>
+                    <span style={{ fontWeight:600 }}>${parseFloat(pg.monto).toLocaleString("es-AR")}</span>
+                    <span style={{ color:"#8a7a6a" }}>{pg.tipo} · {formatFecha(pg.fecha)}</span>
+                  </div>
+                ))}
+                <div style={{ display:"flex",justifyContent:"space-between",padding:"6px 8px",background:"#1a1208",color:"#f5f0e8",fontSize:12,marginBottom:6 }}>
+                  <span>Pagado: ${(ant+totalPagado).toLocaleString("es-AR")}</span>
+                  <span style={{ color:"#e85d26",fontWeight:600 }}>Saldo: ${saldo.toLocaleString("es-AR")}</span>
+                </div>
+                {showPagos===p.id ? (
+                  <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
+                    <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+                      <div><label style={{ fontSize:9,color:"#8a7a6a",display:"block",marginBottom:3 }}>MONTO</label><input type="number" style={{ width:"100%" }} placeholder="0.00" value={nuevoPago.monto} onChange={e=>setNuevoPago({...nuevoPago,monto:e.target.value})} /></div>
+                      <div><label style={{ fontSize:9,color:"#8a7a6a",display:"block",marginBottom:3 }}>TIPO</label><select style={{ width:"100%" }} value={nuevoPago.tipo} onChange={e=>setNuevoPago({...nuevoPago,tipo:e.target.value})}><option value="efectivo">Efectivo</option><option value="cheque">Cheque</option><option value="transferencia">Transferencia</option></select></div>
+                    </div>
+                    <input type="date" style={{ width:"100%" }} value={nuevoPago.fecha} onChange={e=>setNuevoPago({...nuevoPago,fecha:e.target.value})} />
+                    <div style={{ display:"flex",gap:8 }}>
+                      <button className="btn" onClick={()=>setShowPagos(null)} style={{ flex:1,padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a" }}>CANCELAR</button>
+                      <button className="btn" onClick={()=>agregarPago(p.id)} style={{ flex:2,padding:"8px",fontSize:11,background:"#10b981",color:"#fff" }}>✓ REGISTRAR PAGO</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button className="btn" onClick={()=>setShowPagos(p.id)} style={{ width:"100%",padding:"8px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1 }}>+ AGREGAR PAGO</button>
+                )}
+              </div>
+            ) : null;
+          })()}
+          {pedidos.filter(x=>x.pedido_original===p.id).length > 0 && (
+            <div style={{ marginTop:8,padding:"8px 12px",background:"#f5f0e8",border:"1.5px solid #10b98144" }}>
+              <div style={{ fontSize:9,color:"#10b981",letterSpacing:1,marginBottom:6 }}>PEDIDOS AGREGADOS</div>
+              {pedidos.filter(x=>x.pedido_original===p.id).map(ag => (
+                <div key={ag.id} style={{ display:"flex",justifyContent:"space-between",padding:"4px 8px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:3,fontSize:11 }}>
+                  <span style={{ fontWeight:600 }}>{ag.id}</span>
+                  <span style={{ color:"#8a7a6a" }}>{ag.cantidad} uds</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ marginTop:10,display:"flex",gap:8,justifyContent:"flex-end" }}>
+            {(usuario?.rol==="admin"||usuario?.nombre==="Vivi"||usuario?.nombre===p.creado_por) && (
+              <button className="btn" onClick={()=>{ setShowAgregado(p); setFormAgregado({prendas:[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],anticipo:""}); }} style={{ padding:"7px 14px",fontSize:11,background:"transparent",border:"1.5px solid #10b981",color:"#10b981",letterSpacing:1 }}>+ AGREGAR</button>
+            )}
+            {usuario?.rol==="admin" && (
+              <button className="btn" onClick={()=>{ setEditandoPedido(p.id); setFormEditar({ cliente:p.cliente,prioridad:p.prioridad,fechaEntrega:p.fecha_entrega,descripcion:p.descripcion||"",datosFactura:p.datos_factura||"",anticipo:p.anticipo||"",prendas:p.prendas||[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],procesosActivos:p.procesos_activos||[] }); }} style={{ padding:"7px 14px",fontSize:11,background:"transparent",border:"1.5px solid #e85d26",color:"#e85d26",letterSpacing:1 }}>✏️ EDITAR</button>
+            )}
+            {usuario?.rol==="admin" && (
+              <button className="btn" onClick={()=>eliminarPedido(p.id)} style={{ padding:"7px 14px",fontSize:11,background:"transparent",border:"1.5px solid #ef4444",color:"#ef4444",letterSpacing:1 }}>ELIMINAR</button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function puedeVerTejido(usuario) {
   if (!usuario) return false;
   if (usuario.rol === "admin") return true;
