@@ -859,7 +859,7 @@ export default function App() {
                   return fa.localeCompare(fb);
                 });
 
-              if (!misPedidosFiltrados.length) return (
+              if (!misPedidos.length) return (
                 <div style={{ padding:40,textAlign:"center",color:"#b0a898" }}>
                   <div style={{ fontSize:40,marginBottom:12 }}>🎉</div>
                   <div style={{ fontSize:14 }}>Sin pedidos pendientes</div>
@@ -993,8 +993,8 @@ export default function App() {
 
               // Vista operario normal
               const verPrecios = puedeVerPrecios(usuario);
-              const enProceso = misPedidos.filter(p => ((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso] !== "listo");
-              const listos = misPedidos.filter(p => ((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso] === "listo");
+              const enProceso = misPedidosFiltrados.filter(p => ((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso] !== "listo");
+              const listos = misPedidosFiltrados.filter(p => ((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso] === "listo");
               const grupos = [
                 { titulo:"EN PROCESO", color:"#f59e0b", items: enProceso },
                 { titulo:"LISTOS", color:"#10b981", items: listos },
