@@ -485,7 +485,7 @@ function PedidoCardOperario({ p, miProceso, pedidos, usuario, marcarEtapa, subir
                   if (urls.length > 0) {
                     const existentes = pedidoActual.imagenes_urls || [];
                     const nuevasUrls = [...existentes, ...urls].slice(0,3);
-                    await fetch(\`https://avybrjvhltvcybdiyvvv.supabase.co/rest/v1/pedidos?id=eq.\${pedidoActual.id}\`, { method:"PATCH", headers:{"Content-Type":"application/json","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2eWJyanZobHR2Y3liZGl5dnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMTE4NDYsImV4cCI6MjA5NDc4Nzg0Nn0.wbiU8qmRTPiaKU6At97_djP0p0obKGyVRM9rn-nbr84","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2eWJyanZobHR2Y3liZGl5dnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMTE4NDYsImV4cCI6MjA5NDc4Nzg0Nn0.wbiU8qmRTPiaKU6At97_djP0p0obKGyVRM9rn-nbr84"}, body:JSON.stringify({imagenes_urls:nuevasUrls}) });
+                    await dbPatchFn("pedidos", pedidoActual.id, { imagenes_urls: nuevasUrls });
                     setPedidos(prev => prev.map(x => x.id === pedidoActual.id ? { ...x, imagenes_urls: nuevasUrls } : x));
                     showToast("✓ Imágenes subidas");
                   }
@@ -999,18 +999,22 @@ export default function App() {
                 { titulo:"EN PROCESO", color:"#f59e0b", items: enProceso },
                 { titulo:"LISTOS", color:"#10b981", items: listos },
               ];
-              return grupos.map(grupo => grupo.items.length === 0 ? null : (
-                <div key={grupo.titulo} style={{ marginBottom:20 }}>
-                  <div className="grupo-header" style={{ background:grupo.color+"15",border:`1.5px solid ${grupo.color}33` }}>
-                    <div style={{ width:8,height:8,borderRadius:"50%",background:grupo.color }} />
-                    <span style={{ fontSize:11,letterSpacing:2,fontWeight:600,color:grupo.color }}>{grupo.titulo}</span>
-                    <span style={{ marginLeft:"auto",fontSize:11,color:grupo.color }}>{grupo.items.length}</span>
-                  </div>
-                  {grupo.items.map(p => (
-                    <PedidoCardOperario key={p.id} p={p} miProceso={miProceso} pedidos={pedidos} usuario={usuario} marcarEtapa={marcarEtapa} subirImagenes={subirImagenes} setPedidos={setPedidos} showToast={showToast} puedeVerTejido={puedeVerTejido} puedeVerPrecios={puedeVerPrecios} dbPatchFn={dbPatch} />
+              return (
+                <>
+                  {grupos.map(grupo => grupo.items.length === 0 ? null : (
+                    <div key={grupo.titulo} style={{ marginBottom:20 }}>
+                      <div className="grupo-header" style={{ background:grupo.color+"15",border:`1.5px solid ${grupo.color}33` }}>
+                        <div style={{ width:8,height:8,borderRadius:"50%",background:grupo.color }} />
+                        <span style={{ fontSize:11,letterSpacing:2,fontWeight:600,color:grupo.color }}>{grupo.titulo}</span>
+                        <span style={{ marginLeft:"auto",fontSize:11,color:grupo.color }}>{grupo.items.length}</span>
+                      </div>
+                      {grupo.items.map(p => (
+                        <PedidoCardOperario key={p.id} p={p} miProceso={miProceso} pedidos={pedidos} usuario={usuario} marcarEtapa={marcarEtapa} subirImagenes={subirImagenes} setPedidos={setPedidos} showToast={showToast} puedeVerTejido={puedeVerTejido} puedeVerPrecios={puedeVerPrecios} dbPatchFn={dbPatch} />
+                      ))}
+                    </div>
                   ))}
-                </div>
-              ));
+                </>
+              );
             })()}
           </div>
         </div>
