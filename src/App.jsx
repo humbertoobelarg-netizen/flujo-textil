@@ -729,9 +729,11 @@ export default function App() {
               });
               const misPedidosFiltrados = [...misPedidos]
                 .filter(p => {
-                  if (!busquedaOp.trim()) return true;
+                  if (!busquedaOp || !busquedaOp.trim()) return true;
                   const b = busquedaOp.toLowerCase().trim();
-                  return (p.cliente||"").toLowerCase().includes(b) || (p.id||"").toLowerCase().includes(b);
+                  return (p.cliente||"").toLowerCase().includes(b) || 
+                         (p.id||"").toLowerCase().includes(b) ||
+                         (p.creado_por||"").toLowerCase().includes(b);
                 })
                 .sort((a,b) => {
                   const fa = a.fecha_entrega||"9999";
@@ -895,17 +897,28 @@ export default function App() {
                     const progActual = pedidoProgreso(pedidoActual);
                     const bgColor = progActual === 0 ? "#fff0f4" : "#f0fff4";
                     const borderColor = etapa==="listo" ? "#10b981" : etapa==="en_proceso" ? "#f59e0b" : pri?.color;
+                    const [expandido, setExpandido] = useState(false);
                     return (
-                      <div key={pedidoActual.id} className="card fade" style={{ marginBottom:12,overflow:"hidden",borderLeft:`4px solid ${borderColor}`,background:bgColor }}>
-                        <div style={{ padding:"14px 16px" }}>
-                          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6 }}>
+                      <div key={pedidoActual.id} className="card fade" style={{ marginBottom:8,overflow:"hidden",borderLeft:`4px solid ${borderColor}`,background:bgColor }}>
+                        <div style={{ padding:"12px 16px",cursor:"pointer" }} onClick={()=>setExpandido(!expandido)}>
+                          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+                            <div style={{ flex:1 }}>
+                              <div style={{ fontWeight:500,fontSize:14 }}>{pedidoActual.cliente}</div>
+                              <div style={{ fontSize:11,color:"#8a7a6a",marginTop:1 }}>{pedidoActual.id} · {pedidoActual.cantidad} uds · 📅 {formatFecha(pedidoActual.fecha_entrega)}</div>
+                            </div>
+                            <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+                              <span className="badge" style={{ background:pri?.color+"22",color:pri?.color }}>{pri?.label?.toUpperCase()}</span>
+                              {vencido && <span className="badge" style={{ background:"#ef444422",color:"#ef4444" }}>⚠</span>}
+                              <span style={{ color:"#8a7a6a",fontSize:12 }}>{expandido?"▲":"▼"}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {expandido && <div style={{ padding:"0 16px 14px",borderTop:"1px solid #e8e0d0" }}>
+                          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6,paddingTop:10 }}>
                             <div>
-                              <div style={{ fontWeight:500,fontSize:15 }}>{pedidoActual.cliente}</div>
-                              <div style={{ fontSize:11,color:"#8a7a6a",marginTop:2 }}>{pedidoActual.id} · {pedidoActual.cantidad} uds</div>
-                              {pedidoActual.creado_por && <div style={{ fontSize:10,marginTop:2 }}><span style={{ background:"#e85d26",color:"#fff",padding:"1px 6px",fontSize:9,fontWeight:600 }}>{pedidoActual.creado_por.toUpperCase()}</span></div>}
+                              {pedidoActual.creado_por && <div style={{ fontSize:10,marginBottom:4 }}><span style={{ background:"#e85d26",color:"#fff",padding:"1px 6px",fontSize:9,fontWeight:600 }}>{pedidoActual.creado_por.toUpperCase()}</span></div>}
                             </div>
                             <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4 }}>
-                              <span className="badge" style={{ background:pri?.color+"22",color:pri?.color }}>{pri?.label?.toUpperCase()}</span>
                               {vencido && <span className="badge" style={{ background:"#ef444422",color:"#ef4444" }}>⚠ VENCIDO</span>}
                             </div>
                           </div>
@@ -983,7 +996,7 @@ export default function App() {
                           {etapa === "listo" && (
                             <button className="etapa-btn" onClick={() => marcarEtapa(pedidoActual.id,miProceso,"en_proceso")} style={{ borderColor:"#c8bfaf",color:"#8a7a6a",background:"transparent",width:"100%",letterSpacing:1 }}>↩ DESHACER</button>
                           )}
-                        </div>
+                        </div>}
                       </div>
                     );
                   })}
