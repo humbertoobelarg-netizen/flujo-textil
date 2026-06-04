@@ -395,14 +395,18 @@ function ResumenPrecios({ prendas, anticipo, pagos }) {
   );
 }
 
+function puedeVerTejido(usuario) {
+  if (!usuario) return false;
+  if (usuario.rol === "admin") return true;
+  const PUEDEN_VER = ["Vivi", "Gabi", "Andrea"];
+  return PUEDEN_VER.includes(usuario.nombre);
+}
+
 function puedeVerPrecios(usuario) {
   if (!usuario) return false;
   if (usuario.rol === "admin") return true;
-  const PUEDEN_VER = ["Admin", "Vivi", "Gabi", "Romina"];
-  if (PUEDEN_VER.includes(usuario.nombre)) return true;
-  // Also allow any orden process user (vendedores)
-  if (usuario.proceso === "orden" && (usuario.nombre === "Vivi" || usuario.nombre === "Gabi" || usuario.nombre === "Romina")) return true;
-  return false;
+  const PUEDEN_VER = ["Vivi", "Gabi", "Romina", "Vendedor2"];
+  return PUEDEN_VER.includes(usuario.nombre);
 }
 function puedeVerFinanciero(usuario) {
   return usuario?.rol === "admin" || usuario?.nombre === "Gabi";
@@ -717,7 +721,10 @@ export default function App() {
               const miProceso = usuario.proceso;
               const misPedidos = pedidos.filter(p => {
                 if (!(p.procesos_activos||[]).includes(miProceso)) return false;
-                if (miProceso === "orden") return p.creado_por === usuario.nombre;
+                if (miProceso === "orden") {
+                  // All orden users only see their own pedidos
+                  return p.creado_por === usuario.nombre;
+                }
                 return true;
               });
               const misPedidosFiltrados = [...misPedidos]
@@ -769,7 +776,7 @@ export default function App() {
                         </div>
                         {/* Prendas */}
                         {(pedidoActual.prendas||[]).filter(pr=>pr.tipoPrenda).map((pr,i) => (
-                          <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={verPreciosOp} showPrecios={verPreciosOp} />
+                          <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={puedeVerTejido(usuario)} showPrecios={verPreciosOp} />
                         ))}
                         {verPreciosOp && <ResumenPrecios prendas={pedidoActual.prendas||[]} anticipo={pedidoActual.anticipo} pagos={pedidoActual.pagos||[]} />}
                         {pedidoActual.descripcion && <div style={{ fontSize:12,color:"#5a4a3a",marginTop:8,padding:"8px 10px",background:"#f5f0e8",borderLeft:"3px solid #c8bfaf" }}>{pedidoActual.descripcion}</div>}
@@ -922,7 +929,7 @@ export default function App() {
                           </div>
                           {/* Prendas */}
                           {(pedidoActual.prendas||[]).filter(pr=>pr.tipoPrenda).map((pr,i) => (
-                            <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={verPrecios} showPrecios={verPrecios} />
+                            <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={puedeVerTejido(usuario)} showPrecios={verPrecios} />
                           ))}
                           {(pedidoActual.imagenes_urls||[]).length > 0 && (
                             <div style={{ marginBottom:8,padding:"8px 10px",background:"#f5f0e8" }}>
@@ -1073,7 +1080,7 @@ export default function App() {
                           })}
                           <div style={{ marginTop:10 }}>
                             {(p.prendas||[]).filter(pr=>pr.tipoPrenda).map((pr,i) => (
-                              <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={puedeVerPrecios(usuario)} showPrecios={puedeVerPrecios(usuario)} />
+                              <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={puedeVerTejido(usuario)} showPrecios={puedeVerPrecios(usuario)} />
                             ))}
                             {puedeVerPrecios(usuario) && <ResumenPrecios prendas={p.prendas||[]} anticipo={p.anticipo} pagos={p.pagos||[]} />}
                           </div>
