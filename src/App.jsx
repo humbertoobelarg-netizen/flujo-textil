@@ -575,7 +575,7 @@ export default function App() {
     const u = usuarios.find(u => u.pin === pinInput);
     if (!u) { setPinError("PIN incorrecto"); setPinInput(""); return; }
     setUsuario(u); setPinInput(""); setPinError("");
-    if (u.rol === "admin" || u.nombre === "Vivi") setPantalla("admin");
+    if (u.rol === "admin" || u.nombre === "Vivi" || u.nombre === "Gabi") setPantalla("admin");
     else setPantalla("operario");
   }
 
