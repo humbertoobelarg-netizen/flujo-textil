@@ -840,159 +840,20 @@ export default function App() {
               const misPedidos = pedidos.filter(p => {
                 if (!(p.procesos_activos||[]).includes(miProceso)) return false;
                 if (miProceso === "orden") {
-                  // All orden users only see their own pedidos
-                  return p.creado_por === usuario.nombre;
-                }
-                return true;
-              });
-              const misPedidosFiltrados = [...misPedidos]
-                .filter(p => {
-                  if (!busquedaOp || !busquedaOp.trim()) return true;
-                  const b = busquedaOp.toLowerCase().trim();
-                  return (p.cliente||"").toLowerCase().includes(b) || 
-                         (p.id||"").toLowerCase().includes(b) ||
-                         (p.creado_por||"").toLowerCase().includes(b);
-                })
-                .sort((a,b) => {
-                  const fa = a.fecha_entrega||"9999";
-                  const fb = b.fecha_entrega||"9999";
-                  return fa.localeCompare(fb);
-                });
-
-              if (!misPedidos.length) return (
-                <div style={{ padding:40,textAlign:"center",color:"#b0a898" }}>
-                  <div style={{ fontSize:40,marginBottom:12 }}>🎉</div>
-                  <div style={{ fontSize:14 }}>Sin pedidos pendientes</div>
-                </div>
-              );
-
-              // Vista orden - progreso general
-              const verPreciosOp = puedeVerPrecios(usuario);
-              if (miProceso === "orden") {
-                return misPedidosFiltrados.map(p => {
-                  const pedidoActual = pedidos.find(x => x.id === p.id) || p;
-                  const prog = pedidoProgreso(pedidoActual);
-                  const pri = PRIORIDADES.find(pr=>pr.key===pedidoActual.prioridad);
-                  const vencido = pedidoActual.fecha_entrega < hoy() && prog < 100;
-                  return (
-                    <div key={pedidoActual.id} className="card fade" style={{ marginBottom:12,overflow:"hidden",borderLeft:`4px solid ${prog===100?"#10b981":prog>0?"#f59e0b":pri?.color}` }}>
-                      <div style={{ padding:"14px 16px" }}>
-                        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8 }}>
-                          <div>
-                            <div style={{ fontWeight:500,fontSize:15 }}>{pedidoActual.cliente}</div>
-                            <div style={{ fontSize:11,color:"#8a7a6a",marginTop:2 }}>{pedidoActual.id} · {pedidoActual.cantidad} uds</div>
-                          </div>
-                          <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4 }}>
-                            <span className="badge" style={{ background:pri?.color+"22",color:pri?.color }}>{pri?.label?.toUpperCase()}</span>
-                            {vencido && <span className="badge" style={{ background:"#ef444422",color:"#ef4444" }}>⚠ VENCIDO</span>}
-                          </div>
-                        </div>
-                        <div className="prog-bar" style={{ marginBottom:4 }}>
-                          <div className="prog-fill" style={{ width:prog+"%",background:prog===100?"#10b981":"#e85d26" }} />
-                        </div>
-                        <div style={{ display:"flex",justifyContent:"space-between",marginBottom:10 }}>
-                          <span style={{ fontSize:10,color:"#8a7a6a" }}>📅 {formatFecha(pedidoActual.fecha_entrega)}</span>
-                          <span style={{ fontSize:10,color:prog===100?"#10b981":"#e85d26",fontWeight:500 }}>{prog}% completado</span>
-                        </div>
-                        {/* Prendas */}
-                        {(pedidoActual.prendas||[]).filter(pr=>pr.tipoPrenda).map((pr,i) => (
-                          <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={puedeVerTejido(usuario)} showPrecios={verPreciosOp} />
-                        ))}
-                        {verPreciosOp && <ResumenPrecios prendas={pedidoActual.prendas||[]} anticipo={pedidoActual.anticipo} pagos={pedidoActual.pagos||[]} />}
-                        {pedidoActual.descripcion && <div style={{ fontSize:12,color:"#5a4a3a",marginTop:8,padding:"8px 10px",background:"#f5f0e8",borderLeft:"3px solid #c8bfaf" }}>{pedidoActual.descripcion}</div>}
-                        {pedidoActual.datos_factura && (usuario?.nombre==="Vivi" || usuario?.nombre===pedidoActual.creado_por) && (
-                          <div style={{ marginTop:6,padding:"8px 10px",background:"#fff8e1",border:"1.5px solid #f59e0b44" }}>
-                            <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4 }}>DATOS PARA FACTURA</div>
-                            <div style={{ fontSize:12,color:"#1a1208",whiteSpace:"pre-wrap" }}>{pedidoActual.datos_factura}</div>
-                          </div>
-                        )}
-                        {(usuario?.nombre==="Vivi" || usuario?.nombre===pedidoActual.creado_por) && (
-                          <button className="btn" onClick={()=>{
-                            setShowAgregado(pedidoActual);
-                            setFormAgregado({ prendas:[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}], anticipo:"" });
-                          }} style={{ width:"100%",padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #10b981",color:"#10b981",letterSpacing:1,marginBottom:8 }}>+ AGREGAR AL PEDIDO</button>
-                        )}
-                        {verPreciosOp && (() => {
-                          const totalGral = calcTotalGral(pedidoActual.prendas||[]);
-                          const pagos = pedidoActual.pagos||[];
-                          const totalPagado = pagos.reduce((s,pg)=>s+(parseFloat(pg.monto)||0),0);
-                          const saldo = totalGral - totalPagado;
-                          return totalGral > 0 ? (
-                            <div style={{ marginTop:8,padding:"10px",background:"#f5f0e8",border:"1.5px solid #d8d0c0" }}>
-                              <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:6 }}>PAGOS</div>
-                              {pagos.map((pg,i) => (
-                                <div key={i} style={{ display:"flex",justifyContent:"space-between",padding:"5px 8px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:3,fontSize:11 }}>
-                                  <span style={{ fontWeight:600 }}>${parseFloat(pg.monto).toLocaleString("es-AR")} <span style={{ fontWeight:400,color:"#8a7a6a" }}>{pg.tipo} · {formatFecha(pg.fecha)}</span></span>
-                                </div>
-                              ))}
-                              <div style={{ display:"flex",justifyContent:"space-between",padding:"6px 8px",background:"#1a1208",color:"#f5f0e8",fontSize:11,marginTop:4,marginBottom:8 }}>
-                                <span>Pagado: ${totalPagado.toLocaleString("es-AR")}</span>
-                                <span style={{ color:"#e85d26",fontWeight:600 }}>Saldo: ${saldo.toLocaleString("es-AR")}</span>
-                              </div>
-                              {showPagos === pedidoActual.id ? (
-                                <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-                                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
-                                    <div>
-                                      <label style={{ fontSize:9,color:"#8a7a6a",display:"block",marginBottom:3 }}>MONTO</label>
-                                      <input type="number" style={{ width:"100%" }} placeholder="0.00" value={nuevoPago.monto} onChange={e=>setNuevoPago({...nuevoPago,monto:e.target.value})} />
-                                    </div>
-                                    <div>
-                                      <label style={{ fontSize:9,color:"#8a7a6a",display:"block",marginBottom:3 }}>TIPO</label>
-                                      <select style={{ width:"100%" }} value={nuevoPago.tipo} onChange={e=>setNuevoPago({...nuevoPago,tipo:e.target.value})}>
-                                        <option value="efectivo">Efectivo</option>
-                                        <option value="cheque">Cheque</option>
-                                        <option value="transferencia">Transferencia</option>
-                                      </select>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <label style={{ fontSize:9,color:"#8a7a6a",display:"block",marginBottom:3 }}>FECHA</label>
-                                    <input type="date" style={{ width:"100%" }} value={nuevoPago.fecha} onChange={e=>setNuevoPago({...nuevoPago,fecha:e.target.value})} />
-                                  </div>
-                                  <div style={{ display:"flex",gap:8 }}>
-                                    <button className="btn" onClick={()=>setShowPagos(null)} style={{ flex:1,padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a" }}>CANCELAR</button>
-                                    <button className="btn" onClick={()=>agregarPago(pedidoActual.id)} style={{ flex:2,padding:"8px",fontSize:11,background:"#10b981",color:"#fff" }}>✓ REGISTRAR PAGO</button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <button className="btn" onClick={()=>setShowPagos(pedidoActual.id)} style={{ width:"100%",padding:"8px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1 }}>+ AGREGAR PAGO</button>
-                              )}
-                            </div>
-                          ) : null;
-                        })()}
-                        {(pedidoActual.imagenes_urls||[]).length > 0 && (
-                          <div style={{ marginTop:8,padding:"8px 10px",background:"#f5f0e8" }}>
-                            <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:6 }}>IMÁGENES</div>
-                            <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-                              {(pedidoActual.imagenes_urls||[]).map((url,i) => (
-                                <a key={i} href={url} target="_blank" rel="noreferrer">
-                                  <img src={url} alt="" style={{ width:80,height:80,objectFit:"cover",border:"1.5px solid #d8d0c0" }} />
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        <div style={{ marginTop:10,fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:6 }}>ESTADO DE PROCESOS</div>
-                        <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                          {PROCESOS.filter(pr=>(pedidoActual.procesos_activos||[]).includes(pr.key)).map(pr => {
-                            const etapa = (pedidoActual.procesos||{})[pr.key] || "pendiente";
-                            return (
-                              <div key={pr.key} style={{ display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:"#f5f0e8",border:`1px solid ${ETAPA_COLOR[etapa]}44` }}>
-                                <span style={{ fontSize:14 }}>{pr.icon}</span>
-                                <span style={{ fontSize:11,flex:1 }}>{pr.label}</span>
-                                <span className="badge" style={{ background:ETAPA_COLOR[etapa]+"22",color:ETAPA_COLOR[etapa],fontSize:9 }}>{ETAPA_LABEL[etapa].toUpperCase()}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                });
+                return (
+                  <>
+                    {misPedidosFiltrados.map(p => (
+                      <PedidoCardOrden key={p.id} p={p} usuario={usuario} pedidos={pedidos}
+                        puedeVerPrecios={puedeVerPrecios} puedeVerTejido={puedeVerTejido}
+                        setShowAgregado={setShowAgregado} setFormAgregado={setFormAgregado} PRENDA_INIT={PRENDA_INIT}
+                        showPagos={showPagos} setShowPagos={setShowPagos} nuevoPago={nuevoPago} setNuevoPago={setNuevoPago} agregarPago={agregarPago}
+                      />
+                    ))}
+                  </>
+                );
               }
 
-              // Vista operario normal
-              const verPrecios = puedeVerPrecios(usuario);
+                            const verPrecios = puedeVerPrecios(usuario);
               const enProceso = misPedidosFiltrados.filter(p => ((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso] !== "listo");
               const listos = misPedidosFiltrados.filter(p => ((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso] === "listo");
               const grupos = [
