@@ -395,6 +395,124 @@ function ResumenPrecios({ prendas, anticipo, pagos }) {
   );
 }
 
+function PedidoCardOperario({ p, miProceso, pedidos, usuario, marcarEtapa, subirImagenes, setPedidos, showToast, puedeVerTejido, puedeVerPrecios }) {
+  const [expandido, setExpandido] = useState(false);
+  const pedidoActual = pedidos.find(x => x.id === p.id) || p;
+  const etapa = (pedidoActual.procesos||{})[miProceso] || "pendiente";
+  const pri = PRIORIDADES.find(pr=>pr.key===pedidoActual.prioridad);
+  const vencido = pedidoActual.fecha_entrega < new Date().toISOString().split("T")[0] && etapa !== "listo";
+  const proc = PROCESOS.find(pr=>pr.key===miProceso);
+  const progActual = pedidoActual.procesos_activos ? (() => {
+    const activos = pedidoActual.procesos_activos;
+    const listos = activos.filter(k => (pedidoActual.procesos||{})[k] === "listo").length;
+    return Math.round((listos / activos.length) * 100);
+  })() : 0;
+  const bgColor = progActual === 0 ? "#fff0f4" : "#f0fff4";
+  const borderColor = etapa==="listo" ? "#10b981" : etapa==="en_proceso" ? "#f59e0b" : pri?.color;
+  const verPrecios = puedeVerPrecios(usuario);
+  const verTejido = puedeVerTejido(usuario);
+
+  return (
+    <div className="card fade" style={{ marginBottom:8,overflow:"hidden",borderLeft:`4px solid ${borderColor}`,background:bgColor }}>
+      <div style={{ padding:"12px 16px",cursor:"pointer" }} onClick={()=>setExpandido(!expandido)}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontWeight:500,fontSize:14 }}>{pedidoActual.cliente}</div>
+            <div style={{ fontSize:11,color:"#8a7a6a",marginTop:1 }}>{pedidoActual.id} · {pedidoActual.cantidad} uds · 📅 {formatFecha(pedidoActual.fecha_entrega)}</div>
+          </div>
+          <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+            <span className="badge" style={{ background:pri?.color+"22",color:pri?.color }}>{pri?.label?.toUpperCase()}</span>
+            {vencido && <span className="badge" style={{ background:"#ef444422",color:"#ef4444" }}>⚠</span>}
+            <span style={{ color:"#8a7a6a",fontSize:12 }}>{expandido?"▲":"▼"}</span>
+          </div>
+        </div>
+      </div>
+      {expandido && (
+        <div style={{ padding:"0 16px 14px",borderTop:"1px solid #e8e0d0" }}>
+          <div style={{ paddingTop:10,marginBottom:6 }}>
+            {pedidoActual.creado_por && <div style={{ fontSize:10,marginBottom:6 }}><span style={{ background:"#e85d26",color:"#fff",padding:"1px 6px",fontSize:9,fontWeight:600 }}>{pedidoActual.creado_por.toUpperCase()}</span></div>}
+            {vencido && <span className="badge" style={{ background:"#ef444422",color:"#ef4444",marginBottom:6 }}>⚠ VENCIDO</span>}
+          </div>
+          {pedidoActual.descripcion && <div style={{ fontSize:12,color:"#5a4a3a",marginBottom:8,padding:"8px 10px",background:"#f5f0e8",borderLeft:"3px solid #c8bfaf" }}>{pedidoActual.descripcion}</div>}
+          <div style={{ marginBottom:8 }}>
+            <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4 }}>ESTADO DE PROCESOS</div>
+            <div style={{ display:"flex",flexDirection:"column",gap:3 }}>
+              {PROCESOS.filter(pr=>(pedidoActual.procesos_activos||[]).includes(pr.key)).map(pr => {
+                const et = (pedidoActual.procesos||{})[pr.key]||"pendiente";
+                const esMio = pr.key === miProceso;
+                return (
+                  <div key={pr.key} style={{ display:"flex",alignItems:"center",gap:6,padding:"4px 8px",background:esMio?"#fef3ee":"#f5f0e8",border:`1px solid ${esMio?"#e85d26":ETAPA_COLOR[et]+"44"}` }}>
+                    <span style={{ fontSize:12 }}>{pr.icon}</span>
+                    <span style={{ fontSize:10,flex:1,fontWeight:esMio?600:400 }}>{pr.label}</span>
+                    <span className="badge" style={{ background:ETAPA_COLOR[et]+"22",color:ETAPA_COLOR[et],fontSize:8 }}>{ETAPA_LABEL[et].toUpperCase()}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {(pedidoActual.prendas||[]).filter(pr=>pr.tipoPrenda).map((pr,i) => (
+            <PrendaDetalle key={i} prenda={pr} idx={i} showTejido={verTejido} showPrecios={verPrecios} />
+          ))}
+          {verPrecios && <ResumenPrecios prendas={pedidoActual.prendas||[]} anticipo={pedidoActual.anticipo} pagos={pedidoActual.pagos||[]} />}
+          {(pedidoActual.imagenes_urls||[]).length > 0 && (
+            <div style={{ marginBottom:8,padding:"8px 10px",background:"#f5f0e8" }}>
+              <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:6 }}>IMÁGENES</div>
+              <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+                {(pedidoActual.imagenes_urls||[]).map((url,i) => (
+                  <a key={i} href={url} target="_blank" rel="noreferrer">
+                    <img src={url} alt="" style={{ width:80,height:80,objectFit:"cover",border:"1.5px solid #d8d0c0" }} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{ marginBottom:10,padding:"10px 14px",background:ETAPA_COLOR[etapa]+"15",border:`1.5px solid ${ETAPA_COLOR[etapa]}33`,display:"flex",alignItems:"center",gap:10 }}>
+            <span style={{ fontSize:20 }}>{proc?.icon}</span>
+            <div>
+              <div style={{ fontSize:10,color:"#8a7a6a",letterSpacing:1 }}>ESTADO ACTUAL</div>
+              <div style={{ fontSize:15,fontWeight:500,color:ETAPA_COLOR[etapa] }}>{ETAPA_LABEL[etapa]}</div>
+            </div>
+          </div>
+          <div style={{ fontSize:11,color:"#8a7a6a",marginBottom:10 }}>📅 Entrega: {formatFecha(pedidoActual.fecha_entrega)}</div>
+          {miProceso === "diseno" && (
+            <div style={{ marginBottom:10 }}>
+              <label style={{ fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:6 }}>SUBIR IMÁGENES (máx. 3)</label>
+              <input type="file" accept="image/*" multiple
+                style={{ width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:11,color:"#1a1208" }}
+                onChange={async e => {
+                  const files = Array.from(e.target.files).slice(0,3);
+                  const urls = await subirImagenes(pedidoActual.id, files);
+                  if (urls.length > 0) {
+                    const existentes = pedidoActual.imagenes_urls || [];
+                    const nuevasUrls = [...existentes, ...urls].slice(0,3);
+                    await fetch(\`https://avybrjvhltvcybdiyvvv.supabase.co/rest/v1/pedidos?id=eq.\${pedidoActual.id}\`, { method:"PATCH", headers:{"Content-Type":"application/json","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2eWJyanZobHR2Y3liZGl5dnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMTE4NDYsImV4cCI6MjA5NDc4Nzg0Nn0.wbiU8qmRTPiaKU6At97_djP0p0obKGyVRM9rn-nbr84","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2eWJyanZobHR2Y3liZGl5dnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMTE4NDYsImV4cCI6MjA5NDc4Nzg0Nn0.wbiU8qmRTPiaKU6At97_djP0p0obKGyVRM9rn-nbr84"}, body:JSON.stringify({imagenes_urls:nuevasUrls}) });
+                    setPedidos(prev => prev.map(x => x.id === pedidoActual.id ? { ...x, imagenes_urls: nuevasUrls } : x));
+                    showToast("✓ Imágenes subidas");
+                  }
+                }}
+              />
+            </div>
+          )}
+          {etapa !== "listo" && (
+            <div style={{ display:"flex",gap:8 }}>
+              {etapa === "pendiente" && (
+                <button className="etapa-btn" onClick={() => marcarEtapa(pedidoActual.id,miProceso,"en_proceso")} style={{ borderColor:"#f59e0b",color:"#f59e0b",background:"transparent",letterSpacing:1 }}>▶ INICIAR</button>
+              )}
+              {etapa === "en_proceso" && (
+                <button className="etapa-btn" onClick={() => marcarEtapa(pedidoActual.id,miProceso,"pendiente")} style={{ borderColor:"#c8bfaf",color:"#8a7a6a",background:"transparent",letterSpacing:1 }}>◀ PAUSAR</button>
+              )}
+              <button className="etapa-btn" onClick={() => marcarEtapa(pedidoActual.id,miProceso,"listo")} style={{ borderColor:"#10b981",color:"#10b981",background:"transparent",letterSpacing:1,flex:2 }}>✓ MARCAR LISTO</button>
+            </div>
+          )}
+          {etapa === "listo" && (
+            <button className="etapa-btn" onClick={() => marcarEtapa(pedidoActual.id,miProceso,"en_proceso")} style={{ borderColor:"#c8bfaf",color:"#8a7a6a",background:"transparent",width:"100%",letterSpacing:1 }}>↩ DESHACER</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function puedeVerTejido(usuario) {
   if (!usuario) return false;
   if (usuario.rol === "admin") return true;
@@ -888,56 +1006,9 @@ export default function App() {
                     <span style={{ fontSize:11,letterSpacing:2,fontWeight:600,color:grupo.color }}>{grupo.titulo}</span>
                     <span style={{ marginLeft:"auto",fontSize:11,color:grupo.color }}>{grupo.items.length}</span>
                   </div>
-                  {grupo.items.map(p => {
-                    const pedidoActual = pedidos.find(x => x.id === p.id) || p;
-                    const etapa = (pedidoActual.procesos||{})[miProceso] || "pendiente";
-                    const pri = PRIORIDADES.find(pr=>pr.key===pedidoActual.prioridad);
-                    const vencido = pedidoActual.fecha_entrega < hoy() && etapa !== "listo";
-                    const proc = PROCESOS.find(pr=>pr.key===miProceso);
-                    const progActual = pedidoProgreso(pedidoActual);
-                    const bgColor = progActual === 0 ? "#fff0f4" : "#f0fff4";
-                    const borderColor = etapa==="listo" ? "#10b981" : etapa==="en_proceso" ? "#f59e0b" : pri?.color;
-                    const [expandido, setExpandido] = useState(false);
-                    return (
-                      <div key={pedidoActual.id} className="card fade" style={{ marginBottom:8,overflow:"hidden",borderLeft:`4px solid ${borderColor}`,background:bgColor }}>
-                        <div style={{ padding:"12px 16px",cursor:"pointer" }} onClick={()=>setExpandido(!expandido)}>
-                          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-                            <div style={{ flex:1 }}>
-                              <div style={{ fontWeight:500,fontSize:14 }}>{pedidoActual.cliente}</div>
-                              <div style={{ fontSize:11,color:"#8a7a6a",marginTop:1 }}>{pedidoActual.id} · {pedidoActual.cantidad} uds · 📅 {formatFecha(pedidoActual.fecha_entrega)}</div>
-                            </div>
-                            <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-                              <span className="badge" style={{ background:pri?.color+"22",color:pri?.color }}>{pri?.label?.toUpperCase()}</span>
-                              {vencido && <span className="badge" style={{ background:"#ef444422",color:"#ef4444" }}>⚠</span>}
-                              <span style={{ color:"#8a7a6a",fontSize:12 }}>{expandido?"▲":"▼"}</span>
-                            </div>
-                          </div>
-                        </div>
-                        {expandido && <div style={{ padding:"0 16px 14px",borderTop:"1px solid #e8e0d0" }}>
-                          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6,paddingTop:10 }}>
-                            <div>
-                              {pedidoActual.creado_por && <div style={{ fontSize:10,marginBottom:4 }}><span style={{ background:"#e85d26",color:"#fff",padding:"1px 6px",fontSize:9,fontWeight:600 }}>{pedidoActual.creado_por.toUpperCase()}</span></div>}
-                            </div>
-                            <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4 }}>
-                              {vencido && <span className="badge" style={{ background:"#ef444422",color:"#ef4444" }}>⚠ VENCIDO</span>}
-                            </div>
-                          </div>
-                          {pedidoActual.descripcion && <div style={{ fontSize:12,color:"#5a4a3a",marginBottom:8,padding:"8px 10px",background:"#f5f0e8",borderLeft:"3px solid #c8bfaf" }}>{pedidoActual.descripcion}</div>}
-                          {/* Estado de todos los procesos */}
-                          <div style={{ marginBottom:8 }}>
-                            <div style={{ fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4 }}>ESTADO DE PROCESOS</div>
-                            <div style={{ display:"flex",flexDirection:"column",gap:3 }}>
-                              {PROCESOS.filter(pr=>(pedidoActual.procesos_activos||[]).includes(pr.key)).map(pr => {
-                                const et = (pedidoActual.procesos||{})[pr.key] || "pendiente";
-                                const esMiProceso = pr.key === miProceso;
-                                return (
-                                  <div key={pr.key} style={{ display:"flex",alignItems:"center",gap:6,padding:"4px 8px",background:esMiProceso?"#fef3ee":"#f5f0e8",border:`1px solid ${esMiProceso?"#e85d26":ETAPA_COLOR[et]+"44"}` }}>
-                                    <span style={{ fontSize:12 }}>{pr.icon}</span>
-                                    <span style={{ fontSize:10,flex:1,fontWeight:esMiProceso?600:400 }}>{pr.label}</span>
-                                    <span className="badge" style={{ background:ETAPA_COLOR[et]+"22",color:ETAPA_COLOR[et],fontSize:8 }}>{ETAPA_LABEL[et].toUpperCase()}</span>
-                                  </div>
-                                );
-                              })}
+                  {grupo.items.map(p => (
+                    <PedidoCardOperario key={p.id} p={p} miProceso={miProceso} pedidos={pedidos} usuario={usuario} marcarEtapa={marcarEtapa} subirImagenes={subirImagenes} setPedidos={setPedidos} showToast={showToast} puedeVerTejido={puedeVerTejido} puedeVerPrecios={puedeVerPrecios} />
+                  ))}
                             </div>
                           </div>
                           {/* Prendas */}
@@ -993,12 +1064,6 @@ export default function App() {
                               <button className="etapa-btn" onClick={() => marcarEtapa(pedidoActual.id,miProceso,"listo")} style={{ borderColor:"#10b981",color:"#10b981",background:"transparent",letterSpacing:1,flex:2 }}>✓ MARCAR LISTO</button>
                             </div>
                           )}
-                          {etapa === "listo" && (
-                            <button className="etapa-btn" onClick={() => marcarEtapa(pedidoActual.id,miProceso,"en_proceso")} style={{ borderColor:"#c8bfaf",color:"#8a7a6a",background:"transparent",width:"100%",letterSpacing:1 }}>↩ DESHACER</button>
-                          )}
-                        </div>}
-                      </div>
-                    );
                   })}
                 </div>
               ));
