@@ -1492,4 +1492,65 @@ export default function App() {
                     return (
                       <div key={proc.key} className={`checkbox-proceso${active?" active":""}`}
                         onClick={() => {
-                          const ne
+                          const next = active ? formPedido.procesosActivos.filter(k=>k!==proc.key) : [...formPedido.procesosActivos,proc.key];
+                          setFormPedido({...formPedido,procesosActivos:next});
+                        }}>
+                        <div style={{ width:14,height:14,border:`1.5px solid ${active?"#e85d26":"#c8bfaf"}`,background:active?"#e85d26":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                          {active && <span style={{ color:"#fff",fontSize:9 }}>✓</span>}
+                        </div>
+                        {proc.icon} {proc.label}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:8 }}>IMÁGENES DEL DISEÑO (máx. 3)</label>
+                <input type="file" accept="image/*" multiple style={{ width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:12,color:"#1a1208" }}
+                  onChange={e => setFormPedido(prev => ({...prev, imagenes: Array.from(e.target.files).slice(0,3)}))}
+                />
+              </div>
+
+              <div style={{ display:"flex",gap:8,justifyContent:"flex-end" }}>
+                <button className="btn" onClick={()=>setShowNuevoPedido(false)} style={{ padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1 }}>CANCELAR</button>
+                <button className="btn" onClick={crearPedido} style={{ padding:"10px 20px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1 }}>CREAR PEDIDO</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NUEVO USUARIO */}
+      {showNuevoUser && (
+        <div className="modal-bg" onClick={()=>setShowNuevoUser(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div style={{ padding:"20px 24px",borderBottom:"1.5px solid #d8d0c0",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2 }}>NUEVO USUARIO</div>
+            <div style={{ padding:24,display:"flex",flexDirection:"column",gap:14 }}>
+              <div>
+                <label style={{ fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5 }}>NOMBRE *</label>
+                <input type="text" style={{ width:"100%" }} placeholder="Nombre del operario" value={formUser.nombre} onChange={e=>setFormUser({...formUser,nombre:e.target.value})} />
+              </div>
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
+                <div>
+                  <label style={{ fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5 }}>PIN (4 dígitos) *</label>
+                  <input type="text" maxLength={4} style={{ width:"100%" }} placeholder="0000" value={formUser.pin} onChange={e=>setFormUser({...formUser,pin:e.target.value.replace(/\D/g,"")})} />
+                </div>
+                <div>
+                  <label style={{ fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5 }}>PROCESO</label>
+                  <select style={{ width:"100%" }} value={formUser.proceso} onChange={e=>setFormUser({...formUser,proceso:e.target.value})}>
+                    {PROCESOS.map(p=><option key={p.key} value={p.key}>{p.icon} {p.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display:"flex",gap:8,justifyContent:"flex-end" }}>
+                <button className="btn" onClick={()=>setShowNuevoUser(false)} style={{ padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1 }}>CANCELAR</button>
+                <button className="btn" onClick={crearUsuario} style={{ padding:"10px 20px",fontSize:11,background:"#1a1208",color:"#f5f0e8",letterSpacing:1 }}>CREAR USUARIO</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
