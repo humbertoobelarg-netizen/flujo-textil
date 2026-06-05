@@ -208,6 +208,21 @@ function PrendaForm({prenda,idx,onChange}){
   );
 }
 
+function GrupoColapsable({titulo,icon,color,count,children}){
+  const [abierto,setAbierto]=useState(true);
+  return(
+    <div style={{marginBottom:12}}>
+      <div onClick={()=>setAbierto(!abierto)} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:color+"15",border:`1.5px solid ${color}44`,cursor:"pointer",marginBottom:abierto?8:0}}>
+        <span style={{fontSize:18}}>{icon}</span>
+        <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2,color:color,flex:1}}>{titulo}</span>
+        <span style={{background:color,color:"#fff",fontSize:11,fontWeight:600,padding:"2px 10px",borderRadius:20}}>{count}</span>
+        <span style={{color:color,fontSize:14,fontWeight:600}}>{abierto?"▲":"▼"}</span>
+      </div>
+      {abierto&&<div>{children}</div>}
+    </div>
+  );
+}
+
 // Card colapsable genérico
 function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtapa,miProceso,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido}){
   const [exp,setExp]=useState(false);
@@ -404,7 +419,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
           {(miProceso==="diseno"||(miProceso==="orden"&&(usuario?.nombre==="Vivi"||usuario?.nombre===p.creado_por)))&&(
             <div style={{marginTop:8}}>
               <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:6}}>SUBIR ARCHIVOS (PDF, Excel, Word)</label>
-              <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/*" multiple
+              <input type="file" multiple
                 style={{width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:11}}
                 onChange={async e=>{
                   const files=Array.from(e.target.files).slice(0,5);
@@ -638,9 +653,10 @@ export default function App(){
           const b=busquedaOp.toLowerCase();
           return(p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b);
         }).sort((a,b)=>(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"));
-        const enProceso=filtrados.filter(p=>((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]!=="listo");
-        const listos=filtrados.filter(p=>((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]==="listo");
-        const grupos=[{titulo:"EN PROCESO",color:"#f59e0b",items:enProceso},{titulo:"LISTOS",color:"#10b981",items:listos}];
+        const nuevos=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="pendiente";});
+        const enProceso=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="en_proceso";});
+        const listos=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="listo";});
+        const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevos},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProceso},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:listos}];
         return(
           <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column"}}>
             <div style={{padding:"16px 20px",borderBottom:"1.5px solid #d8d0c0",background:"#fff",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -661,17 +677,13 @@ export default function App(){
             </div>
             <div style={{flex:1,padding:16,overflowY:"auto"}}>
               {!filtrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898"}}><div style={{fontSize:40,marginBottom:12}}>🎉</div><div style={{fontSize:14}}>Sin pedidos</div></div>}
-              {grupos.map(grupo=>grupo.items.length===0?null:(
-                <div key={grupo.titulo} style={{marginBottom:20}}>
-                  <div className="grupo-header" style={{background:grupo.color+"15",border:`1.5px solid ${grupo.color}33`}}>
-                    <div style={{width:8,height:8,borderRadius:"50%",background:grupo.color}}/>
-                    <span style={{fontSize:11,letterSpacing:2,fontWeight:600,color:grupo.color}}>{grupo.titulo}</span>
-                    <span style={{marginLeft:"auto",fontSize:11,color:grupo.color}}>{grupo.items.length}</span>
-                  </div>
+              {grupos.map(grupo=>(
+                <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} color={grupo.color} count={grupo.items.length}>
                   {grupo.items.map(p=>(
                     <PedidoCard key={p.id} pedido={p} usuario={usuario} miProceso={miProceso} marcarEtapa={marcarEtapa} {...cardProps}/>
                   ))}
-                </div>
+                  {grupo.items.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
+                </GrupoColapsable>
               ))}
             </div>
           </div>
@@ -711,9 +723,18 @@ export default function App(){
                     </div>
                   ))}
                 </div>
-                {pedidosFiltrados.map(p=>(
-                  <PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>
-                ))}
+                {(()=>{
+                  const nuevos=pedidosFiltrados.filter(p=>pedidoProgreso(p)===0);
+                  const enProc=pedidosFiltrados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100);
+                  const term=pedidosFiltrados.filter(p=>pedidoProgreso(p)===100);
+                  const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevos},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProc},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:term}];
+                  return grupos.map(grupo=>(
+                    <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} color={grupo.color} count={grupo.items.length}>
+                      {grupo.items.map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
+                      {grupo.items.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
+                    </GrupoColapsable>
+                  ));
+                })()}
                 {!pedidosFiltrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>{busqueda?"Sin resultados":"No hay pedidos."}</div>}
                 {puedeVerFinanciero(usuario)&&pedidos.length>0&&(()=>{
                   const tg=pedidos.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
@@ -829,7 +850,7 @@ export default function App(){
               </div>
               <div>
                 <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:8}}>ARCHIVOS ADJUNTOS (PDF, Excel, Word, etc.)</label>
-                <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple style={{width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:12}} onChange={e=>setFormPedido(prev=>({...prev,archivos:Array.from(e.target.files).slice(0,5)}))}/>
+                <input type="file" multiple style={{width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:12}} onChange={e=>setFormPedido(prev=>({...prev,archivos:Array.from(e.target.files).slice(0,5)}))}/>
               </div>
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button className="btn" onClick={()=>setShowNuevoPedido(false)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
