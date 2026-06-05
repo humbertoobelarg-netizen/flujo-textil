@@ -209,7 +209,7 @@ function PrendaForm({prenda,idx,onChange}){
 }
 
 function GrupoColapsable({titulo,icon,color,count,children}){
-  const [abierto,setAbierto]=useState(true);
+  const [abierto,setAbierto]=useState(false);
   return(
     <div style={{marginBottom:12}}>
       <div onClick={()=>setAbierto(!abierto)} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:color+"15",border:`1.5px solid ${color}44`,cursor:"pointer",marginBottom:abierto?8:0}}>
@@ -419,7 +419,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
           {(miProceso==="diseno"||(miProceso==="orden"&&(usuario?.nombre==="Vivi"||usuario?.nombre===p.creado_por)))&&(
             <div style={{marginTop:8}}>
               <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:6}}>SUBIR ARCHIVOS (PDF, Excel, Word)</label>
-              <input type="file" multiple
+              <input type="file" accept="*/*" multiple
                 style={{width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:11}}
                 onChange={async e=>{
                   const files=Array.from(e.target.files).slice(0,5);
@@ -740,7 +740,7 @@ export default function App(){
                   const tg=pedidos.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
                   const saldo=pedidos.reduce((s,p)=>{const t=calcTotalGral(p.prendas||[]);const ant=parseFloat(p.anticipo)||0;const pagado=(p.pagos||[]).reduce((sp,pg)=>sp+(parseFloat(pg.monto)||0),0);return s+(t-ant-pagado);},0);
                   const porMes={};
-                  pedidos.forEach(p=>{const f=p.creado||p.fecha_entrega;if(!f)return;const mes=f.slice(0,7);if(!porMes[mes])porMes[mes]={total:0,saldo:0};const t=calcTotalGral(p.prendas||[]);const ant=parseFloat(p.anticipo)||0;const pagado=(p.pagos||[]).reduce((sp,pg)=>sp+(parseFloat(pg.monto)||0),0);porMes[mes].total+=t;porMes[mes].saldo+=(t-ant-pagado);});
+                  pedidos.forEach(p=>{const f=p.creado||p.fecha_entrega;if(!f)return;const mes=f.slice(0,7);if(!porMes[mes])porMes[mes]={total:0,saldo:0,cantidad:0,pedidosCount:0};const t=calcTotalGral(p.prendas||[]);const ant=parseFloat(p.anticipo)||0;const pagado=(p.pagos||[]).reduce((sp,pg)=>sp+(parseFloat(pg.monto)||0),0);const cantPrendas=(p.prendas||[]).reduce((s,pr)=>s+(parseInt(pr.cantidad)||0),0);porMes[mes].total+=t;porMes[mes].saldo+=(t-ant-pagado);porMes[mes].cantidad+=cantPrendas;porMes[mes].pedidosCount+=1;});
                   return(
                     <div style={{marginTop:20,padding:"16px",background:"#1a1208",color:"#f5f0e8"}}>
                       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:2,marginBottom:12}}>RESUMEN FINANCIERO</div>
@@ -750,9 +750,17 @@ export default function App(){
                       </div>
                       <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:8}}>POR MES (fecha de pedido)</div>
                       {Object.keys(porMes).sort().map(mes=>{const[y,m]=mes.split("-");const meses=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];return(
-                        <div key={mes} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:"#2a2a2a",marginBottom:4}}>
-                          <span style={{fontSize:12,letterSpacing:1}}>{meses[parseInt(m)]} {y}</span>
-                          <div style={{display:"flex",gap:16}}><span style={{fontSize:11,color:"#b0a898"}}>Total: ${porMes[mes].total.toLocaleString("es-AR")}</span><span style={{fontSize:11,color:"#e85d26"}}>Saldo: ${porMes[mes].saldo.toLocaleString("es-AR")}</span></div>
+                        <div key={mes} style={{padding:"10px",background:"#2a2a2a",marginBottom:4}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                            <span style={{fontSize:12,letterSpacing:1,fontWeight:600}}>{meses[parseInt(m)]} {y}</span>
+                            <span style={{fontSize:10,color:"#8a7a6a"}}>{porMes[mes].pedidosCount} pedidos</span>
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                            <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>TOTAL</div><div style={{fontSize:13,fontWeight:600}}>${porMes[mes].total.toLocaleString("es-AR")}</div></div>
+                            <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>SALDO</div><div style={{fontSize:13,fontWeight:600,color:"#e85d26"}}>${porMes[mes].saldo.toLocaleString("es-AR")}</div></div>
+                            <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>PRENDAS</div><div style={{fontSize:13,fontWeight:600,color:"#06b6d4"}}>{porMes[mes].cantidad} uds</div></div>
+                            <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>PRECIO PROM.</div><div style={{fontSize:13,fontWeight:600,color:"#a855f7"}}>${porMes[mes].cantidad>0?Math.round(porMes[mes].total/porMes[mes].cantidad).toLocaleString("es-AR"):0}</div></div>
+                          </div>
                         </div>
                       );})}
                     </div>
@@ -850,7 +858,7 @@ export default function App(){
               </div>
               <div>
                 <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:8}}>ARCHIVOS ADJUNTOS (PDF, Excel, Word, etc.)</label>
-                <input type="file" multiple style={{width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:12}} onChange={e=>setFormPedido(prev=>({...prev,archivos:Array.from(e.target.files).slice(0,5)}))}/>
+                <input type="file" accept="*/*" multiple style={{width:"100%",background:"#f5f0e8",border:"1.5px solid #c8bfaf",padding:"8px",fontSize:12}} onChange={e=>setFormPedido(prev=>({...prev,archivos:Array.from(e.target.files).slice(0,5)}))}/>
               </div>
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button className="btn" onClick={()=>setShowNuevoPedido(false)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
