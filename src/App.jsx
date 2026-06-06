@@ -428,7 +428,8 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                     const f=files[i];const ext=f.name.split('.').pop().toLowerCase();
                     const path=`${p.id}/archivo_${Date.now()}_${i}.${ext}`;
                     const res=await fetch(`${SUPABASE_URL}/storage/v1/object/imagenes-pedidos/${path}`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':f.type||'application/octet-stream','x-upsert':'true'},body:f});
-                    if(res.ok)aurls.push({nombre:f.name,url:`${SUPABASE_URL}/storage/v1/object/public/imagenes-pedidos/${path}`});
+                    if(res.ok){aurls.push({nombre:f.name,url:`${SUPABASE_URL}/storage/v1/object/public/imagenes-pedidos/${path}`});}
+                    else{const err=await res.text();showToast(`Error: ${err.slice(0,50)}`,"#ef4444");}
                   }
                   if(aurls.length>0){
                     const existentes=p.archivos_urls||[];
