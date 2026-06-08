@@ -493,6 +493,7 @@ export default function App(){
   const [showNuevoGasto,setShowNuevoGasto]=useState(false);
   const [formGasto,setFormGasto]=useState({fecha:hoy(),categoria:"materiales",descripcion:"",monto:""});
   const [periodoFiltro,setPeriodoFiltro]=useState("mensual");
+  const [mesSeleccionado,setMesSeleccionado]=useState(new Date().toISOString().slice(0,7));
 
   useEffect(()=>{cargarDatos();},[]);
 
@@ -723,7 +724,12 @@ export default function App(){
             </div>
           </div>
           <div style={{display:"flex",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:24}}>
-            {[["pedidos","PEDIDOS"],["tablero","TABLERO"],["equipo","EQUIPO"],["finanzas","FINANZAS"]].filter(([k])=>usuario?.rol==="admin"||(k==="finanzas"&&usuario?.nombre==="Gabi")||(!["equipo","finanzas"].includes(k))).map(([k,l])=>(
+            {[["pedidos","PEDIDOS"],["tablero","TABLERO"],["equipo","EQUIPO"],["finanzas","FINANZAS"]].filter(([k])=>{
+              if(usuario?.rol==="admin")return true;
+              if(k==="equipo")return false;
+              if(k==="finanzas")return ["Gabi","Vivi"].includes(usuario?.nombre);
+              return true;
+            }).map(([k,l])=>(
               <div key={k} className={`tab${adminTab===k?" active":""}`} onClick={()=>setAdminTab(k)} style={{fontSize:11,letterSpacing:2}}>{l}</div>
             ))}
           </div>
@@ -817,11 +823,15 @@ export default function App(){
             )}
 
             {adminTab==="finanzas"&&(()=>{
-              const CATEGORIAS=[{key:"materiales",label:"Materiales",icon:"🧵"},{key:"mano_obra",label:"Mano de obra",icon:"👷"},{key:"alquiler",label:"Alquiler",icon:"🏠"},{key:"servicios",label:"Servicios",icon:"💡"},{key:"mantenimiento",label:"Mantenimiento",icon:"🔧"},{key:"marketing",label:"Marketing",icon:"📢"},{key:"impuestos",label:"Impuestos",icon:"🏛️"},{key:"flia_obelar",label:"Flia. Obelar Codas",icon:"👨‍👩‍👧"},{key:"otros",label:"Otros",icon:"📦"}];
+              const CATEGORIAS_ALL=[{key:"materiales",label:"Materiales",icon:"🧵"},{key:"mano_obra",label:"Mano de obra",icon:"👷"},{key:"alquiler",label:"Alquiler",icon:"🏠"},{key:"servicios",label:"Servicios",icon:"💡"},{key:"mantenimiento",label:"Mantenimiento",icon:"🔧"},{key:"marketing",label:"Marketing",icon:"📢"},{key:"impuestos",label:"Impuestos",icon:"🏛️"},{key:"flia_obelar",label:"Flia. Obelar Codas",icon:"👨‍👩‍👧"},{key:"otros",label:"Otros",icon:"📦"}];
+              const CATEGORIAS=CATEGORIAS_ALL.filter(c=>usuario?.nombre!=="Vivi"||c.key!=="flia_obelar");
               const now=new Date();
-              const mesActual=now.toISOString().slice(0,7);
-              const trimestre=Math.floor(now.getMonth()/3);
-              const anoActual=now.getFullYear();
+              const mesActual=mesSeleccionado||now.toISOString().slice(0,7);
+              const mesDate=new Date(mesActual+"-01");
+              const trimestre=Math.floor(mesDate.getMonth()/3);
+              const anoActual=mesDate.getFullYear();
+              const meses=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+              const nombreMes=meses[mesDate.getMonth()+1]+" "+anoActual;
 
               // Filter by period
               const gastosFiltrados=gastos.filter(g=>{
@@ -869,6 +879,18 @@ export default function App(){
 
               return(
                 <div>
+                  {/* Título y selector de mes */}
+                  <div style={{marginBottom:16}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,letterSpacing:2,color:"#1a1208",marginBottom:8}}>
+                      {periodoFiltro==="mensual"?nombreMes:periodoFiltro==="trimestral"?`T${trimestre+1} ${anoActual}`:`Año ${anoActual}`}
+                    </div>
+                    {periodoFiltro==="mensual"&&(
+                      <input type="month" style={{width:"100%",marginBottom:8}} value={mesSeleccionado} onChange={e=>setMesSeleccionado(e.target.value)}/>
+                    )}
+                    {periodoFiltro==="anual"&&(
+                      <input type="number" min="2020" max="2030" style={{width:"100%",marginBottom:8}} value={anoActual} onChange={e=>setMesSeleccionado(e.target.value+"-01")}/>
+                    )}
+                  </div>
                   {/* Filtro período */}
                   <div style={{display:"flex",gap:8,marginBottom:16}}>
                     {[["mensual","Mensual"],["trimestral","Trimestral"],["anual","Anual"]].map(([k,l])=>(
@@ -1094,7 +1116,7 @@ export default function App(){
               </div>
               <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>CATEGORÍA</label>
                 <select style={{width:"100%"}} value={formGasto.categoria} onChange={e=>setFormGasto({...formGasto,categoria:e.target.value})}>
-                  {[{key:"materiales",label:"🧵 Materiales"},{key:"mano_obra",label:"👷 Mano de obra"},{key:"alquiler",label:"🏠 Alquiler"},{key:"servicios",label:"💡 Servicios"},{key:"mantenimiento",label:"🔧 Mantenimiento"},{key:"marketing",label:"📢 Marketing"},{key:"impuestos",label:"🏛️ Impuestos"},{key:"flia_obelar",label:"👨‍👩‍👧 Flia. Obelar Codas"},{key:"otros",label:"📦 Otros"}].map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
+                  {[{key:"materiales",label:"🧵 Materiales"},{key:"mano_obra",label:"👷 Mano de obra"},{key:"alquiler",label:"🏠 Alquiler"},{key:"servicios",label:"💡 Servicios"},{key:"mantenimiento",label:"🔧 Mantenimiento"},{key:"marketing",label:"📢 Marketing"},{key:"impuestos",label:"🏛️ Impuestos"},{key:"flia_obelar",label:"👨‍👩‍👧 Flia. Obelar Codas"},{key:"otros",label:"📦 Otros"}].filter(c=>usuario?.nombre!=="Vivi"||c.key!=="flia_obelar").map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
               </div>
               <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>DESCRIPCIÓN *</label><input type="text" style={{width:"100%"}} placeholder="Ej: Compra de tela algodón..." value={formGasto.descripcion} onChange={e=>setFormGasto({...formGasto,descripcion:e.target.value})}/></div>
