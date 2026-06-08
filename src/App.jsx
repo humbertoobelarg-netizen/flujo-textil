@@ -244,7 +244,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
           <div style={{flex:1}}>
             <div style={{fontWeight:500,fontSize:14}}>{p.cliente}</div>
             <div style={{fontSize:11,color:"#8a7a6a",marginTop:1}}>
-              {p.id} · {p.cantidad} uds · 📅 {formatFecha(p.fecha_entrega)}
+              {p.id} · {p.cantidad} uds · 📝 {formatFecha(p.creado)} · 📅 {formatFecha(p.fecha_entrega)}
               {p.creado_por&&<span style={{marginLeft:6,background:"#e85d26",color:"#fff",fontSize:9,padding:"1px 5px",fontWeight:600}}>{p.creado_por.toUpperCase()}</span>}
             </div>
           </div>
@@ -836,8 +836,9 @@ export default function App(){
               // Filter by period
               const gastosFiltrados=gastos.filter(g=>{
                 if(!g.fecha)return false;
-                if(periodoFiltro==="mensual")return g.fecha.startsWith(mesActual);
-                if(periodoFiltro==="trimestral"){const m=new Date(g.fecha).getMonth();return new Date(g.fecha).getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
+                const fg=g.fecha.slice(0,7);
+                if(periodoFiltro==="mensual")return fg===mesActual;
+                if(periodoFiltro==="trimestral"){const m=new Date(g.fecha+"-01").getMonth();return new Date(g.fecha+"-01").getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
                 if(periodoFiltro==="anual")return g.fecha.startsWith(String(anoActual));
                 return true;
               });
@@ -862,8 +863,9 @@ export default function App(){
 
               const ingresosFiltrados=ingresosPorFecha.filter(i=>{
                 if(!i.fecha)return false;
-                if(periodoFiltro==="mensual")return i.fecha.startsWith(mesActual);
-                if(periodoFiltro==="trimestral"){const m=new Date(i.fecha).getMonth();return new Date(i.fecha).getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
+                const fi=i.fecha.slice(0,7);
+                if(periodoFiltro==="mensual")return fi===mesActual;
+                if(periodoFiltro==="trimestral"){const m=new Date(i.fecha+"-01").getMonth();return new Date(i.fecha+"-01").getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
                 if(periodoFiltro==="anual")return i.fecha.startsWith(String(anoActual));
                 return true;
               });
