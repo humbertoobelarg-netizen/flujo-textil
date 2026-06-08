@@ -817,7 +817,7 @@ export default function App(){
             )}
 
             {adminTab==="finanzas"&&(()=>{
-              const CATEGORIAS=[{key:"materiales",label:"Materiales",icon:"🧵"},{key:"mano_obra",label:"Mano de obra",icon:"👷"},{key:"alquiler",label:"Alquiler",icon:"🏠"},{key:"servicios",label:"Servicios",icon:"💡"},{key:"mantenimiento",label:"Mantenimiento",icon:"🔧"},{key:"marketing",label:"Marketing",icon:"📢"},{key:"impuestos",label:"Impuestos",icon:"🏛️"},{key:"otros",label:"Otros",icon:"📦"}];
+              const CATEGORIAS=[{key:"materiales",label:"Materiales",icon:"🧵"},{key:"mano_obra",label:"Mano de obra",icon:"👷"},{key:"alquiler",label:"Alquiler",icon:"🏠"},{key:"servicios",label:"Servicios",icon:"💡"},{key:"mantenimiento",label:"Mantenimiento",icon:"🔧"},{key:"marketing",label:"Marketing",icon:"📢"},{key:"impuestos",label:"Impuestos",icon:"🏛️"},{key:"flia_obelar",label:"Flia. Obelar Codas",icon:"👨‍👩‍👧"},{key:"otros",label:"Otros",icon:"📦"}];
               const now=new Date();
               const mesActual=now.toISOString().slice(0,7);
               const trimestre=Math.floor(now.getMonth()/3);
@@ -832,15 +832,33 @@ export default function App(){
                 return true;
               });
 
-              const pedidosFiltradosPeriodo=pedidos.filter(p=>{
-                const f=p.creado||p.fecha_entrega;if(!f)return false;
-                if(periodoFiltro==="mensual")return f.startsWith(mesActual);
-                if(periodoFiltro==="trimestral"){const m=new Date(f).getMonth();return new Date(f).getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
-                if(periodoFiltro==="anual")return f.startsWith(String(anoActual));
+              // Ingresos por fecha de cobro (base percibido)
+              // Suma anticipos y pagos según su fecha
+              const ingresosPorFecha=[];
+              pedidos.forEach(p=>{
+                // Anticipo - usar fecha de creación del pedido
+                const ant=parseFloat(p.anticipo)||0;
+                if(ant>0){
+                  const f=p.creado||p.fecha_entrega;
+                  if(f)ingresosPorFecha.push({fecha:f,monto:ant,pedido:p.id});
+                }
+                // Pagos registrados - usar fecha de cada pago
+                (p.pagos||[]).forEach(pg=>{
+                  if(pg.fecha&&parseFloat(pg.monto)>0){
+                    ingresosPorFecha.push({fecha:pg.fecha,monto:parseFloat(pg.monto),pedido:p.id});
+                  }
+                });
+              });
+
+              const ingresosFiltrados=ingresosPorFecha.filter(i=>{
+                if(!i.fecha)return false;
+                if(periodoFiltro==="mensual")return i.fecha.startsWith(mesActual);
+                if(periodoFiltro==="trimestral"){const m=new Date(i.fecha).getMonth();return new Date(i.fecha).getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
+                if(periodoFiltro==="anual")return i.fecha.startsWith(String(anoActual));
                 return true;
               });
 
-              const totalIngresos=pedidosFiltradosPeriodo.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
+              const totalIngresos=ingresosFiltrados.reduce((s,i)=>s+i.monto,0);
               const totalGastos=gastosFiltrados.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
               const margen=totalIngresos-totalGastos;
               const margenPct=totalIngresos>0?Math.round((margen/totalIngresos)*100):0;
@@ -1076,7 +1094,7 @@ export default function App(){
               </div>
               <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>CATEGORÍA</label>
                 <select style={{width:"100%"}} value={formGasto.categoria} onChange={e=>setFormGasto({...formGasto,categoria:e.target.value})}>
-                  {[{key:"materiales",label:"🧵 Materiales"},{key:"mano_obra",label:"👷 Mano de obra"},{key:"alquiler",label:"🏠 Alquiler"},{key:"servicios",label:"💡 Servicios"},{key:"mantenimiento",label:"🔧 Mantenimiento"},{key:"marketing",label:"📢 Marketing"},{key:"impuestos",label:"🏛️ Impuestos"},{key:"otros",label:"📦 Otros"}].map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
+                  {[{key:"materiales",label:"🧵 Materiales"},{key:"mano_obra",label:"👷 Mano de obra"},{key:"alquiler",label:"🏠 Alquiler"},{key:"servicios",label:"💡 Servicios"},{key:"mantenimiento",label:"🔧 Mantenimiento"},{key:"marketing",label:"📢 Marketing"},{key:"impuestos",label:"🏛️ Impuestos"},{key:"flia_obelar",label:"👨‍👩‍👧 Flia. Obelar Codas"},{key:"otros",label:"📦 Otros"}].map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
               </div>
               <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>DESCRIPCIÓN *</label><input type="text" style={{width:"100%"}} placeholder="Ej: Compra de tela algodón..." value={formGasto.descripcion} onChange={e=>setFormGasto({...formGasto,descripcion:e.target.value})}/></div>
