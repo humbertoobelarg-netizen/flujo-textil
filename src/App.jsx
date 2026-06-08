@@ -489,11 +489,15 @@ export default function App(){
   const [editandoPedido,setEditandoPedido]=useState(null);
   const [formEditar,setFormEditar]=useState(null);
   const [selectedPedido,setSelectedPedido]=useState(null);
+  const [gastos,setGastos]=useState([]);
+  const [showNuevoGasto,setShowNuevoGasto]=useState(false);
+  const [formGasto,setFormGasto]=useState({fecha:hoy(),categoria:"materiales",descripcion:"",monto:""});
+  const [periodoFiltro,setPeriodoFiltro]=useState("mensual");
 
   useEffect(()=>{cargarDatos();},[]);
 
   async function cargarDatos(){
-    try{const[p,u]=await Promise.all([dbGet("pedidos"),dbGet("usuarios")]);setPedidos(Array.isArray(p)?p:[]);setUsuarios(Array.isArray(u)?u:[]);}
+    try{const[p,u,g]=await Promise.all([dbGet("pedidos"),dbGet("usuarios"),dbGet("gastos")]);setPedidos(Array.isArray(p)?p:[]);setUsuarios(Array.isArray(u)?u:[]);setGastos(Array.isArray(g)?g:[]);}
     catch(e){showToast("Error al cargar","#ef4444");}
   }
 
@@ -528,6 +532,22 @@ export default function App(){
     setPedidos(prev=>prev.map(x=>x.id===pedidoId?{...x,pagos:pagosNuevos}:x));
     setNuevoPago({monto:"",tipo:"efectivo",fecha:hoy()});
     showToast("✓ Pago registrado");
+  }
+
+  async function crearGasto(){
+    if(!formGasto.descripcion||!formGasto.monto)return;
+    const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:parseFloat(formGasto.monto),registrado_por:usuario?.nombre||"Admin"};
+    await dbInsert("gastos",nuevo);
+    setGastos(prev=>[...prev,nuevo]);
+    setFormGasto({fecha:hoy(),categoria:"materiales",descripcion:"",monto:""});
+    setShowNuevoGasto(false);
+    showToast("✓ Gasto registrado");
+  }
+
+  async function eliminarGasto(id){
+    await dbDelete("gastos",id);
+    setGastos(prev=>prev.filter(g=>g.id!==id));
+    showToast("Gasto eliminado");
   }
 
   async function crearPedido(){
@@ -703,7 +723,7 @@ export default function App(){
             </div>
           </div>
           <div style={{display:"flex",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:24}}>
-            {[["pedidos","PEDIDOS"],["tablero","TABLERO"],["equipo","EQUIPO"]].filter(([k])=>usuario?.rol==="admin"||k!=="equipo").map(([k,l])=>(
+            {[["pedidos","PEDIDOS"],["tablero","TABLERO"],["equipo","EQUIPO"],["finanzas","FINANZAS"]].filter(([k])=>usuario?.rol==="admin"||(k==="finanzas"&&usuario?.nombre==="Gabi")||(!["equipo","finanzas"].includes(k))).map(([k,l])=>(
               <div key={k} className={`tab${adminTab===k?" active":""}`} onClick={()=>setAdminTab(k)} style={{fontSize:11,letterSpacing:2}}>{l}</div>
             ))}
           </div>
@@ -795,6 +815,111 @@ export default function App(){
                 </div>
               </div>
             )}
+
+            {adminTab==="finanzas"&&(()=>{
+              const CATEGORIAS=[{key:"materiales",label:"Materiales",icon:"🧵"},{key:"mano_obra",label:"Mano de obra",icon:"👷"},{key:"alquiler",label:"Alquiler",icon:"🏠"},{key:"servicios",label:"Servicios",icon:"💡"},{key:"mantenimiento",label:"Mantenimiento",icon:"🔧"},{key:"marketing",label:"Marketing",icon:"📢"},{key:"impuestos",label:"Impuestos",icon:"🏛️"},{key:"otros",label:"Otros",icon:"📦"}];
+              const now=new Date();
+              const mesActual=now.toISOString().slice(0,7);
+              const trimestre=Math.floor(now.getMonth()/3);
+              const anoActual=now.getFullYear();
+
+              // Filter by period
+              const gastosFiltrados=gastos.filter(g=>{
+                if(!g.fecha)return false;
+                if(periodoFiltro==="mensual")return g.fecha.startsWith(mesActual);
+                if(periodoFiltro==="trimestral"){const m=new Date(g.fecha).getMonth();return new Date(g.fecha).getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
+                if(periodoFiltro==="anual")return g.fecha.startsWith(String(anoActual));
+                return true;
+              });
+
+              const pedidosFiltradosPeriodo=pedidos.filter(p=>{
+                const f=p.creado||p.fecha_entrega;if(!f)return false;
+                if(periodoFiltro==="mensual")return f.startsWith(mesActual);
+                if(periodoFiltro==="trimestral"){const m=new Date(f).getMonth();return new Date(f).getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
+                if(periodoFiltro==="anual")return f.startsWith(String(anoActual));
+                return true;
+              });
+
+              const totalIngresos=pedidosFiltradosPeriodo.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
+              const totalGastos=gastosFiltrados.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
+              const margen=totalIngresos-totalGastos;
+              const margenPct=totalIngresos>0?Math.round((margen/totalIngresos)*100):0;
+
+              // Group gastos by categoria
+              const porCategoria={};
+              gastosFiltrados.forEach(g=>{if(!porCategoria[g.categoria])porCategoria[g.categoria]=0;porCategoria[g.categoria]+=parseFloat(g.monto)||0;});
+
+              return(
+                <div>
+                  {/* Filtro período */}
+                  <div style={{display:"flex",gap:8,marginBottom:16}}>
+                    {[["mensual","Mensual"],["trimestral","Trimestral"],["anual","Anual"]].map(([k,l])=>(
+                      <button key={k} className="btn" onClick={()=>setPeriodoFiltro(k)} style={{flex:1,padding:"8px",fontSize:11,background:periodoFiltro===k?"#1a1208":"#f5f0e8",color:periodoFiltro===k?"#f5f0e8":"#1a1208",border:"1.5px solid #d8d0c0",letterSpacing:1}}>{l.toUpperCase()}</button>
+                    ))}
+                  </div>
+
+                  {/* Resumen */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+                    <div className="card" style={{padding:"14px 18px"}}>
+                      <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>INGRESOS</div>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#10b981"}}>${totalIngresos.toLocaleString("es-AR")}</div>
+                    </div>
+                    <div className="card" style={{padding:"14px 18px"}}>
+                      <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>GASTOS</div>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#ef4444"}}>${totalGastos.toLocaleString("es-AR")}</div>
+                    </div>
+                    <div className="card" style={{padding:"14px 18px",gridColumn:"1/-1",background:margen>=0?"#f0fff4":"#fff0f4",border:`1.5px solid ${margen>=0?"#10b981":"#ef4444"}`}}>
+                      <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>RESULTADO (MARGEN)</div>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:margen>=0?"#10b981":"#ef4444"}}>${margen.toLocaleString("es-AR")}</div>
+                      <div style={{fontSize:11,color:"#8a7a6a",marginTop:4}}>{margenPct}% sobre ingresos</div>
+                    </div>
+                  </div>
+
+                  {/* Gastos por categoría */}
+                  {Object.keys(porCategoria).length>0&&(
+                    <div style={{marginBottom:16,padding:"14px",background:"#fff",border:"1.5px solid #d8d0c0"}}>
+                      <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:10}}>GASTOS POR CATEGORÍA</div>
+                      {Object.entries(porCategoria).sort(([,a],[,b])=>b-a).map(([cat,monto])=>{
+                        const catInfo=CATEGORIAS.find(c=>c.key===cat);
+                        const pct=totalGastos>0?Math.round((monto/totalGastos)*100):0;
+                        return(
+                          <div key={cat} style={{marginBottom:8}}>
+                            <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                              <span style={{fontSize:12}}>{catInfo?.icon} {catInfo?.label||cat}</span>
+                              <span style={{fontSize:12,fontWeight:600}}>${monto.toLocaleString("es-AR")} <span style={{color:"#8a7a6a",fontWeight:400}}>({pct}%)</span></span>
+                            </div>
+                            <div style={{height:4,background:"#f5f0e8",overflow:"hidden"}}><div style={{height:"100%",background:"#e85d26",width:pct+"%"}}/></div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Botón agregar gasto */}
+                  <button className="btn" onClick={()=>setShowNuevoGasto(true)} style={{width:"100%",padding:"12px",fontSize:12,background:"#e85d26",color:"#fff",letterSpacing:1,marginBottom:16}}>+ REGISTRAR GASTO</button>
+
+                  {/* Lista de gastos */}
+                  <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:8}}>GASTOS REGISTRADOS</div>
+                  {gastosFiltrados.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>No hay gastos registrados en este período</div>}
+                  {[...gastosFiltrados].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(g=>{
+                    const catInfo=CATEGORIAS.find(c=>c.key===g.categoria);
+                    return(
+                      <div key={g.id} className="card" style={{padding:"12px 16px",marginBottom:6,display:"flex",alignItems:"center",gap:10}}>
+                        <span style={{fontSize:20}}>{catInfo?.icon||"📦"}</span>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:13,fontWeight:500}}>{g.descripcion}</div>
+                          <div style={{fontSize:10,color:"#8a7a6a"}}>{catInfo?.label} · {formatFecha(g.fecha)}</div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontSize:14,fontWeight:600,color:"#ef4444"}}>${parseFloat(g.monto).toLocaleString("es-AR")}</div>
+                        </div>
+                        {usuario?.rol==="admin"&&<button className="btn" onClick={()=>eliminarGasto(g.id)} style={{padding:"4px 8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {adminTab==="equipo"&&(
               <div>
@@ -933,6 +1058,31 @@ export default function App(){
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button className="btn" onClick={()=>{setEditandoPedido(null);setFormEditar(null);}} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
                 <button className="btn" onClick={guardarEdicion} style={{padding:"10px 20px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>GUARDAR CAMBIOS</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NUEVO GASTO */}
+      {showNuevoGasto&&(
+        <div className="modal-bg" onClick={()=>setShowNuevoGasto(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div style={{padding:"20px 24px",borderBottom:"1.5px solid #d8d0c0",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#1a1208"}}>REGISTRAR GASTO</div>
+            <div style={{padding:24,display:"flex",flexDirection:"column",gap:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>FECHA</label><input type="date" style={{width:"100%"}} value={formGasto.fecha} onChange={e=>setFormGasto({...formGasto,fecha:e.target.value})}/></div>
+                <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>MONTO *</label><input type="number" min="0" style={{width:"100%"}} placeholder="0.00" value={formGasto.monto} onChange={e=>setFormGasto({...formGasto,monto:e.target.value})}/></div>
+              </div>
+              <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>CATEGORÍA</label>
+                <select style={{width:"100%"}} value={formGasto.categoria} onChange={e=>setFormGasto({...formGasto,categoria:e.target.value})}>
+                  {[{key:"materiales",label:"🧵 Materiales"},{key:"mano_obra",label:"👷 Mano de obra"},{key:"alquiler",label:"🏠 Alquiler"},{key:"servicios",label:"💡 Servicios"},{key:"mantenimiento",label:"🔧 Mantenimiento"},{key:"marketing",label:"📢 Marketing"},{key:"impuestos",label:"🏛️ Impuestos"},{key:"otros",label:"📦 Otros"}].map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
+                </select>
+              </div>
+              <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>DESCRIPCIÓN *</label><input type="text" style={{width:"100%"}} placeholder="Ej: Compra de tela algodón..." value={formGasto.descripcion} onChange={e=>setFormGasto({...formGasto,descripcion:e.target.value})}/></div>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <button className="btn" onClick={()=>setShowNuevoGasto(false)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
+                <button className="btn" onClick={crearGasto} style={{padding:"10px 20px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>REGISTRAR</button>
               </div>
             </div>
           </div>
