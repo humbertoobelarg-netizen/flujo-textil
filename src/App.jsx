@@ -779,7 +779,7 @@ export default function App(){
                       {Object.keys(porMes).sort().map(mes=>{const[y,m]=mes.split("-");return(
                         <div key={mes} style={{padding:"10px",background:"#2a2a2a",marginBottom:4}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                            <span style={{fontSize:12,letterSpacing:1,fontWeight:600}}>{mesesN[parseInt(m)]} {y}</span>
+                            <span style={{fontSize:12,letterSpacing:1,fontWeight:600}}>{["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][parseInt(m)]} {y}</span>
                             <span style={{fontSize:10,color:"#8a7a6a"}}>{porMes[mes].pedidosCount} pedidos</span>
                           </div>
                           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
