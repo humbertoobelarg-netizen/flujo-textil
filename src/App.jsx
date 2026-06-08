@@ -606,7 +606,33 @@ export default function App(){
   async function eliminarUsuario(id){await dbDelete("usuarios",id);setUsuarios(prev=>prev.filter(u=>u.id!==id));}
   async function eliminarPedido(id){await dbDelete("pedidos",id);setPedidos(prev=>prev.filter(p=>p.id!==id));showToast("Pedido eliminado");}
 
-  const pedidosFiltrados=[...pedidos].filter(p=>{if(!busqueda)return true;const b=busqueda.toLowerCase();return(p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b)||(p.creado_por||"").toLowerCase().includes(b);}).sort((a,b)=>(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"));
+  const MESES_NOMBRES={"enero":"01","febrero":"02","marzo":"03","abril":"04","mayo":"05","junio":"06","julio":"07","agosto":"08","septiembre":"09","octubre":"10","noviembre":"11","diciembre":"12"};
+  const pedidosFiltrados=[...pedidos].filter(p=>{
+    if(!busqueda)return true;
+    const b=busqueda.toLowerCase().trim();
+    // Search by client, id, responsable
+    if((p.cliente||"").toLowerCase().includes(b))return true;
+    if((p.id||"").toLowerCase().includes(b))return true;
+    if((p.creado_por||"").toLowerCase().includes(b))return true;
+    // Search by month name (e.g. "junio")
+    const mesNum=MESES_NOMBRES[b];
+    if(mesNum){
+      const fc=p.creado||"";const fe=p.fecha_entrega||"";
+      return fc.slice(5,7)===mesNum||fe.slice(5,7)===mesNum;
+    }
+    // Search by month number (e.g. "06")
+    if(/^\d{1,2}$/.test(b)){
+      const mn=b.padStart(2,"0");
+      const fc=p.creado||"";const fe=p.fecha_entrega||"";
+      return fc.slice(5,7)===mn||fe.slice(5,7)===mn;
+    }
+    // Search by year-month (e.g. "2026-06")
+    if(/^\d{4}-\d{2}$/.test(b)){
+      const fc=p.creado||"";const fe=p.fecha_entrega||"";
+      return fc.startsWith(b)||fe.startsWith(b);
+    }
+    return false;
+  }).sort((a,b)=>(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"));
 
   const cardProps={pedidos,setPedidos,usuarios,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
 
