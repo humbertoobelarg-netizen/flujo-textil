@@ -776,10 +776,10 @@ export default function App(){
                         <div style={{padding:"12px",background:"#2a2a2a"}}><div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>SALDO A COBRAR</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#e85d26"}}>${saldo.toLocaleString("es-AR")}</div></div>
                       </div>
                       <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:8}}>POR MES (fecha de pedido)</div>
-                      {Object.keys(porMes).sort().map(mes=>{const[y,m]=mes.split("-");const meses=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];return(
+                      {Object.keys(porMes).sort().map(mes=>{const[y,m]=mes.split("-");return(
                         <div key={mes} style={{padding:"10px",background:"#2a2a2a",marginBottom:4}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                            <span style={{fontSize:12,letterSpacing:1,fontWeight:600}}>{meses[parseInt(m)]} {y}</span>
+                            <span style={{fontSize:12,letterSpacing:1,fontWeight:600}}>{mesesN[parseInt(m)]} {y}</span>
                             <span style={{fontSize:10,color:"#8a7a6a"}}>{porMes[mes].pedidosCount} pedidos</span>
                           </div>
                           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
@@ -824,14 +824,13 @@ export default function App(){
 
             {adminTab==="finanzas"&&(()=>{
               const CATEGORIAS_ALL=[{key:"materiales",label:"Materiales",icon:"🧵"},{key:"mano_obra",label:"Mano de obra",icon:"👷"},{key:"alquiler",label:"Alquiler",icon:"🏠"},{key:"servicios",label:"Servicios",icon:"💡"},{key:"mantenimiento",label:"Mantenimiento",icon:"🔧"},{key:"marketing",label:"Marketing",icon:"📢"},{key:"impuestos",label:"Impuestos",icon:"🏛️"},{key:"flia_obelar",label:"Flia. Obelar Codas",icon:"👨‍👩‍👧"},{key:"otros",label:"Otros",icon:"📦"}];
-              const CATEGORIAS=CATEGORIAS_ALL.filter(c=>usuario?.nombre!=="Vivi"||c.key!=="flia_obelar");
-              const now=new Date();
-              const mesActual=mesSeleccionado||now.toISOString().slice(0,7);
-              const mesDate=new Date(mesActual+"-01");
+              const CATEGORIAS=CATEGORIAS_ALL.filter(cat=>usuario?.nombre!=="Vivi"||cat.key!=="flia_obelar");
+              const mesActual=mesSeleccionado;
+              const mesDate=new Date(mesActual+"-01T00:00:00");
               const trimestre=Math.floor(mesDate.getMonth()/3);
               const anoActual=mesDate.getFullYear();
-              const meses=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-              const nombreMes=meses[mesDate.getMonth()+1]+" "+anoActual;
+              const mesesNombres=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+              const nombreMes=mesesNombres[mesDate.getMonth()+1]+" "+anoActual;
 
               // Filter by period
               const gastosFiltrados=gastos.filter(g=>{
@@ -884,7 +883,7 @@ export default function App(){
                   {/* Título y selector de mes */}
                   <div style={{marginBottom:16}}>
                     <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,letterSpacing:2,color:"#1a1208",marginBottom:8}}>
-                      {periodoFiltro==="mensual"?nombreMes:periodoFiltro==="trimestral"?`T${trimestre+1} ${anoActual}`:`Año ${anoActual}`}
+                      {periodoFiltro==="mensual"?nombreMes:periodoFiltro==="trimestral"?("T"+(trimestre+1)+" "+anoActual):("Año "+anoActual)}
                     </div>
                     {periodoFiltro==="mensual"&&(
                       <input type="month" style={{width:"100%",marginBottom:8}} value={mesSeleccionado} onChange={e=>setMesSeleccionado(e.target.value)}/>
