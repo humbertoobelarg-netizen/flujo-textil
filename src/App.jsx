@@ -825,8 +825,8 @@ export default function App(){
             {adminTab==="finanzas"&&(()=>{
               const CATEGORIAS_ALL=[{key:"materiales",label:"Materiales",icon:"🧵"},{key:"mano_obra",label:"Mano de obra",icon:"👷"},{key:"alquiler",label:"Alquiler",icon:"🏠"},{key:"servicios",label:"Servicios",icon:"💡"},{key:"mantenimiento",label:"Mantenimiento",icon:"🔧"},{key:"marketing",label:"Marketing",icon:"📢"},{key:"impuestos",label:"Impuestos",icon:"🏛️"},{key:"flia_obelar",label:"Flia. Obelar Codas",icon:"👨‍👩‍👧"},{key:"otros",label:"Otros",icon:"📦"}];
               const CATEGORIAS=CATEGORIAS_ALL.filter(cat=>usuario?.nombre!=="Vivi"||cat.key!=="flia_obelar");
-              const mesActual=mesSeleccionado;
-              const mesDate=new Date(mesActual+"-01T00:00:00");
+              const mesActual=mesSeleccionado||new Date().toISOString().slice(0,7);
+              const mesDate=new Date(mesActual+"-01T12:00:00");
               const trimestre=Math.floor(mesDate.getMonth()/3);
               const anoActual=mesDate.getFullYear();
               const mesesNombres=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
