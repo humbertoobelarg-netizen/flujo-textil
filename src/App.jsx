@@ -493,6 +493,8 @@ export default function App(){
   const [showNuevoGasto,setShowNuevoGasto]=useState(false);
   const [formGasto,setFormGasto]=useState({fecha:hoy(),categoria:"materiales",descripcion:"",monto:""});
   const [periodoFiltro,setPeriodoFiltro]=useState("mensual");
+  const [filtroMes,setFiltroMes]=useState("");
+  const [tipoFiltroMes,setTipoFiltroMes]=useState("entrega");
   const [mesSeleccionado,setMesSeleccionado]=useState(new Date().toISOString().slice(0,7));
 
   useEffect(()=>{cargarDatos();},[]);
@@ -608,30 +610,24 @@ export default function App(){
 
   const MESES_NOMBRES={"enero":"01","febrero":"02","marzo":"03","abril":"04","mayo":"05","junio":"06","julio":"07","agosto":"08","septiembre":"09","octubre":"10","noviembre":"11","diciembre":"12"};
   const pedidosFiltrados=[...pedidos].filter(p=>{
-    if(!busqueda)return true;
-    const b=busqueda.toLowerCase().trim();
-    // Search by client, id, responsable
-    if((p.cliente||"").toLowerCase().includes(b))return true;
-    if((p.id||"").toLowerCase().includes(b))return true;
-    if((p.creado_por||"").toLowerCase().includes(b))return true;
-    // Search by month name (e.g. "junio")
-    const mesNum=MESES_NOMBRES[b];
-    if(mesNum){
-      const fc=p.creado||"";const fe=p.fecha_entrega||"";
-      return fc.slice(5,7)===mesNum||fe.slice(5,7)===mesNum;
+    // Filter by text search
+    if(busqueda){
+      const b=busqueda.toLowerCase().trim();
+      const match=(p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b)||(p.creado_por||"").toLowerCase().includes(b);
+      if(!match)return false;
     }
-    // Search by month number (e.g. "06")
-    if(/^\d{1,2}$/.test(b)){
-      const mn=b.padStart(2,"0");
-      const fc=p.creado||"";const fe=p.fecha_entrega||"";
-      return fc.slice(5,7)===mn||fe.slice(5,7)===mn;
+    // Filter by month
+    if(filtroMes){
+      const b=filtroMes.toLowerCase().trim();
+      const mesNum=MESES_NOMBRES[b]||(b.length<=2?b.padStart(2,"0"):null);
+      const fechaRef=tipoFiltroMes==="entrega"?(p.fecha_entrega||""):(p.creado||"");
+      if(mesNum){
+        if(fechaRef.slice(5,7)!==mesNum)return false;
+      } else if(b.length===7){
+        if(!fechaRef.startsWith(b))return false;
+      }
     }
-    // Search by year-month (e.g. "2026-06")
-    if(/^\d{4}-\d{2}$/.test(b)){
-      const fc=p.creado||"";const fe=p.fecha_entrega||"";
-      return fc.startsWith(b)||fe.startsWith(b);
-    }
-    return false;
+    return true;
   }).sort((a,b)=>(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"));
 
   const cardProps={pedidos,setPedidos,usuarios,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
@@ -788,7 +784,17 @@ export default function App(){
                     </GrupoColapsable>
                   ));
                 })()}
-                {!pedidosFiltrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>{busqueda?"Sin resultados":"No hay pedidos."}</div>}
+                {/* Filtro por mes */}
+                <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+                  <input type="text" placeholder="Filtrar por mes (ej: junio, 06)" value={filtroMes} onChange={e=>setFiltroMes(e.target.value)}
+                    style={{flex:1,fontSize:12,padding:"8px 12px"}}/>
+                  <select value={tipoFiltroMes} onChange={e=>setTipoFiltroMes(e.target.value)} style={{fontSize:11,padding:"8px"}}>
+                    <option value="entrega">F. entrega</option>
+                    <option value="pedido">F. pedido</option>
+                  </select>
+                  {filtroMes&&<button onClick={()=>setFiltroMes("")} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>}
+                </div>
+                {!pedidosFiltrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>{busqueda||filtroMes?"Sin resultados":"No hay pedidos."}</div>}
                 {puedeVerFinanciero(usuario)&&pedidos.length>0&&(()=>{
                   const tg=pedidos.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
                   const saldo=pedidos.reduce((s,p)=>{const t=calcTotalGral(p.prendas||[]);const ant=parseFloat(p.anticipo)||0;const pagado=(p.pagos||[]).reduce((sp,pg)=>sp+(parseFloat(pg.monto)||0),0);return s+(t-ant-pagado);},0);
