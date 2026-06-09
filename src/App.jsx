@@ -745,7 +745,7 @@ export default function App(){
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:3}}>FLUJO TEXTIL <span style={{fontSize:14,letterSpacing:2,color:"#8a7a6a"}}>{usuario?.rol==="admin"?"ADMIN":usuario?.nombre?.toUpperCase()}</span></div>
             <div style={{display:"flex",gap:8}}>
               <button className="btn" onClick={cargarDatos} style={{padding:"9px 12px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf"}}>↻</button>
-              {usuario?.rol==="admin"&&<button className="btn" onClick={()=>setShowNuevoPedido(true)} style={{padding:"9px 16px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>+ PEDIDO</button>}
+              {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&<button className="btn" onClick={()=>setShowNuevoPedido(true)} style={{padding:"9px 16px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>+ PEDIDO</button>}
               <button className="btn" onClick={handleLogout} style={{padding:"9px 14px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf",letterSpacing:1}}>SALIR</button>
             </div>
           </div>
