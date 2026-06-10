@@ -491,7 +491,7 @@ export default function App(){
   const [selectedPedido,setSelectedPedido]=useState(null);
   const [gastos,setGastos]=useState([]);
   const [showNuevoGasto,setShowNuevoGasto]=useState(false);
-  const [formGasto,setFormGasto]=useState({fecha:hoy(),categoria:"materiales",descripcion:"",monto:""});
+  const [formGasto,setFormGasto]=useState({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real"});
   const [periodoFiltro,setPeriodoFiltro]=useState("mensual");
   const [filtroMes,setFiltroMes]=useState("");
   const [tipoFiltroMes,setTipoFiltroMes]=useState("entrega");
@@ -539,7 +539,7 @@ export default function App(){
 
   async function crearGasto(){
     if(!formGasto.descripcion||!formGasto.monto)return;
-    const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:parseFloat(formGasto.monto),registrado_por:usuario?.nombre||"Admin"};
+    const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:parseFloat(formGasto.monto),tipo:formGasto.tipo||"real",registrado_por:usuario?.nombre||"Admin"};
     await dbInsert("gastos",nuevo);
     setGastos(prev=>[...prev,nuevo]);
     setFormGasto({fecha:hoy(),categoria:"materiales",descripcion:"",monto:""});
@@ -855,7 +855,20 @@ export default function App(){
             )}
 
             {adminTab==="finanzas"&&(()=>{
-              const CATEGORIAS_ALL=[{key:"materiales",label:"Materiales",icon:"🧵"},{key:"mano_obra",label:"Mano de obra",icon:"👷"},{key:"alquiler",label:"Alquiler",icon:"🏠"},{key:"servicios",label:"Servicios",icon:"💡"},{key:"mantenimiento",label:"Mantenimiento",icon:"🔧"},{key:"marketing",label:"Marketing",icon:"📢"},{key:"impuestos",label:"Impuestos",icon:"🏛️"},{key:"flia_obelar",label:"Flia. Obelar Codas",icon:"👨‍👩‍👧"},{key:"otros",label:"Otros",icon:"📦"}];
+              const CATEGORIAS_ALL=[
+                {key:"mat_tejido",label:"Tejido",icon:"🧵",grupo:"Materiales"},
+                {key:"mat_serigrafia",label:"Serigrafía / DTF / Sublimación",icon:"🖨️",grupo:"Materiales"},
+                {key:"mat_confeccion",label:"Confección / Bordado",icon:"🪡",grupo:"Materiales"},
+                {key:"mat_empaque",label:"Empaque / Limpieza",icon:"📦",grupo:"Materiales"},
+                {key:"mano_obra",label:"Mano de obra",icon:"👷",grupo:"Operativo"},
+                {key:"alquiler",label:"Alquiler",icon:"🏠",grupo:"Operativo"},
+                {key:"servicios",label:"Servicios",icon:"💡",grupo:"Operativo"},
+                {key:"mantenimiento",label:"Mantenimiento",icon:"🔧",grupo:"Operativo"},
+                {key:"marketing",label:"Marketing",icon:"📢",grupo:"Comercial"},
+                {key:"impuestos",label:"Impuestos",icon:"🏛️",grupo:"Comercial"},
+                {key:"flia_obelar",label:"Flia. Obelar Codas",icon:"👨‍👩‍👧",grupo:"Personal"},
+                {key:"otros",label:"Otros",icon:"📦",grupo:"Otros"},
+              ];
               const CATEGORIAS=CATEGORIAS_ALL.filter(cat=>usuario?.nombre!=="Vivi"||cat.key!=="flia_obelar");
               const mesActual=mesSeleccionado||new Date().toISOString().slice(0,7);
               const mesDate=new Date(mesActual+"-01T12:00:00");
@@ -902,7 +915,9 @@ export default function App(){
               });
 
               const totalIngresos=ingresosFiltrados.reduce((s,i)=>s+i.monto,0);
-              const totalGastos=gastosFiltrados.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
+              const totalGastosReal=gastosFiltrados.filter(g=>g.tipo!=="previsto").reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
+              const totalGastosPrevisto=gastosFiltrados.filter(g=>g.tipo==="previsto").reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
+              const totalGastos=totalGastosReal+totalGastosPrevisto;
               const margen=totalIngresos-totalGastos;
               const margenPct=totalIngresos>0?Math.round((margen/totalIngresos)*100):0;
 
@@ -931,21 +946,58 @@ export default function App(){
                     ))}
                   </div>
 
-                  {/* Resumen */}
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-                    <div className="card" style={{padding:"14px 18px"}}>
-                      <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>INGRESOS</div>
-                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#10b981"}}>${totalIngresos.toLocaleString("es-AR")}</div>
+                  {/* ── FLUJO DE CAJA ── */}
+                  <div style={{marginBottom:16,padding:"14px",background:"#1a1208",color:"#f5f0e8"}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2,marginBottom:12,color:"#06b6d4"}}>💰 FLUJO DE CAJA REAL</div>
+                    <div style={{fontSize:10,color:"#8a7a6a",marginBottom:10}}>Solo lo efectivamente cobrado y pagado</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                      <div style={{padding:"10px",background:"#2a2a2a"}}>
+                        <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>COBRADO</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#10b981"}}>${totalIngresos.toLocaleString("es-AR")}</div>
+                      </div>
+                      <div style={{padding:"10px",background:"#2a2a2a"}}>
+                        <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>PAGADO</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#ef4444"}}>${totalGastosReal.toLocaleString("es-AR")}</div>
+                      </div>
                     </div>
-                    <div className="card" style={{padding:"14px 18px"}}>
-                      <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>GASTOS</div>
-                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#ef4444"}}>${totalGastos.toLocaleString("es-AR")}</div>
+                    {(()=>{
+                      const cajaNeta=totalIngresos-totalGastosReal;
+                      return(
+                        <div style={{padding:"10px",background:cajaNeta>=0?"#10b98133":"#ef444433",border:`1px solid ${cajaNeta>=0?"#10b981":"#ef4444"}`}}>
+                          <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>SALDO DE CAJA</div>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:cajaNeta>=0?"#10b981":"#ef4444"}}>${cajaNeta.toLocaleString("es-AR")}</div>
+                          <div style={{fontSize:10,color:"#8a7a6a",marginTop:2}}>Dinero real disponible en el período</div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* ── RESULTADO ECONÓMICO ── */}
+                  <div style={{marginBottom:16,padding:"14px",background:"#2a1a08",color:"#f5f0e8"}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2,marginBottom:12,color:"#f59e0b"}}>📊 RESULTADO ECONÓMICO</div>
+                    <div style={{fontSize:10,color:"#8a7a6a",marginBottom:10}}>Rentabilidad real incluyendo costos previstos</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                      <div style={{padding:"10px",background:"#1a1208"}}>
+                        <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>INGRESOS PERÍODO</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#10b981"}}>${totalIngresos.toLocaleString("es-AR")}</div>
+                      </div>
+                      <div style={{padding:"10px",background:"#1a1208"}}>
+                        <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>GASTOS TOTALES</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#ef4444"}}>${totalGastos.toLocaleString("es-AR")}</div>
+                        {totalGastosPrevisto>0&&<div style={{fontSize:9,color:"#f59e0b",marginTop:2}}>🔮 ${totalGastosPrevisto.toLocaleString("es-AR")} previsto</div>}
+                      </div>
                     </div>
-                    <div className="card" style={{padding:"14px 18px",gridColumn:"1/-1",background:margen>=0?"#f0fff4":"#fff0f4",border:`1.5px solid ${margen>=0?"#10b981":"#ef4444"}`}}>
-                      <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>RESULTADO (MARGEN)</div>
-                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:margen>=0?"#10b981":"#ef4444"}}>${margen.toLocaleString("es-AR")}</div>
-                      <div style={{fontSize:11,color:"#8a7a6a",marginTop:4}}>{margenPct}% sobre ingresos</div>
-                    </div>
+                    {(()=>{
+                      const resultado=totalIngresos-totalGastos;
+                      const pct=totalIngresos>0?Math.round((resultado/totalIngresos)*100):0;
+                      return(
+                        <div style={{padding:"10px",background:resultado>=0?"#10b98133":"#ef444433",border:`1px solid ${resultado>=0?"#10b981":"#ef4444"}`}}>
+                          <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>RESULTADO / MARGEN</div>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:resultado>=0?"#10b981":"#ef4444"}}>${resultado.toLocaleString("es-AR")}</div>
+                          <div style={{fontSize:10,color:"#8a7a6a",marginTop:2}}>{pct}% sobre ingresos · Rentabilidad del período</div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Gastos por categoría */}
@@ -981,7 +1033,10 @@ export default function App(){
                         <span style={{fontSize:20}}>{catInfo?.icon||"📦"}</span>
                         <div style={{flex:1}}>
                           <div style={{fontSize:13,fontWeight:500}}>{g.descripcion}</div>
-                          <div style={{fontSize:10,color:"#8a7a6a"}}>{catInfo?.label} · {formatFecha(g.fecha)}</div>
+                          <div style={{fontSize:10,color:"#8a7a6a",display:"flex",alignItems:"center",gap:6}}>
+                            {catInfo?.label} · {formatFecha(g.fecha)}
+                            {g.tipo==="previsto"&&<span style={{background:"#f59e0b22",color:"#f59e0b",fontSize:9,padding:"1px 6px",fontWeight:600}}>PREVISTO</span>}
+                          </div>
                         </div>
                         <div style={{textAlign:"right"}}>
                           <div style={{fontSize:14,fontWeight:600,color:"#ef4444"}}>${parseFloat(g.monto).toLocaleString("es-AR")}</div>
@@ -1149,8 +1204,40 @@ export default function App(){
               </div>
               <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>CATEGORÍA</label>
                 <select style={{width:"100%"}} value={formGasto.categoria} onChange={e=>setFormGasto({...formGasto,categoria:e.target.value})}>
-                  {[{key:"materiales",label:"🧵 Materiales"},{key:"mano_obra",label:"👷 Mano de obra"},{key:"alquiler",label:"🏠 Alquiler"},{key:"servicios",label:"💡 Servicios"},{key:"mantenimiento",label:"🔧 Mantenimiento"},{key:"marketing",label:"📢 Marketing"},{key:"impuestos",label:"🏛️ Impuestos"},{key:"flia_obelar",label:"👨‍👩‍👧 Flia. Obelar Codas"},{key:"otros",label:"📦 Otros"}].filter(c=>usuario?.nombre!=="Vivi"||c.key!=="flia_obelar").map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
+                  {(()=>{
+                    const cats=[
+                      {key:"mat_tejido",label:"🧵 Tejido",grupo:"── Materiales ──"},
+                      {key:"mat_serigrafia",label:"🖨️ Serigrafía / DTF / Sublimación",grupo:null},
+                      {key:"mat_confeccion",label:"🪡 Confección / Bordado",grupo:null},
+                      {key:"mat_empaque",label:"📦 Empaque / Limpieza",grupo:null},
+                      {key:"mano_obra",label:"👷 Mano de obra",grupo:"── Operativo ──"},
+                      {key:"alquiler",label:"🏠 Alquiler",grupo:null},
+                      {key:"servicios",label:"💡 Servicios",grupo:null},
+                      {key:"mantenimiento",label:"🔧 Mantenimiento",grupo:null},
+                      {key:"marketing",label:"📢 Marketing",grupo:"── Comercial ──"},
+                      {key:"impuestos",label:"🏛️ Impuestos",grupo:null},
+                      {key:"flia_obelar",label:"👨‍👩‍👧 Flia. Obelar Codas",grupo:"── Personal ──"},
+                      {key:"otros",label:"📦 Otros",grupo:"── Otros ──"},
+                    ].filter(c=>usuario?.nombre!=="Vivi"||c.key!=="flia_obelar");
+                    return cats.map(cat=>(
+                      cat.grupo
+                        ? [<option key={"g-"+cat.key} disabled style={{color:"#8a7a6a",fontSize:10}}>{cat.grupo}</option>,
+                           <option key={cat.key} value={cat.key}>{cat.label}</option>]
+                        : <option key={cat.key} value={cat.key}>{cat.label}</option>
+                    ));
+                  })()}
                 </select>
+              </div>
+              <div>
+                <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>TIPO DE GASTO</label>
+                <div style={{display:"flex",gap:8}}>
+                  {[["real","✅ Real"],["previsto","🔮 Previsto"]].map(([k,l])=>(
+                    <button key={k} className="btn" onClick={()=>setFormGasto({...formGasto,tipo:k})}
+                      style={{flex:1,padding:"10px",fontSize:12,background:formGasto.tipo===k?"#1a1208":"#f5f0e8",color:formGasto.tipo===k?"#f5f0e8":"#1a1208",border:"1.5px solid #d8d0c0",letterSpacing:1}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>DESCRIPCIÓN *</label><input type="text" style={{width:"100%"}} placeholder="Ej: Compra de tela algodón..." value={formGasto.descripcion} onChange={e=>setFormGasto({...formGasto,descripcion:e.target.value})}/></div>
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
