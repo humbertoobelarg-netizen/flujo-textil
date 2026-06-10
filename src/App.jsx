@@ -552,6 +552,9 @@ export default function App(){
   const [gastos,setGastos]=useState([]);
   const [showNuevoGasto,setShowNuevoGasto]=useState(false);
   const [formGasto,setFormGasto]=useState({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real"});
+  const [ingresosExtra,setIngresosExtra]=useState([]);
+  const [showNuevoIngreso,setShowNuevoIngreso]=useState(false);
+  const [formIngreso,setFormIngreso]=useState({fecha:hoy(),descripcion:"",monto:"",origen:"pedido_viejo"});
   const [periodoFiltro,setPeriodoFiltro]=useState("mensual");
   const [filtroMes,setFiltroMes]=useState("");
   const [tipoFiltroMes,setTipoFiltroMes]=useState("entrega");
@@ -560,7 +563,7 @@ export default function App(){
   useEffect(()=>{cargarDatos();},[]);
 
   async function cargarDatos(){
-    try{const[p,u,g]=await Promise.all([dbGet("pedidos"),dbGet("usuarios"),dbGet("gastos")]);setPedidos(Array.isArray(p)?p:[]);setUsuarios(Array.isArray(u)?u:[]);setGastos(Array.isArray(g)?g:[]);}
+    try{const[p,u,g,ie]=await Promise.all([dbGet("pedidos"),dbGet("usuarios"),dbGet("gastos"),dbGet("ingresos_extra")]);setPedidos(Array.isArray(p)?p:[]);setUsuarios(Array.isArray(u)?u:[]);setGastos(Array.isArray(g)?g:[]);setIngresosExtra(Array.isArray(ie)?ie:[]);}
     catch(e){showToast("Error al cargar","#ef4444");}
   }
 
@@ -595,6 +598,22 @@ export default function App(){
     setPedidos(prev=>prev.map(x=>x.id===pedidoId?{...x,pagos:pagosNuevos}:x));
     setNuevoPago({monto:"",tipo:"efectivo",fecha:hoy()});
     showToast("✓ Pago registrado");
+  }
+
+  async function crearIngresoExtra(){
+    if(!formIngreso.descripcion||!formIngreso.monto)return;
+    const nuevo={id:"IE"+Date.now(),fecha:formIngreso.fecha,descripcion:formIngreso.descripcion,monto:parseFloat(formIngreso.monto),origen:formIngreso.origen,registrado_por:usuario?.nombre||"Admin"};
+    await dbInsert("ingresos_extra",nuevo);
+    setIngresosExtra(prev=>[...prev,nuevo]);
+    setFormIngreso({fecha:hoy(),descripcion:"",monto:"",origen:"pedido_viejo"});
+    setShowNuevoIngreso(false);
+    showToast("✓ Ingreso registrado");
+  }
+
+  async function eliminarIngresoExtra(id){
+    await dbDelete("ingresos_extra",id);
+    setIngresosExtra(prev=>prev.filter(i=>i.id!==id));
+    showToast("Ingreso eliminado");
   }
 
   async function crearGasto(){
@@ -979,7 +998,17 @@ export default function App(){
                 return true;
               });
 
-              const totalIngresos=ingresosFiltrados.reduce((s,i)=>s+i.monto,0);
+              const ingrExtraFiltrados=ingresosExtra.filter(i=>{
+                if(!i.fecha)return false;
+                const fi=i.fecha.slice(0,7);
+                if(periodoFiltro==="mensual")return fi===mesActual;
+                if(periodoFiltro==="trimestral"){const m=new Date(i.fecha+"-01T12:00:00").getMonth();return new Date(i.fecha+"-01T12:00:00").getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
+                if(periodoFiltro==="anual")return i.fecha.startsWith(String(anoActual));
+                return true;
+              });
+              const totalIngresosApp=ingresosFiltrados.reduce((s,i)=>s+i.monto,0);
+              const totalIngresosExtra=ingrExtraFiltrados.reduce((s,i)=>s+(parseFloat(i.monto)||0),0);
+              const totalIngresos=totalIngresosApp+totalIngresosExtra;
               const totalGastosReal=gastosFiltrados.filter(g=>g.tipo!=="previsto").reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
               const totalGastosPrevisto=gastosFiltrados.filter(g=>g.tipo==="previsto").reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
               const totalGastos=totalGastosReal+totalGastosPrevisto;
@@ -1019,6 +1048,7 @@ export default function App(){
                       <div style={{padding:"10px",background:"#2a2a2a"}}>
                         <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>COBRADO</div>
                         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#10b981"}}>${totalIngresos.toLocaleString("es-AR")}</div>
+                        {totalIngresosExtra>0&&<div style={{fontSize:9,color:"#10b981",marginTop:2}}>💵 Extra: ${totalIngresosExtra.toLocaleString("es-AR")}</div>}
                       </div>
                       <div style={{padding:"10px",background:"#2a2a2a"}}>
                         <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>PAGADO</div>
@@ -1088,6 +1118,26 @@ export default function App(){
                   {/* Botón agregar gasto */}
                   <button className="btn" onClick={()=>setShowNuevoGasto(true)} style={{width:"100%",padding:"12px",fontSize:12,background:"#e85d26",color:"#fff",letterSpacing:1,marginBottom:16}}>+ REGISTRAR GASTO</button>
 
+                  {/* Ingresos extraordinarios */}
+                  <button className="btn" onClick={()=>setShowNuevoIngreso(true)} style={{width:"100%",padding:"12px",fontSize:12,background:"#10b981",color:"#fff",letterSpacing:1,marginBottom:8}}>+ INGRESO EXTRAORDINARIO</button>
+                  {ingrExtraFiltrados.length>0&&(
+                    <div style={{marginBottom:16}}>
+                      <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:8}}>INGRESOS EXTRAORDINARIOS</div>
+                      {ingrExtraFiltrados.map(i=>(
+                        <div key={i.id} className="card" style={{padding:"12px 16px",marginBottom:6,display:"flex",alignItems:"center",gap:10,borderLeft:"3px solid #10b981"}}>
+                          <span style={{fontSize:20}}>💵</span>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:13,fontWeight:500}}>{i.descripcion}</div>
+                            <div style={{fontSize:10,color:"#8a7a6a"}}>{i.origen==="pedido_viejo"?"Pedido anterior":i.origen==="otro"?"Otro ingreso":"Ingreso"} · {formatFecha(i.fecha)}</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontSize:14,fontWeight:600,color:"#10b981"}}>${parseFloat(i.monto).toLocaleString("es-AR")}</div>
+                          </div>
+                          {usuario?.rol==="admin"&&<button className="btn" onClick={()=>eliminarIngresoExtra(i.id)} style={{padding:"4px 8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {/* Lista de gastos */}
                   <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:8}}>GASTOS REGISTRADOS</div>
                   {gastosFiltrados.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>No hay gastos registrados en este período</div>}
@@ -1251,6 +1301,33 @@ export default function App(){
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button className="btn" onClick={()=>{setEditandoPedido(null);setFormEditar(null);}} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
                 <button className="btn" onClick={guardarEdicion} style={{padding:"10px 20px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>GUARDAR CAMBIOS</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NUEVO INGRESO EXTRAORDINARIO */}
+      {showNuevoIngreso&&(
+        <div className="modal-bg" onClick={()=>setShowNuevoIngreso(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div style={{padding:"20px 24px",borderBottom:"1.5px solid #d8d0c0",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#10b981"}}>INGRESO EXTRAORDINARIO</div>
+            <div style={{padding:24,display:"flex",flexDirection:"column",gap:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>FECHA</label><input type="date" style={{width:"100%"}} value={formIngreso.fecha} onChange={e=>setFormIngreso({...formIngreso,fecha:e.target.value})}/></div>
+                <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>MONTO *</label><input type="number" min="0" style={{width:"100%"}} placeholder="0.00" value={formIngreso.monto} onChange={e=>setFormIngreso({...formIngreso,monto:e.target.value})}/></div>
+              </div>
+              <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>ORIGEN</label>
+                <select style={{width:"100%"}} value={formIngreso.origen} onChange={e=>setFormIngreso({...formIngreso,origen:e.target.value})}>
+                  <option value="pedido_viejo">Pedido anterior (no registrado en app)</option>
+                  <option value="adelanto">Adelanto de cliente</option>
+                  <option value="otro">Otro ingreso</option>
+                </select>
+              </div>
+              <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>DESCRIPCIÓN *</label><input type="text" style={{width:"100%"}} placeholder="Ej: Cobro pedido escuela marzo 2025..." value={formIngreso.descripcion} onChange={e=>setFormIngreso({...formIngreso,descripcion:e.target.value})}/></div>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <button className="btn" onClick={()=>setShowNuevoIngreso(false)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
+                <button className="btn" onClick={crearIngresoExtra} style={{padding:"10px 20px",fontSize:11,background:"#10b981",color:"#fff",letterSpacing:1}}>REGISTRAR</button>
               </div>
             </div>
           </div>
