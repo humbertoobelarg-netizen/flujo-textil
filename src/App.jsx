@@ -34,6 +34,12 @@ const PRENDA_INIT={tipoPrenda:"",tipoPrendaOtro:"",tipoTejido:"",molderia:"",cue
 const FORM_INIT={cliente:"",prioridad:"media",fechaEntrega:"",descripcion:"",datosFactura:"",procesosActivos:["orden","terminacion"],prendas:[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],anticipo:"",imagenes:[]};
 
 function hoy(){return new Date().toISOString().split("T")[0];}
+function diasHasta(fecha){
+  if(!fecha)return 999;
+  const hoyD=new Date();hoyD.setHours(0,0,0,0);
+  const fechaD=new Date(fecha+"T00:00:00");
+  return Math.round((fechaD-hoyD)/(1000*60*60*24));
+}
 function formatFecha(f){if(!f)return"-";const[y,m,d]=f.split("-");return`${d}/${m}/${y}`;}
 function newId(pedidos){const nums=pedidos.map(p=>parseInt((p.id||"").replace("P",""))).filter(n=>!isNaN(n));const next=nums.length>0?Math.max(...nums)+1:1;return"P"+String(next).padStart(3,"0");}
 function calcTalles(talles){return Object.values(talles||{}).reduce((s,v)=>s+(parseInt(v)||0),0);}
@@ -661,6 +667,59 @@ export default function App(){
 
       {toast&&<div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:toast.color,color:"#fff",padding:"10px 24px",fontSize:13,zIndex:100,letterSpacing:0.5}}>{toast.msg}</div>}
 
+      {/* ALERTAS DE VENCIMIENTO */}
+      {usuario&&(()=>{
+        const puedeVerAlertas=usuario.rol==="admin"||["Vivi","Romina","Andrea"].includes(usuario.nombre)||usuario.proceso==="orden";
+        if(!puedeVerAlertas)return null;
+        const porVencer=pedidos.filter(p=>{
+          const dias=diasHasta(p.fecha_entrega);
+          const prog=pedidoProgreso(p);
+          if(prog===100)return false; // ya terminado
+          if(dias<0)return false; // ya vencido (se muestra diferente)
+          if(dias>4)return false;
+          // Solo mostrar si el usuario tiene relación con el pedido
+          if(usuario.rol==="admin")return true;
+          if(usuario.nombre==="Vivi")return true;
+          if(usuario.nombre==="Romina"||usuario.proceso==="orden")return p.creado_por===usuario.nombre;
+          if(usuario.nombre==="Andrea")return (p.procesos_activos||[]).includes("terminacion");
+          return false;
+        });
+        const vencidos=pedidos.filter(p=>{
+          const dias=diasHasta(p.fecha_entrega);
+          const prog=pedidoProgreso(p);
+          if(prog===100)return false;
+          if(dias>=0)return false;
+          if(usuario.rol==="admin")return true;
+          if(usuario.nombre==="Vivi")return true;
+          if(usuario.nombre==="Romina"||usuario.proceso==="orden")return p.creado_por===usuario.nombre;
+          if(usuario.nombre==="Andrea")return (p.procesos_activos||[]).includes("terminacion");
+          return false;
+        });
+        if(!porVencer.length&&!vencidos.length)return null;
+        return(
+          <div style={{position:"fixed",top:0,left:0,right:0,zIndex:200,display:"flex",flexDirection:"column",gap:2}}>
+            {vencidos.length>0&&(
+              <div style={{background:"#ef4444",color:"#fff",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:18}}>🚨</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,fontWeight:600,letterSpacing:1}}>PEDIDOS VENCIDOS ({vencidos.length})</div>
+                  <div style={{fontSize:11,opacity:0.9}}>{vencidos.map(p=>p.cliente).join(", ")}</div>
+                </div>
+              </div>
+            )}
+            {porVencer.length>0&&(
+              <div style={{background:"#f59e0b",color:"#fff",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:18}}>⚠️</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,fontWeight:600,letterSpacing:1}}>VENCEN EN MENOS DE 4 DÍAS ({porVencer.length})</div>
+                  <div style={{fontSize:11,opacity:0.9}}>{porVencer.map(p=>`${p.cliente} (${diasHasta(p.fecha_entrega)}d)`).join(", ")}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* LOGIN */}
       {pantalla==="login"&&(
         <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
@@ -685,7 +744,7 @@ export default function App(){
       )}
 
       {/* OPERARIO */}
-      {pantalla==="operario"&&usuario&&(()=>{
+      {pantalla==="operario"&&usuario&&(()=>{ const _topPad = pedidos.some(p=>diasHasta(p.fecha_entrega)<=4&&pedidoProgreso(p)<100)?90:0;
         const miProceso=usuario.proceso;
         const misPedidos=pedidos.filter(p=>{
           if(!(p.procesos_activos||[]).includes(miProceso))return false;
