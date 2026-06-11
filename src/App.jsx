@@ -619,16 +619,15 @@ export default function App(){
   async function crearGasto(){
     if(!formGasto.descripcion||!formGasto.monto){showToast("Completá descripción y monto","#ef4444");return;}
     const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:parseFloat(formGasto.monto),tipo:formGasto.tipo||"real",registrado_por:usuario?.nombre||"Admin"};
-    try{
-      const res=await fetch(`${SUPABASE_URL}/rest/v1/gastos`,{method:"POST",headers:H,body:JSON.stringify(nuevo)});
-      if(!res.ok){const err=await res.text();showToast("Error: "+err.slice(0,80),"#ef4444");return;}
-      setGastos(prev=>[...prev,nuevo]);
-      setFormGasto({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real"});
-      setShowNuevoGasto(false);
-      showToast("✓ Gasto registrado");
-    }catch(e){
-      showToast("Error de conexión: "+e.message,"#ef4444");
+    const result=await dbInsert("gastos",nuevo);
+    if(result&&result.error){
+      showToast("Error: "+JSON.stringify(result).slice(0,80),"#ef4444");
+      return;
     }
+    setGastos(prev=>[...prev,nuevo]);
+    setFormGasto({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real"});
+    setShowNuevoGasto(false);
+    showToast("✓ Gasto registrado");
   }
 
   async function eliminarGasto(id){
