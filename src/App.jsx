@@ -617,13 +617,18 @@ export default function App(){
   }
 
   async function crearGasto(){
-    if(!formGasto.descripcion||!formGasto.monto)return;
+    if(!formGasto.descripcion||!formGasto.monto){showToast("Completá descripción y monto","#ef4444");return;}
     const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:parseFloat(formGasto.monto),tipo:formGasto.tipo||"real",registrado_por:usuario?.nombre||"Admin"};
-    await dbInsert("gastos",nuevo);
-    setGastos(prev=>[...prev,nuevo]);
-    setFormGasto({fecha:hoy(),categoria:"materiales",descripcion:"",monto:""});
-    setShowNuevoGasto(false);
-    showToast("✓ Gasto registrado");
+    try{
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/gastos`,{method:"POST",headers:H,body:JSON.stringify(nuevo)});
+      if(!res.ok){const err=await res.text();showToast("Error: "+err.slice(0,80),"#ef4444");return;}
+      setGastos(prev=>[...prev,nuevo]);
+      setFormGasto({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real"});
+      setShowNuevoGasto(false);
+      showToast("✓ Gasto registrado");
+    }catch(e){
+      showToast("Error de conexión: "+e.message,"#ef4444");
+    }
   }
 
   async function eliminarGasto(id){
@@ -944,7 +949,9 @@ export default function App(){
                 {key:"mat_serigrafia",label:"Serigrafía / DTF / Sublimación",icon:"🖨️",grupo:"Materiales"},
                 {key:"mat_confeccion",label:"Confección / Bordado",icon:"🪡",grupo:"Materiales"},
                 {key:"mat_empaque",label:"Empaque / Limpieza",icon:"📦",grupo:"Materiales"},
+                {key:"pago_terceros",label:"Pago Tercerizados",icon:"🤝",grupo:"Operativo"},
                 {key:"mano_obra",label:"Mano de obra",icon:"👷",grupo:"Operativo"},
+                {key:"envio",label:"Envío de pedidos",icon:"🚚",grupo:"Operativo"},
                 {key:"alquiler",label:"Alquiler",icon:"🏠",grupo:"Operativo"},
                 {key:"servicios",label:"Servicios",icon:"💡",grupo:"Operativo"},
                 {key:"mantenimiento",label:"Mantenimiento",icon:"🔧",grupo:"Operativo"},
@@ -1352,7 +1359,9 @@ export default function App(){
                       {key:"mat_serigrafia",label:"🖨️ Serigrafía / DTF / Sublimación",grupo:null},
                       {key:"mat_confeccion",label:"🪡 Confección / Bordado",grupo:null},
                       {key:"mat_empaque",label:"📦 Empaque / Limpieza",grupo:null},
-                      {key:"mano_obra",label:"👷 Mano de obra",grupo:"── Operativo ──"},
+                      {key:"pago_terceros",label:"🤝 Pago Tercerizados",grupo:"── Operativo ──"},
+                      {key:"mano_obra",label:"👷 Mano de obra",grupo:null},
+                      {key:"envio",label:"🚚 Envío de pedidos",grupo:null},
                       {key:"alquiler",label:"🏠 Alquiler",grupo:null},
                       {key:"servicios",label:"💡 Servicios",grupo:null},
                       {key:"mantenimiento",label:"🔧 Mantenimiento",grupo:null},
