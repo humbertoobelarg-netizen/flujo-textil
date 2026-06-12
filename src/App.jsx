@@ -617,22 +617,20 @@ export default function App(){
   }
 
   async function crearGasto(){
-    alert("Función ejecutada. Descripción: "+formGasto.descripcion+" Monto: "+formGasto.monto+" Categoria: "+formGasto.categoria);
-    if(!formGasto.descripcion||!formGasto.monto){showToast("Completá descripción y monto","#ef4444");return;}
+    if(!formGasto.descripcion||!formGasto.monto){alert("Falta descripción o monto");return;}
     const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:parseFloat(formGasto.monto),tipo:formGasto.tipo||"real",registrado_por:usuario?.nombre||"Admin"};
     try{
       const r=await fetch(`${SUPABASE_URL}/rest/v1/gastos`,{method:"POST",headers:H,body:JSON.stringify(nuevo)});
       const txt=await r.text();
+      alert("Status: "+r.status+" | Respuesta: "+txt.slice(0,200));
       if(!r.ok){
-        showToast("Error "+r.status+": "+txt.slice(0,100),"#ef4444");
         return;
       }
       setGastos(prev=>[...prev,nuevo]);
       setFormGasto({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real"});
       setShowNuevoGasto(false);
-      showToast("✓ Gasto registrado");
     }catch(e){
-      showToast("Excepción: "+e.message,"#ef4444");
+      alert("Excepción capturada: "+e.message);
     }
   }
 
