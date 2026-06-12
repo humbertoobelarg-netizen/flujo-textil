@@ -617,6 +617,7 @@ export default function App(){
   }
 
   async function crearGasto(){
+    alert("Función ejecutada. Descripción: "+formGasto.descripcion+" Monto: "+formGasto.monto+" Categoria: "+formGasto.categoria);
     if(!formGasto.descripcion||!formGasto.monto){showToast("Completá descripción y monto","#ef4444");return;}
     const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:parseFloat(formGasto.monto),tipo:formGasto.tipo||"real",registrado_por:usuario?.nombre||"Admin"};
     try{
