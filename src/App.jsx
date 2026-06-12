@@ -348,18 +348,29 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
           {/* Indicadores Tejido/Tercerizado */}
           {(()=>{
             const puedeVerTejidoInd=usuario?.rol==="admin"||["Vivi","Andrea"].includes(usuario?.nombre)||usuario?.proceso==="corte"||usuario?.nombre===p.creado_por;
+            const puedeMarcarTejido=usuario?.rol==="admin"||["Vivi","Andrea"].includes(usuario?.nombre);
             const puedeVerTercInd=usuario?.rol==="admin"||["Vivi","Andrea"].includes(usuario?.nombre);
             const puedeVerMontoTerc=usuario?.rol==="admin"||usuario?.nombre==="Gabi";
             const puedeRegistrarTerc=usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
             if(!puedeVerTejidoInd&&!puedeVerTercInd)return null;
-            const tieneTejido=gastos.some(g=>g.categoria==="mat_tejido"&&(g.pedidos_vinculados||[]).includes(p.id));
+            const tieneGastoTejido=gastos.some(g=>g.categoria==="mat_tejido"&&(g.pedidos_vinculados||[]).includes(p.id));
+            const tieneTejido=tieneGastoTejido||p.tejido_disponible===true;
             const gastosTerc=gastos.filter(g=>g.categoria==="pago_terceros"&&(g.pedidos_vinculados||[]).includes(p.id));
             return(
-              <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+              <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
                 {puedeVerTejidoInd&&(
                   <span className="badge" style={{background:tieneTejido?"#10b98122":"#ef444422",color:tieneTejido?"#10b981":"#ef4444",padding:"4px 10px"}}>
-                    🧵 {tieneTejido?"HAY TEJIDO":"SIN TEJIDO"}
+                    🧵 {tieneTejido?"HAY TEJIDO":"SIN TEJIDO"}{p.tejido_disponible===true&&!tieneGastoTejido?" (stock)":""}
                   </span>
+                )}
+                {puedeMarcarTejido&&!tieneGastoTejido&&(
+                  <button className="btn" onClick={async()=>{
+                    const nuevoValor=!p.tejido_disponible;
+                    await dbPatch("pedidos",p.id,{tejido_disponible:nuevoValor});
+                    setPedidos(prev=>prev.map(x=>x.id===p.id?{...x,tejido_disponible:nuevoValor}:x));
+                  }} style={{fontSize:10,padding:"4px 10px",background:"transparent",border:"1.5px solid #10b981",color:"#10b981",letterSpacing:0.5}}>
+                    {p.tejido_disponible?"✕ Quitar (stock)":"✓ Marcar hay tejido (stock)"}
+                  </button>
                 )}
                 {puedeVerTercInd&&gastosTerc.length>0&&(
                   <span className="badge" style={{background:"#a855f722",color:"#a855f7",padding:"4px 10px"}}>
