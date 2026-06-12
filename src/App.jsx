@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 
 const EMAILJS_SERVICE = "service_dyev5fd";
 const EMAILJS_TEMPLATE = "template_49esy8s";
@@ -1375,10 +1375,10 @@ export default function App(){
                       {key:"otros",label:"📦 Otros",grupo:"── Otros ──"},
                     ].filter(c=>usuario?.nombre!=="Vivi"||c.key!=="flia_obelar");
                     return cats.map(cat=>(
-                      cat.grupo
-                        ? [<option key={"g-"+cat.key} disabled style={{color:"#8a7a6a",fontSize:10}}>{cat.grupo}</option>,
-                           <option key={cat.key} value={cat.key}>{cat.label}</option>]
-                        : <option key={cat.key} value={cat.key}>{cat.label}</option>
+                      <Fragment key={cat.key}>
+                        {cat.grupo&&<option disabled style={{color:"#8a7a6a",fontSize:10}}>{cat.grupo}</option>}
+                        <option value={cat.key}>{cat.label}</option>
+                      </Fragment>
                     ));
                   })()}
                 </select>
