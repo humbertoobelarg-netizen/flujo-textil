@@ -372,15 +372,24 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                     {p.tejido_disponible?"✕ Quitar (stock)":"✓ Marcar hay tejido (stock)"}
                   </button>
                 )}
-                {puedeVerTercInd&&gastosTerc.length>0&&(
+                {puedeVerTercInd&&(gastosTerc.length>0||p.marcado_terceros)&&(
                   <span className="badge" style={{background:"#a855f722",color:"#a855f7",padding:"4px 10px"}}>
-                    🪡 TERCERIZADO{puedeVerMontoTerc?` ($${gastosTerc.reduce((s,g)=>s+(parseFloat(g.monto)||0),0).toLocaleString("es-AR")})`:""}
+                    🪡 TERCERIZADO{puedeVerMontoTerc&&gastosTerc.length>0?` ($${gastosTerc.reduce((s,g)=>s+(parseFloat(g.monto)||0),0).toLocaleString("es-AR")})`:""}
                   </span>
                 )}
                 {puedeRegistrarTerc&&(
                   <button className="btn" onClick={()=>{setFormGasto({fecha:hoy(),categoria:"pago_terceros",descripcion:`Confección tercerizada - Pedido ${p.id}`,monto:"",tipo:"real",pedidosVinculados:[p.id]});setShowNuevoGasto(true);}}
                     style={{fontSize:10,padding:"4px 10px",background:"transparent",border:"1.5px solid #a855f7",color:"#a855f7",letterSpacing:0.5}}>
                     + REGISTRAR TERCERIZADO
+                  </button>
+                )}
+                {usuario?.nombre==="Andrea"&&(
+                  <button className="btn" onClick={async()=>{
+                    const nuevoValor=!p.marcado_terceros;
+                    await dbPatch("pedidos",p.id,{marcado_terceros:nuevoValor});
+                    setPedidos(prev=>prev.map(x=>x.id===p.id?{...x,marcado_terceros:nuevoValor}:x));
+                  }} style={{fontSize:10,padding:"4px 10px",background:p.marcado_terceros?"#a855f722":"transparent",border:"1.5px solid #a855f7",color:"#a855f7",letterSpacing:0.5}}>
+                    {p.marcado_terceros?"✓ Marcado para tercerizar":"Marcar para tercerizar"}
                   </button>
                 )}
               </div>
