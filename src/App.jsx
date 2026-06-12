@@ -284,7 +284,7 @@ function GrupoColapsable({titulo,icon,color,count,children}){
 }
 
 // Card colapsable genérico
-function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtapa,miProceso,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido}){
+function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtapa,miProceso,gastos=[],setFormGasto,setShowNuevoGasto,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido}){
   const [exp,setExp]=useState(false);
   const p=pedidos.find(x=>x.id===pedido.id)||pedido;
   const prog=pedidoProgreso(p);
@@ -344,6 +344,37 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
               })}
             </div>
           </div>
+
+          {/* Indicadores Tejido/Tercerizado */}
+          {(()=>{
+            const puedeVerTejidoInd=usuario?.rol==="admin"||["Vivi","Andrea"].includes(usuario?.nombre)||usuario?.proceso==="corte"||usuario?.nombre===p.creado_por;
+            const puedeVerTercInd=usuario?.rol==="admin"||["Vivi","Andrea"].includes(usuario?.nombre);
+            const puedeVerMontoTerc=usuario?.rol==="admin"||usuario?.nombre==="Gabi";
+            const puedeRegistrarTerc=usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
+            if(!puedeVerTejidoInd&&!puedeVerTercInd)return null;
+            const tieneTejido=gastos.some(g=>g.categoria==="mat_tejido"&&(g.pedidos_vinculados||[]).includes(p.id));
+            const gastosTerc=gastos.filter(g=>g.categoria==="pago_terceros"&&(g.pedidos_vinculados||[]).includes(p.id));
+            return(
+              <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+                {puedeVerTejidoInd&&(
+                  <span className="badge" style={{background:tieneTejido?"#10b98122":"#ef444422",color:tieneTejido?"#10b981":"#ef4444",padding:"4px 10px"}}>
+                    🧵 {tieneTejido?"HAY TEJIDO":"SIN TEJIDO"}
+                  </span>
+                )}
+                {puedeVerTercInd&&gastosTerc.length>0&&(
+                  <span className="badge" style={{background:"#a855f722",color:"#a855f7",padding:"4px 10px"}}>
+                    🪡 TERCERIZADO{puedeVerMontoTerc?` ($${gastosTerc.reduce((s,g)=>s+(parseFloat(g.monto)||0),0).toLocaleString("es-AR")})`:""}
+                  </span>
+                )}
+                {puedeRegistrarTerc&&(
+                  <button className="btn" onClick={()=>{setFormGasto({fecha:hoy(),categoria:"pago_terceros",descripcion:`Confección tercerizada - Pedido ${p.id}`,monto:"",tipo:"real",pedidosVinculados:[p.id]});setShowNuevoGasto(true);}}
+                    style={{fontSize:10,padding:"4px 10px",background:"transparent",border:"1.5px solid #a855f7",color:"#a855f7",letterSpacing:0.5}}>
+                    + REGISTRAR TERCERIZADO
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Prendas */}
           {(p.prendas||[]).filter(pr=>pr.tipoPrenda).map((pr,i)=>(
@@ -551,7 +582,8 @@ export default function App(){
   const [selectedPedido,setSelectedPedido]=useState(null);
   const [gastos,setGastos]=useState([]);
   const [showNuevoGasto,setShowNuevoGasto]=useState(false);
-  const [formGasto,setFormGasto]=useState({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real"});
+  const [formGasto,setFormGasto]=useState({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real",pedidosVinculados:[]});
+  const [busquedaPedidoGasto,setBusquedaPedidoGasto]=useState("");
   const [ingresosExtra,setIngresosExtra]=useState([]);
   const [showNuevoIngreso,setShowNuevoIngreso]=useState(false);
   const [formIngreso,setFormIngreso]=useState({fecha:hoy(),descripcion:"",monto:"",origen:"pedido_viejo"});
@@ -618,11 +650,12 @@ export default function App(){
 
   async function crearGasto(){
     if(!formGasto.descripcion||!formGasto.monto){showToast("Completá descripción y monto","#ef4444");return;}
-    const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:parseFloat(formGasto.monto),tipo:formGasto.tipo||"real",registrado_por:usuario?.nombre||"Admin"};
+    const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:parseFloat(formGasto.monto),tipo:formGasto.tipo||"real",registrado_por:usuario?.nombre||"Admin",pedidos_vinculados:formGasto.pedidosVinculados||[]};
     const r=await fetch(`${SUPABASE_URL}/rest/v1/gastos`,{method:"POST",headers:H,body:JSON.stringify(nuevo)});
     if(!r.ok){showToast("Error al guardar","#ef4444");return;}
     setGastos(prev=>[...prev,nuevo]);
-    setFormGasto({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real"});
+    setFormGasto({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real",pedidosVinculados:[]});
+    setBusquedaPedidoGasto("");
     setShowNuevoGasto(false);
     showToast("✓ Gasto registrado");
   }
@@ -710,7 +743,7 @@ export default function App(){
     return true;
   }).sort((a,b)=>(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"));
 
-  const cardProps={pedidos,setPedidos,usuarios,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
+  const cardProps={pedidos,setPedidos,usuarios,gastos,setFormGasto,setShowNuevoGasto,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
 
   return(
     <div style={{fontFamily:"'DM Mono','Courier New',monospace",minHeight:"100vh",background:"#f5f0e8",color:"#1a1208"}}>
@@ -1387,6 +1420,38 @@ export default function App(){
                 </div>
               </div>
               <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>DESCRIPCIÓN *</label><input type="text" style={{width:"100%"}} placeholder="Ej: Compra de tela algodón..." value={formGasto.descripcion} onChange={e=>setFormGasto({...formGasto,descripcion:e.target.value})}/></div>
+              {(formGasto.categoria==="mat_tejido"||formGasto.categoria==="pago_terceros")&&(
+                <div>
+                  <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>VINCULAR A PEDIDO(S) (opcional)</label>
+                  <input type="text" placeholder="Buscar por cliente o número..." value={busquedaPedidoGasto} onChange={e=>setBusquedaPedidoGasto(e.target.value)} style={{width:"100%",marginBottom:6}}/>
+                  {(formGasto.pedidosVinculados||[]).length>0&&(
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:6}}>
+                      {(formGasto.pedidosVinculados||[]).map(pid=>{
+                        const ped=pedidos.find(p=>p.id===pid);
+                        return(
+                          <span key={pid} style={{display:"flex",alignItems:"center",gap:4,background:"#e85d2622",color:"#e85d26",padding:"3px 8px",fontSize:11}}>
+                            {pid} - {ped?.cliente}
+                            <span onClick={()=>setFormGasto({...formGasto,pedidosVinculados:formGasto.pedidosVinculados.filter(x=>x!==pid)})} style={{cursor:"pointer",fontWeight:600}}>✕</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {busquedaPedidoGasto.trim()&&(
+                    <div style={{maxHeight:120,overflowY:"auto",border:"1.5px solid #d8d0c0",background:"#fff"}}>
+                      {pedidos.filter(p=>{
+                        const b=busquedaPedidoGasto.toLowerCase();
+                        return((p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b))&&!(formGasto.pedidosVinculados||[]).includes(p.id);
+                      }).slice(0,8).map(p=>(
+                        <div key={p.id} onClick={()=>{setFormGasto({...formGasto,pedidosVinculados:[...(formGasto.pedidosVinculados||[]),p.id]});setBusquedaPedidoGasto("");}}
+                          style={{padding:"8px 10px",fontSize:12,cursor:"pointer",borderBottom:"1px solid #f0ece4"}}>
+                          {p.id} - {p.cliente} <span style={{color:"#8a7a6a"}}>({p.cantidad} uds)</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button className="btn" onClick={()=>setShowNuevoGasto(false)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
                 <button className="btn" onClick={crearGasto} style={{padding:"10px 20px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>REGISTRAR</button>
