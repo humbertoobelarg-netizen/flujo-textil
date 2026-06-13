@@ -1452,7 +1452,7 @@ export default function App(){
                 </div>
               </div>
               <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>DESCRIPCIÓN *</label><input type="text" style={{width:"100%"}} placeholder="Ej: Compra de tela algodón..." value={formGasto.descripcion} onChange={e=>setFormGasto({...formGasto,descripcion:e.target.value})}/></div>
-              {(formGasto.categoria==="mat_tejido"||formGasto.categoria==="pago_terceros")&&(
+              {(formGasto.categoria==="mat_tejido"||formGasto.categoria==="pago_terceros"||formGasto.categoria==="envio")&&(
                 <div>
                   <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>VINCULAR A PEDIDO(S) (opcional)</label>
                   <input type="text" placeholder="Buscar por cliente o número..." value={busquedaPedidoGasto} onChange={e=>setBusquedaPedidoGasto(e.target.value)} style={{width:"100%",marginBottom:6}}/>
