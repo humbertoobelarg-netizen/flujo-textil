@@ -679,11 +679,14 @@ export default function App(){
   const [selectedPedido,setSelectedPedido]=useState(null);
   const [gastos,setGastos]=useState([]);
   const [showNuevoGasto,setShowNuevoGasto]=useState(false);
-  const [formGasto,setFormGasto]=useState({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real",pedidosVinculados:[]});
+  const [formGasto,setFormGasto]=useState({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real",pedidosVinculados:[],itemsTejido:[{tipo:"90",kilos:"",precioKg:""}]});
   const [busquedaPedidoGasto,setBusquedaPedidoGasto]=useState("");
   const [stockTejido,setStockTejido]=useState([]);
   const [showNuevaCompra,setShowNuevaCompra]=useState(false);
-  const [formCompra,setFormCompra]=useState({fecha:hoy(),proveedor:"",items:[{tipo:"90",kilos:"",precioKg:""}]});
+  const [formCompra,setFormCompra]=useState({fecha:hoy(),proveedor:"",items:[{tipo:"90",kilos:"",precioKg:""}],pedidosVinculados:[],tipoGasto:"real"});
+  const [busquedaPedidoStock,setBusquedaPedidoStock]=useState("");
+  const [showNuevoAjuste,setShowNuevoAjuste]=useState(false);
+  const [formAjuste,setFormAjuste]=useState({fecha:hoy(),tipo:"90",kilos:"",motivo:"sobrante",descripcion:""});
   const [ingresosExtra,setIngresosExtra]=useState([]);
   const [showNuevoIngreso,setShowNuevoIngreso]=useState(false);
   const [formIngreso,setFormIngreso]=useState({fecha:hoy(),descripcion:"",monto:"",origen:"pedido_viejo"});
@@ -732,9 +735,31 @@ export default function App(){
     showToast("✓ Pago registrado");
   }
 
+  async function crearAjusteStock(){
+    if(!formAjuste.kilos){showToast("Ingresá los kilos","#ef4444");return;}
+    const nuevo={id:"AJ"+Date.now(),fecha:formAjuste.fecha,proveedor:"AJUSTE",ancho:formAjuste.tipo,kilos:parseFloat(formAjuste.kilos),precio_kg:0,total:0,motivo:formAjuste.motivo,descripcion:formAjuste.descripcion,registrado_por:usuario?.nombre||"Admin"};
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/stock_tejido`,{method:"POST",headers:H,body:JSON.stringify(nuevo)});
+    if(!r.ok){showToast("Error al guardar","#ef4444");return;}
+    setStockTejido(prev=>[...prev,nuevo]);
+    setFormAjuste({fecha:hoy(),tipo:"90",kilos:"",motivo:"sobrante",descripcion:""});
+    setShowNuevoAjuste(false);
+    showToast("✓ Ajuste registrado");
+  }
+
   async function crearCompraTejido(){
     const itemsValidos=formCompra.items.filter(it=>it.kilos&&it.precioKg);
     if(itemsValidos.length===0){showToast("Completá al menos un ítem con kilos y precio","#ef4444");return;}
+    const totalFactura=itemsValidos.reduce((s,it)=>s+((parseFloat(it.kilos)||0)*(parseFloat(it.precioKg)||0)),0);
+    const vinc=formCompra.pedidosVinculados||[];
+    // Validate vinculados sum
+    if(vinc.length>0){
+      const sumaVinc=vinc.reduce((s,v)=>s+(parseFloat(v.monto)||0),0);
+      if(Math.abs(sumaVinc-totalFactura)>1){
+        showToast(`La suma vinculada ($${sumaVinc.toLocaleString("es-AR")}) no coincide con el total ($${totalFactura.toLocaleString("es-AR")})`,"#ef4444");
+        return;
+      }
+    }
+    // Save stock items
     const nuevos=[];
     for(const it of itemsValidos){
       const kilos=parseFloat(it.kilos);
@@ -744,9 +769,15 @@ export default function App(){
       if(r.ok)nuevos.push(nuevo);
     }
     setStockTejido(prev=>[...prev,...nuevos]);
-    setFormCompra({fecha:hoy(),proveedor:"",items:[{tipo:"90",kilos:"",precioKg:""}]});
+    // Always create gasto
+    const tiposTejido=itemsValidos.map(it=>({"90":"Jersey 90cm","120":"Jersey 1.20m","rib":"Rib"}[it.tipo]||it.tipo)).join(", ");
+    const nuevoGasto={id:"G"+Date.now(),fecha:formCompra.fecha,categoria:"mat_tejido",descripcion:`Compra tejido (${tiposTejido}) - ${formCompra.proveedor||""}`,monto:totalFactura,tipo:formCompra.tipoGasto||"real",registrado_por:usuario?.nombre||"Admin",pedidos_vinculados:vinc};
+    const rg=await fetch(`${SUPABASE_URL}/rest/v1/gastos`,{method:"POST",headers:H,body:JSON.stringify(nuevoGasto)});
+    if(rg.ok){setGastos(prev=>[...prev,nuevoGasto]);showToast(`✓ Stock y gasto registrados`);}
+    else showToast("Stock guardado pero error en gasto","#f59e0b");
+    setFormCompra({fecha:hoy(),proveedor:"",items:[{tipo:"90",kilos:"",precioKg:""}],pedidosVinculados:[],tipoGasto:"real"});
+    setBusquedaPedidoStock("");
     setShowNuevaCompra(false);
-    showToast(`✓ ${nuevos.length} ítem(s) registrados`);
   }
 
   async function eliminarCompraTejido(id){
@@ -786,7 +817,17 @@ export default function App(){
     const r=await fetch(`${SUPABASE_URL}/rest/v1/gastos`,{method:"POST",headers:H,body:JSON.stringify(nuevo)});
     if(!r.ok){showToast("Error al guardar","#ef4444");return;}
     setGastos(prev=>[...prev,nuevo]);
-    setFormGasto({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real",pedidosVinculados:[]});
+    // If tejido, also update stock
+    if(formGasto.categoria==="mat_tejido"&&(formGasto.itemsTejido||[]).some(it=>it.kilos&&it.precioKg)){
+      for(const it of (formGasto.itemsTejido||[])){
+        if(!it.kilos||!it.precioKg)continue;
+        const kilos=parseFloat(it.kilos);const precioKg=parseFloat(it.precioKg);
+        const st={id:"ST"+Date.now()+"_"+Math.random().toString(36).slice(2,6),fecha:formGasto.fecha,proveedor:formGasto.descripcion,ancho:it.tipo,kilos,precio_kg:precioKg,total:kilos*precioKg,registrado_por:usuario?.nombre||"Admin"};
+        const rs=await fetch(`${SUPABASE_URL}/rest/v1/stock_tejido`,{method:"POST",headers:H,body:JSON.stringify(st)});
+        if(rs.ok)setStockTejido(prev=>[...prev,st]);
+      }
+    }
+    setFormGasto({fecha:hoy(),categoria:"mat_tejido",descripcion:"",monto:"",tipo:"real",pedidosVinculados:[],itemsTejido:[{tipo:"90",kilos:"",precioKg:""}]});
     setBusquedaPedidoGasto("");
     setShowNuevoGasto(false);
     showToast("✓ Gasto registrado");
@@ -1356,7 +1397,12 @@ export default function App(){
               };
               return(
                 <div>
-                  <button className="btn" onClick={()=>setShowNuevaCompra(true)} style={{width:"100%",padding:"12px",fontSize:12,background:"#06b6d4",color:"#fff",letterSpacing:1,marginBottom:16}}>+ REGISTRAR COMPRA DE TEJIDO</button>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr",gap:8,marginBottom:16}}>
+                    <button className="btn" onClick={()=>setShowNuevoAjuste(true)} style={{padding:"12px",fontSize:12,background:"#f59e0b",color:"#fff",letterSpacing:1}}>+ AJUSTE DE INVENTARIO (sin costo)</button>
+                  </div>
+                  <div style={{padding:"10px 14px",background:"#f5f0e8",border:"1.5px solid #d8d0c0",marginBottom:16,fontSize:12,color:"#8a7a6a"}}>
+                    💡 Para registrar compras con factura, usá <strong>FINANZAS → + GASTO → Tejido</strong>
+                  </div>
 
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
                     {Object.entries(TIPOS_TEJIDO).map(([key,info])=>{
@@ -1381,18 +1427,22 @@ export default function App(){
 
                   <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:8}}>HISTORIAL DE COMPRAS</div>
                   {stockTejido.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>No hay compras registradas</div>}
-                  {[...stockTejido].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(s=>(
-                    <div key={s.id} className="card" style={{padding:"12px 16px",marginBottom:6,display:"flex",alignItems:"center",gap:10,borderLeft:`3px solid ${TIPOS_TEJIDO[s.ancho]?.color||"#8a7a6a"}`}}>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:13,fontWeight:500}}>{TIPOS_TEJIDO[s.ancho]?.label||s.ancho} · {s.proveedor}</div>
-                        <div style={{fontSize:10,color:"#8a7a6a"}}>{s.kilos}kg × ${parseFloat(s.precio_kg).toLocaleString("es-AR")}/kg · {formatFecha(s.fecha)}</div>
+                  {[...stockTejido].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(s=>{
+                    const esAjuste=s.proveedor==="AJUSTE"||s.total===0;
+                    return(
+                      <div key={s.id} className="card" style={{padding:"12px 16px",marginBottom:6,display:"flex",alignItems:"center",gap:10,borderLeft:`3px solid ${esAjuste?"#f59e0b":TIPOS_TEJIDO[s.ancho]?.color||"#8a7a6a"}`}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:13,fontWeight:500}}>{TIPOS_TEJIDO[s.ancho]?.label||s.ancho} · {esAjuste?<span style={{background:"#f59e0b22",color:"#f59e0b",fontSize:10,padding:"1px 6px"}}>AJUSTE</span>:s.proveedor}</div>
+                          <div style={{fontSize:10,color:"#8a7a6a"}}>{s.kilos}kg{esAjuste&&s.motivo?` · ${s.motivo}`:""}{esAjuste&&s.descripcion?` · ${s.descripcion}`:""} · {formatFecha(s.fecha)}</div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          {!esAjuste&&<div style={{fontSize:14,fontWeight:600,color:"#06b6d4"}}>${parseFloat(s.total).toLocaleString("es-AR")}</div>}
+                          {esAjuste&&<div style={{fontSize:12,color:"#f59e0b"}}>{parseFloat(s.kilos)>0?"+":""}{s.kilos}kg</div>}
+                        </div>
+                        {(usuario?.rol==="admin"||usuario?.nombre==="Vivi")&&<button className="btn" onClick={()=>eliminarCompraTejido(s.id)} style={{padding:"4px 8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
                       </div>
-                      <div style={{textAlign:"right"}}>
-                        <div style={{fontSize:14,fontWeight:600,color:"#06b6d4"}}>${parseFloat(s.total).toLocaleString("es-AR")}</div>
-                      </div>
-                      {(usuario?.rol==="admin"||usuario?.nombre==="Vivi")&&<button className="btn" onClick={()=>eliminarCompraTejido(s.id)} style={{padding:"4px 8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })()}
@@ -1567,6 +1617,46 @@ export default function App(){
         </div>
       )}
 
+      {/* MODAL AJUSTE STOCK */}
+      {showNuevoAjuste&&(
+        <div className="modal-bg" onClick={()=>setShowNuevoAjuste(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div style={{padding:"20px 24px",borderBottom:"1.5px solid #d8d0c0",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#f59e0b"}}>AJUSTE DE INVENTARIO</div>
+            <div style={{padding:24,display:"flex",flexDirection:"column",gap:14}}>
+              <div style={{padding:"10px",background:"#f59e0b15",border:"1.5px solid #f59e0b44",fontSize:12,color:"#8a7a6a"}}>
+                Usá esto para: sobrantes de pedidos, tejido ya en stock, correcciones de inventario, mermas. <strong>Sin costo asociado.</strong>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>FECHA</label><input type="date" style={{width:"100%"}} value={formAjuste.fecha} onChange={e=>setFormAjuste({...formAjuste,fecha:e.target.value})}/></div>
+                <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>TIPO DE TEJIDO</label>
+                  <select style={{width:"100%"}} value={formAjuste.tipo} onChange={e=>setFormAjuste({...formAjuste,tipo:e.target.value})}>
+                    <option value="90">Jersey 90cm</option>
+                    <option value="120">Jersey 1.20m</option>
+                    <option value="rib">Rib 0.70m</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>KILOS *</label><input type="number" style={{width:"100%"}} placeholder="0" value={formAjuste.kilos} onChange={e=>setFormAjuste({...formAjuste,kilos:e.target.value})}/></div>
+                <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>MOTIVO</label>
+                  <select style={{width:"100%"}} value={formAjuste.motivo} onChange={e=>setFormAjuste({...formAjuste,motivo:e.target.value})}>
+                    <option value="sobrante">Sobrante de pedido</option>
+                    <option value="stock_inicial">Stock inicial</option>
+                    <option value="merma">Merma / descarte</option>
+                    <option value="inventario">Corrección de inventario</option>
+                  </select>
+                </div>
+              </div>
+              <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>DESCRIPCIÓN (opcional)</label><input type="text" style={{width:"100%"}} placeholder="Ej: Sobrante pedido P085..." value={formAjuste.descripcion} onChange={e=>setFormAjuste({...formAjuste,descripcion:e.target.value})}/></div>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <button className="btn" onClick={()=>setShowNuevoAjuste(false)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
+                <button className="btn" onClick={crearAjusteStock} style={{padding:"10px 20px",fontSize:11,background:"#f59e0b",color:"#fff",letterSpacing:1}}>REGISTRAR</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL NUEVA COMPRA TEJIDO */}
       {showNuevaCompra&&(
         <div className="modal-bg" onClick={()=>setShowNuevaCompra(false)}>
@@ -1617,6 +1707,63 @@ export default function App(){
                   </div>
                 ):null;
               })()}
+              {/* Vincular a pedidos */}
+              <div>
+                <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>VINCULAR A PEDIDO(S) (opcional)</label>
+                <input type="text" placeholder="Buscar por cliente o número..." value={busquedaPedidoStock} onChange={e=>setBusquedaPedidoStock(e.target.value)} style={{width:"100%",marginBottom:6}}/>
+                {(formCompra.pedidosVinculados||[]).length>0&&(
+                  <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:6}}>
+                    {(formCompra.pedidosVinculados||[]).map((v,idx)=>{
+                      const ped=pedidos.find(p=>p.id===v.id);
+                      return(
+                        <div key={v.id} style={{display:"flex",alignItems:"center",gap:6,background:"#e8f4fd",padding:"6px 10px",border:"1px solid #06b6d444"}}>
+                          <span style={{fontSize:11,flex:1}}>{v.id} - {ped?.cliente}</span>
+                          <input type="number" min="0" placeholder="Monto" value={v.monto}
+                            onChange={e=>{const nuevos=[...formCompra.pedidosVinculados];nuevos[idx]={...nuevos[idx],monto:e.target.value};setFormCompra({...formCompra,pedidosVinculados:nuevos});}}
+                            style={{width:110,fontSize:11,padding:"5px 8px"}}/>
+                          <span onClick={()=>setFormCompra({...formCompra,pedidosVinculados:formCompra.pedidosVinculados.filter(x=>x.id!==v.id)})} style={{cursor:"pointer",fontWeight:600,color:"#ef4444",fontSize:14}}>✕</span>
+                        </div>
+                      );
+                    })}
+                    {(()=>{
+                      const totalFactura=formCompra.items.reduce((s,it)=>s+((parseFloat(it.kilos)||0)*(parseFloat(it.precioKg)||0)),0);
+                      const suma=(formCompra.pedidosVinculados||[]).reduce((s,v)=>s+(parseFloat(v.monto)||0),0);
+                      const ok=Math.abs(suma-totalFactura)<=1;
+                      return(
+                        <div style={{fontSize:11,padding:"6px 10px",background:ok?"#10b98115":"#ef444415",color:ok?"#10b981":"#ef4444"}}>
+                          Suma: ${suma.toLocaleString("es-AR")} / Total: ${totalFactura.toLocaleString("es-AR")} {ok?"✓":"⚠ no coincide"}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+                {busquedaPedidoStock.trim()&&(
+                  <div style={{maxHeight:120,overflowY:"auto",border:"1.5px solid #d8d0c0",background:"#fff"}}>
+                    {pedidos.filter(p=>{const b=busquedaPedidoStock.toLowerCase();return((p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b))&&!(formCompra.pedidosVinculados||[]).some(v=>v.id===p.id);}).slice(0,8).map(p=>(
+                      <div key={p.id} onClick={()=>{
+                        const yaHay=(formCompra.pedidosVinculados||[]).length>0;
+                        setFormCompra({...formCompra,pedidosVinculados:[...(formCompra.pedidosVinculados||[]),{id:p.id,monto:yaHay?"":""}]});
+                        setBusquedaPedidoStock("");
+                      }} style={{padding:"8px 10px",fontSize:12,cursor:"pointer",borderBottom:"1px solid #f0ece4"}}>
+                        {p.id} - {p.cliente} <span style={{color:"#8a7a6a"}}>({p.cantidad} uds)</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {(formCompra.pedidosVinculados||[]).length>0&&(
+                <div>
+                  <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>TIPO DE GASTO</label>
+                  <div style={{display:"flex",gap:8}}>
+                    {[["real","✅ Real"],["previsto","🔮 Previsto"]].map(([k,l])=>(
+                      <button key={k} className="btn" onClick={()=>setFormCompra({...formCompra,tipoGasto:k})}
+                        style={{flex:1,padding:"8px",fontSize:11,background:formCompra.tipoGasto===k?"#1a1208":"#f5f0e8",color:formCompra.tipoGasto===k?"#f5f0e8":"#1a1208",border:"1.5px solid #d8d0c0"}}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button className="btn" onClick={()=>setShowNuevaCompra(false)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
                 <button className="btn" onClick={crearCompraTejido} style={{padding:"10px 20px",fontSize:11,background:"#06b6d4",color:"#fff",letterSpacing:1}}>REGISTRAR</button>
@@ -1682,6 +1829,35 @@ export default function App(){
                 </div>
               </div>
               <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>DESCRIPCIÓN *</label><input type="text" style={{width:"100%"}} placeholder="Ej: Compra de tela algodón..." value={formGasto.descripcion} onChange={e=>setFormGasto({...formGasto,descripcion:e.target.value})}/></div>
+              {formGasto.categoria==="mat_tejido"&&(
+                <div style={{padding:"10px",background:"#06b6d415",border:"1.5px solid #06b6d444",fontSize:12}}>
+                  <div style={{fontSize:10,color:"#06b6d4",letterSpacing:1,marginBottom:8,fontWeight:600}}>🧵 DETALLES DE COMPRA (se actualiza el stock automáticamente)</div>
+                  {(formGasto.itemsTejido||[{tipo:"90",kilos:"",precioKg:""}]).map((item,idx)=>{
+                    const RENDS={"90":3.6,"120":3,"rib":2.3};
+                    const subtotal=(parseFloat(item.kilos)||0)*(parseFloat(item.precioKg)||0);
+                    const metros=item.kilos?((parseFloat(item.kilos)||0)*RENDS[item.tipo]).toFixed(1):0;
+                    const items=formGasto.itemsTejido||[{tipo:"90",kilos:"",precioKg:""}];
+                    return(
+                      <div key={idx} style={{padding:"8px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:6}}>
+                        <div style={{display:"flex",gap:8,marginBottom:6}}>
+                          <select style={{flex:1,fontSize:11}} value={item.tipo} onChange={e=>{const its=[...items];its[idx]={...its[idx],tipo:e.target.value};setFormGasto({...formGasto,itemsTejido:its});}}>
+                            <option value="90">Jersey 90cm (3.6m/kg)</option>
+                            <option value="120">Jersey 1.20m (3m/kg)</option>
+                            <option value="rib">Rib 0.70m (2.3m/kg)</option>
+                          </select>
+                          {items.length>1&&<span onClick={()=>setFormGasto({...formGasto,itemsTejido:items.filter((_,i)=>i!==idx)})} style={{cursor:"pointer",color:"#ef4444",fontSize:16,fontWeight:600}}>✕</span>}
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                          <div><label style={{fontSize:9,color:"#8a7a6a",display:"block",marginBottom:2}}>KILOS</label><input type="number" min="0" style={{width:"100%",fontSize:11}} placeholder="0" value={item.kilos} onChange={e=>{const its=[...items];its[idx]={...its[idx],kilos:e.target.value};const total=its.reduce((s,i)=>s+((parseFloat(i.kilos)||0)*(parseFloat(i.precioKg)||0)),0);setFormGasto({...formGasto,itemsTejido:its,monto:total>0?String(total):formGasto.monto});}}/></div>
+                          <div><label style={{fontSize:9,color:"#8a7a6a",display:"block",marginBottom:2}}>PRECIO/KG</label><input type="number" min="0" style={{width:"100%",fontSize:11}} placeholder="0" value={item.precioKg} onChange={e=>{const its=[...items];its[idx]={...its[idx],precioKg:e.target.value};const total=its.reduce((s,i)=>s+((parseFloat(i.kilos)||0)*(parseFloat(i.precioKg)||0)),0);setFormGasto({...formGasto,itemsTejido:its,monto:total>0?String(total):formGasto.monto});}}/></div>
+                        </div>
+                        {subtotal>0&&<div style={{fontSize:10,color:"#8a7a6a",marginTop:4,display:"flex",justifyContent:"space-between"}}><span>≈ {metros} mts</span><span style={{fontWeight:600}}>${subtotal.toLocaleString("es-AR")}</span></div>}
+                      </div>
+                    );
+                  })}
+                  <button onClick={()=>setFormGasto({...formGasto,itemsTejido:[...(formGasto.itemsTejido||[{tipo:"90",kilos:"",precioKg:""}]),{tipo:"90",kilos:"",precioKg:""}]})} style={{width:"100%",padding:"6px",fontSize:11,background:"transparent",border:"1.5px dashed #c8bfaf",color:"#8a7a6a",cursor:"pointer"}}>+ AGREGAR ÍTEM</button>
+                </div>
+              )}
               {(formGasto.categoria==="mat_tejido"||formGasto.categoria==="pago_terceros"||formGasto.categoria==="envio")&&(
                 <div>
                   <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>VINCULAR A PEDIDO(S) (opcional)</label>
