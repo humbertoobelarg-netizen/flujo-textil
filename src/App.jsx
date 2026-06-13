@@ -353,9 +353,9 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
             const puedeVerMontoTerc=usuario?.rol==="admin"||usuario?.nombre==="Gabi";
             const puedeRegistrarTerc=usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
             if(!puedeVerTejidoInd&&!puedeVerTercInd)return null;
-            const tieneGastoTejido=gastos.some(g=>g.categoria==="mat_tejido"&&(g.pedidos_vinculados||[]).includes(p.id));
+            const tieneGastoTejido=gastos.some(g=>g.categoria==="mat_tejido"&&(g.pedidos_vinculados||[]).some(v=>v.id===p.id));
             const tieneTejido=tieneGastoTejido||p.tejido_disponible===true;
-            const gastosTerc=gastos.filter(g=>g.categoria==="pago_terceros"&&(g.pedidos_vinculados||[]).includes(p.id));
+            const gastosTerc=gastos.filter(g=>g.categoria==="pago_terceros"&&(g.pedidos_vinculados||[]).some(v=>v.id===p.id));
             return(
               <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
                 {puedeVerTejidoInd&&(
@@ -374,7 +374,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                 )}
                 {puedeVerTercInd&&(gastosTerc.length>0||p.marcado_terceros)&&(
                   <span className="badge" style={{background:"#a855f722",color:"#a855f7",padding:"4px 10px"}}>
-                    🪡 TERCERIZADO{puedeVerMontoTerc&&gastosTerc.length>0?` ($${gastosTerc.reduce((s,g)=>s+(parseFloat(g.monto)||0),0).toLocaleString("es-AR")})`:""}
+                    🪡 TERCERIZADO{puedeVerMontoTerc&&gastosTerc.length>0?` ($${gastosTerc.reduce((s,g)=>{const v=(g.pedidos_vinculados||[]).find(x=>x.id===p.id);return s+(parseFloat(v?.monto)||0);},0).toLocaleString("es-AR")})`:""}
                   </span>
                 )}
                 {puedeRegistrarTerc&&(
@@ -392,6 +392,37 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                     {p.marcado_terceros?"✓ Marcado para tercerizar":"Marcar para tercerizar"}
                   </button>
                 )}
+              </div>
+            );
+          })()}
+
+          {/* Costos vinculados al pedido (solo Admin/Gabi) */}
+          {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(()=>{
+            const costosVinc={};
+            gastos.forEach(g=>{
+              (g.pedidos_vinculados||[]).forEach(v=>{
+                if(v.id===p.id&&parseFloat(v.monto)>0){
+                  if(!costosVinc[g.categoria])costosVinc[g.categoria]=0;
+                  costosVinc[g.categoria]+=parseFloat(v.monto)||0;
+                }
+              });
+            });
+            const totalCostos=Object.values(costosVinc).reduce((s,v)=>s+v,0);
+            if(totalCostos===0)return null;
+            const LABELS={mat_tejido:"🧵 Tejido",pago_terceros:"🪡 Tercerizado",envio:"🚚 Envío",mat_serigrafia:"🖨️ Serigrafía/DTF/Sub",mat_confeccion:"🪡 Confección/Bordado",mat_empaque:"📦 Empaque"};
+            return(
+              <div style={{marginBottom:8,padding:"10px",background:"#1a1208",color:"#f5f0e8"}}>
+                <div style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",marginBottom:6}}>COSTOS REGISTRADOS DE ESTE PEDIDO</div>
+                {Object.entries(costosVinc).map(([cat,monto])=>(
+                  <div key={cat} style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+                    <span>{LABELS[cat]||cat}</span>
+                    <span>${monto.toLocaleString("es-AR")}</span>
+                  </div>
+                ))}
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:13,fontWeight:600,borderTop:"1px solid #3a3a3a",paddingTop:6,marginTop:4,color:"#e85d26"}}>
+                  <span>TOTAL COSTOS</span>
+                  <span>${totalCostos.toLocaleString("es-AR")}</span>
+                </div>
               </div>
             );
           })()}
@@ -670,7 +701,16 @@ export default function App(){
 
   async function crearGasto(){
     if(!formGasto.descripcion||!formGasto.monto){showToast("Completá descripción y monto","#ef4444");return;}
-    const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:parseFloat(formGasto.monto),tipo:formGasto.tipo||"real",registrado_por:usuario?.nombre||"Admin",pedidos_vinculados:formGasto.pedidosVinculados||[]};
+    const montoTotal=parseFloat(formGasto.monto);
+    const vinc=formGasto.pedidosVinculados||[];
+    if(vinc.length>0){
+      const sumaVinc=vinc.reduce((s,v)=>s+(parseFloat(v.monto)||0),0);
+      if(Math.abs(sumaVinc-montoTotal)>1){
+        showToast(`La suma de montos vinculados ($${sumaVinc.toLocaleString("es-AR")}) no coincide con el total ($${montoTotal.toLocaleString("es-AR")})`,"#ef4444");
+        return;
+      }
+    }
+    const nuevo={id:"G"+Date.now(),fecha:formGasto.fecha,categoria:formGasto.categoria,descripcion:formGasto.descripcion,monto:montoTotal,tipo:formGasto.tipo||"real",registrado_por:usuario?.nombre||"Admin",pedidos_vinculados:vinc};
     const r=await fetch(`${SUPABASE_URL}/rest/v1/gastos`,{method:"POST",headers:H,body:JSON.stringify(nuevo)});
     if(!r.ok){showToast("Error al guardar","#ef4444");return;}
     setGastos(prev=>[...prev,nuevo]);
@@ -1457,25 +1497,47 @@ export default function App(){
                   <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>VINCULAR A PEDIDO(S) (opcional)</label>
                   <input type="text" placeholder="Buscar por cliente o número..." value={busquedaPedidoGasto} onChange={e=>setBusquedaPedidoGasto(e.target.value)} style={{width:"100%",marginBottom:6}}/>
                   {(formGasto.pedidosVinculados||[]).length>0&&(
-                    <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:6}}>
-                      {(formGasto.pedidosVinculados||[]).map(pid=>{
-                        const ped=pedidos.find(p=>p.id===pid);
+                    <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:6}}>
+                      {(formGasto.pedidosVinculados||[]).map((v,idx)=>{
+                        const ped=pedidos.find(p=>p.id===v.id);
                         return(
-                          <span key={pid} style={{display:"flex",alignItems:"center",gap:4,background:"#e85d2622",color:"#e85d26",padding:"3px 8px",fontSize:11}}>
-                            {pid} - {ped?.cliente}
-                            <span onClick={()=>setFormGasto({...formGasto,pedidosVinculados:formGasto.pedidosVinculados.filter(x=>x!==pid)})} style={{cursor:"pointer",fontWeight:600}}>✕</span>
-                          </span>
+                          <div key={v.id} style={{display:"flex",alignItems:"center",gap:6,background:"#fef3ee",padding:"6px 10px",border:"1px solid #e85d2644"}}>
+                            <span style={{fontSize:11,flex:1}}>{v.id} - {ped?.cliente}</span>
+                            <input type="number" min="0" placeholder="Monto" value={v.monto}
+                              onChange={e=>{
+                                const nuevos=[...formGasto.pedidosVinculados];
+                                nuevos[idx]={...nuevos[idx],monto:e.target.value};
+                                setFormGasto({...formGasto,pedidosVinculados:nuevos});
+                              }}
+                              style={{width:110,fontSize:11,padding:"5px 8px"}}/>
+                            <span onClick={()=>setFormGasto({...formGasto,pedidosVinculados:formGasto.pedidosVinculados.filter(x=>x.id!==v.id)})} style={{cursor:"pointer",fontWeight:600,color:"#ef4444",fontSize:14}}>✕</span>
+                          </div>
                         );
                       })}
+                      {(()=>{
+                        const suma=(formGasto.pedidosVinculados||[]).reduce((s,v)=>s+(parseFloat(v.monto)||0),0);
+                        const total=parseFloat(formGasto.monto)||0;
+                        const ok=Math.abs(suma-total)<=1;
+                        return(
+                          <div style={{fontSize:11,padding:"6px 10px",background:ok?"#10b98115":"#ef444415",color:ok?"#10b981":"#ef4444"}}>
+                            Suma vinculada: ${suma.toLocaleString("es-AR")} / Total: ${total.toLocaleString("es-AR")} {ok?"✓":"⚠ no coincide"}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                   {busquedaPedidoGasto.trim()&&(
                     <div style={{maxHeight:120,overflowY:"auto",border:"1.5px solid #d8d0c0",background:"#fff"}}>
                       {pedidos.filter(p=>{
                         const b=busquedaPedidoGasto.toLowerCase();
-                        return((p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b))&&!(formGasto.pedidosVinculados||[]).includes(p.id);
+                        return((p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b))&&!(formGasto.pedidosVinculados||[]).some(v=>v.id===p.id);
                       }).slice(0,8).map(p=>(
-                        <div key={p.id} onClick={()=>{setFormGasto({...formGasto,pedidosVinculados:[...(formGasto.pedidosVinculados||[]),p.id]});setBusquedaPedidoGasto("");}}
+                        <div key={p.id} onClick={()=>{
+                          const yaHayOtros=(formGasto.pedidosVinculados||[]).length>0;
+                          const montoSugerido=yaHayOtros?"":formGasto.monto;
+                          setFormGasto({...formGasto,pedidosVinculados:[...(formGasto.pedidosVinculados||[]),{id:p.id,monto:montoSugerido}]});
+                          setBusquedaPedidoGasto("");
+                        }}
                           style={{padding:"8px 10px",fontSize:12,cursor:"pointer",borderBottom:"1px solid #f0ece4"}}>
                           {p.id} - {p.cliente} <span style={{color:"#8a7a6a"}}>({p.cantidad} uds)</span>
                         </div>
