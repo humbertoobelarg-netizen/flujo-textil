@@ -36,14 +36,18 @@ const FORM_INIT={cliente:"",prioridad:"media",fechaEntrega:"",descripcion:"",dat
 function hoy(){return new Date().toISOString().split("T")[0];}
 function normalizarVinculados(arr,montoTotal){
   if(!Array.isArray(arr)||arr.length===0)return[];
-  // Old format: array of strings ["P001","P002"]
-  if(typeof arr[0]==="string"){
-    // If single pedido, assign full amount; if multiple, split equally or leave 0
-    if(arr.length===1)return[{id:arr[0],monto:montoTotal}];
-    return arr.map(id=>({id,monto:0}));
+  // Separate strings (old format) and objects (new format)
+  const objetos=arr.filter(v=>typeof v==="object"&&v!==null);
+  const strings=arr.filter(v=>typeof v==="string");
+  const idsConObjeto=objetos.map(o=>o.id);
+  const stringsSinDuplicar=strings.filter(id=>!idsConObjeto.includes(id));
+  const result=[...objetos];
+  if(stringsSinDuplicar.length===1&&objetos.length===0){
+    result.push({id:stringsSinDuplicar[0],monto:montoTotal});
+  }else{
+    stringsSinDuplicar.forEach(id=>result.push({id,monto:0}));
   }
-  // New format: array of {id,monto}
-  return arr;
+  return result;
 }
 function diasHasta(fecha){
   if(!fecha)return 999;
@@ -389,7 +393,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                   </span>
                 )}
                 {puedeRegistrarTerc&&(
-                  <button className="btn" onClick={()=>{setFormGasto({fecha:hoy(),categoria:"pago_terceros",descripcion:`Confección tercerizada - Pedido ${p.id}`,monto:"",tipo:"real",pedidosVinculados:[p.id]});setShowNuevoGasto(true);}}
+                  <button className="btn" onClick={()=>{setFormGasto({fecha:hoy(),categoria:"pago_terceros",descripcion:`Confección tercerizada - Pedido ${p.id}`,monto:"",tipo:"real",pedidosVinculados:[{id:p.id,monto:""}]});setShowNuevoGasto(true);}}
                     style={{fontSize:10,padding:"4px 10px",background:"transparent",border:"1.5px solid #a855f7",color:"#a855f7",letterSpacing:0.5}}>
                     + REGISTRAR TERCERIZADO
                   </button>
@@ -434,6 +438,25 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                   <span>TOTAL COSTOS</span>
                   <span>${totalCostos.toLocaleString("es-AR")}</span>
                 </div>
+                {(()=>{
+                  const totalVenta=calcTotalGral(p.prendas||[]);
+                  if(totalVenta===0)return null;
+                  const margen=totalVenta-totalCostos;
+                  const pct=totalVenta>0?Math.round((margen/totalVenta)*100):0;
+                  return(
+                    <>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginTop:6,color:"#8a7a6a"}}>
+                        <span>Precio de venta</span>
+                        <span>${totalVenta.toLocaleString("es-AR")}</span>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:600,marginTop:4,color:margen>=0?"#10b981":"#ef4444"}}>
+                        <span>MARGEN ESTIMADO</span>
+                        <span>${margen.toLocaleString("es-AR")} ({pct}%)</span>
+                      </div>
+                      <div style={{fontSize:9,color:"#8a7a6a",marginTop:2}}>* Solo incluye costos cargados (puede faltar mano de obra, etc.)</div>
+                    </>
+                  );
+                })()}
               </div>
             );
           })()}
@@ -1055,6 +1078,7 @@ export default function App(){
                 {key:"alquiler",label:"Alquiler",icon:"🏠",grupo:"Operativo"},
                 {key:"servicios",label:"Servicios",icon:"💡",grupo:"Operativo"},
                 {key:"mantenimiento",label:"Mantenimiento",icon:"🔧",grupo:"Operativo"},
+                {key:"combustible",label:"Combustible",icon:"⛽",grupo:"Operativo"},
                 {key:"marketing",label:"Marketing",icon:"📢",grupo:"Comercial"},
                 {key:"impuestos",label:"Impuestos",icon:"🏛️",grupo:"Comercial"},
                 {key:"flia_obelar",label:"Flia. Obelar Codas",icon:"👨‍👩‍👧",grupo:"Personal"},
@@ -1477,6 +1501,7 @@ export default function App(){
                       {key:"alquiler",label:"🏠 Alquiler",grupo:null},
                       {key:"servicios",label:"💡 Servicios",grupo:null},
                       {key:"mantenimiento",label:"🔧 Mantenimiento",grupo:null},
+                      {key:"combustible",label:"⛽ Combustible",grupo:null},
                       {key:"marketing",label:"📢 Marketing",grupo:"── Comercial ──"},
                       {key:"impuestos",label:"🏛️ Impuestos",grupo:null},
                       {key:"flia_obelar",label:"👨‍👩‍👧 Flia. Obelar Codas",grupo:"── Personal ──"},
