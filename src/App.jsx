@@ -34,6 +34,17 @@ const PRENDA_INIT={tipoPrenda:"",tipoPrendaOtro:"",tipoTejido:"",molderia:"",cue
 const FORM_INIT={cliente:"",prioridad:"media",fechaEntrega:"",descripcion:"",datosFactura:"",procesosActivos:["orden","terminacion"],prendas:[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],anticipo:"",imagenes:[]};
 
 function hoy(){return new Date().toISOString().split("T")[0];}
+function normalizarVinculados(arr,montoTotal){
+  if(!Array.isArray(arr)||arr.length===0)return[];
+  // Old format: array of strings ["P001","P002"]
+  if(typeof arr[0]==="string"){
+    // If single pedido, assign full amount; if multiple, split equally or leave 0
+    if(arr.length===1)return[{id:arr[0],monto:montoTotal}];
+    return arr.map(id=>({id,monto:0}));
+  }
+  // New format: array of {id,monto}
+  return arr;
+}
 function diasHasta(fecha){
   if(!fecha)return 999;
   const hoyD=new Date();hoyD.setHours(0,0,0,0);
@@ -353,9 +364,9 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
             const puedeVerMontoTerc=usuario?.rol==="admin"||usuario?.nombre==="Gabi";
             const puedeRegistrarTerc=usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
             if(!puedeVerTejidoInd&&!puedeVerTercInd)return null;
-            const tieneGastoTejido=gastos.some(g=>g.categoria==="mat_tejido"&&(g.pedidos_vinculados||[]).some(v=>v.id===p.id));
+            const tieneGastoTejido=gastos.some(g=>normalizarVinculados(g.pedidos_vinculados,g.monto).some(v=>v.id===p.id));
             const tieneTejido=tieneGastoTejido||p.tejido_disponible===true;
-            const gastosTerc=gastos.filter(g=>g.categoria==="pago_terceros"&&(g.pedidos_vinculados||[]).some(v=>v.id===p.id));
+            const gastosTerc=gastos.filter(g=>g.categoria==="pago_terceros"&&normalizarVinculados(g.pedidos_vinculados,g.monto).some(v=>v.id===p.id));
             return(
               <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
                 {puedeVerTejidoInd&&(
@@ -374,7 +385,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                 )}
                 {puedeVerTercInd&&(gastosTerc.length>0||p.marcado_terceros)&&(
                   <span className="badge" style={{background:"#a855f722",color:"#a855f7",padding:"4px 10px"}}>
-                    🪡 TERCERIZADO{puedeVerMontoTerc&&gastosTerc.length>0?` ($${gastosTerc.reduce((s,g)=>{const v=(g.pedidos_vinculados||[]).find(x=>x.id===p.id);return s+(parseFloat(v?.monto)||0);},0).toLocaleString("es-AR")})`:""}
+                    🪡 TERCERIZADO{puedeVerMontoTerc&&gastosTerc.length>0?` ($${gastosTerc.reduce((s,g)=>{const v=normalizarVinculados(g.pedidos_vinculados,g.monto).find(x=>x.id===p.id);return s+(parseFloat(v?.monto)||0);},0).toLocaleString("es-AR")})`:""}
                   </span>
                 )}
                 {puedeRegistrarTerc&&(
@@ -400,7 +411,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
           {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(()=>{
             const costosVinc={};
             gastos.forEach(g=>{
-              (g.pedidos_vinculados||[]).forEach(v=>{
+              normalizarVinculados(g.pedidos_vinculados,g.monto).forEach(v=>{
                 if(v.id===p.id&&parseFloat(v.monto)>0){
                   if(!costosVinc[g.categoria])costosVinc[g.categoria]=0;
                   costosVinc[g.categoria]+=parseFloat(v.monto)||0;
@@ -1241,26 +1252,31 @@ export default function App(){
                       ))}
                     </div>
                   )}
-                  {/* Lista de gastos */}
+                  {/* Lista de gastos agrupados por categoría */}
                   <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:8}}>GASTOS REGISTRADOS</div>
                   {gastosFiltrados.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>No hay gastos registrados en este período</div>}
-                  {[...gastosFiltrados].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(g=>{
-                    const catInfo=CATEGORIAS.find(c=>c.key===g.categoria);
+                  {CATEGORIAS.map(catInfo=>{
+                    const gastosCategoria=[...gastosFiltrados].filter(g=>g.categoria===catInfo.key).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+                    if(gastosCategoria.length===0)return null;
+                    const totalCat=gastosCategoria.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
                     return(
-                      <div key={g.id} className="card" style={{padding:"12px 16px",marginBottom:6,display:"flex",alignItems:"center",gap:10}}>
-                        <span style={{fontSize:20}}>{catInfo?.icon||"📦"}</span>
-                        <div style={{flex:1}}>
-                          <div style={{fontSize:13,fontWeight:500}}>{g.descripcion}</div>
-                          <div style={{fontSize:10,color:"#8a7a6a",display:"flex",alignItems:"center",gap:6}}>
-                            {catInfo?.label} · {formatFecha(g.fecha)}
-                            {g.tipo==="previsto"&&<span style={{background:"#f59e0b22",color:"#f59e0b",fontSize:9,padding:"1px 6px",fontWeight:600}}>PREVISTO</span>}
+                      <GrupoColapsable key={catInfo.key} titulo={`${catInfo.label} (${gastosCategoria.length})`} icon={catInfo.icon} color="#e85d26" count={"$"+totalCat.toLocaleString("es-AR")}>
+                        {gastosCategoria.map(g=>(
+                          <div key={g.id} className="card" style={{padding:"12px 16px",marginBottom:6,display:"flex",alignItems:"center",gap:10}}>
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:13,fontWeight:500}}>{g.descripcion}</div>
+                              <div style={{fontSize:10,color:"#8a7a6a",display:"flex",alignItems:"center",gap:6}}>
+                                {formatFecha(g.fecha)}
+                                {g.tipo==="previsto"&&<span style={{background:"#f59e0b22",color:"#f59e0b",fontSize:9,padding:"1px 6px",fontWeight:600}}>PREVISTO</span>}
+                              </div>
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{fontSize:14,fontWeight:600,color:"#ef4444"}}>${parseFloat(g.monto).toLocaleString("es-AR")}</div>
+                            </div>
+                            {usuario?.rol==="admin"&&<button className="btn" onClick={()=>eliminarGasto(g.id)} style={{padding:"4px 8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
                           </div>
-                        </div>
-                        <div style={{textAlign:"right"}}>
-                          <div style={{fontSize:14,fontWeight:600,color:"#ef4444"}}>${parseFloat(g.monto).toLocaleString("es-AR")}</div>
-                        </div>
-                        {usuario?.rol==="admin"&&<button className="btn" onClick={()=>eliminarGasto(g.id)} style={{padding:"4px 8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
-                      </div>
+                        ))}
+                      </GrupoColapsable>
                     );
                   })}
                 </div>
