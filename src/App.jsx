@@ -1007,9 +1007,16 @@ export default function App(){
                 {key:"marketing",label:"Marketing",icon:"📢",grupo:"Comercial"},
                 {key:"impuestos",label:"Impuestos",icon:"🏛️",grupo:"Comercial"},
                 {key:"flia_obelar",label:"Flia. Obelar Codas",icon:"👨‍👩‍👧",grupo:"Personal"},
+                {key:"prestamos",label:"Préstamos",icon:"🏦",grupo:"Personal"},
+                {key:"deuda_informal",label:"Deuda Informal",icon:"📝",grupo:"Personal"},
                 {key:"otros",label:"Otros",icon:"📦",grupo:"Otros"},
               ];
-              const CATEGORIAS=CATEGORIAS_ALL.filter(cat=>usuario?.nombre!=="Vivi"||cat.key!=="flia_obelar");
+              const CATEGORIAS=CATEGORIAS_ALL.filter(cat=>{
+                if(["flia_obelar","prestamos","deuda_informal"].includes(cat.key)){
+                  return usuario?.rol==="admin"||usuario?.nombre==="Gabi";
+                }
+                return true;
+              });
               const mesActual=mesSeleccionado||new Date().toISOString().slice(0,7);
               const mesDate=new Date(mesActual+"-01T12:00:00");
               const trimestre=Math.floor(mesDate.getMonth()/3);
@@ -1417,9 +1424,14 @@ export default function App(){
                       {key:"marketing",label:"📢 Marketing",grupo:"── Comercial ──"},
                       {key:"impuestos",label:"🏛️ Impuestos",grupo:null},
                       {key:"flia_obelar",label:"👨‍👩‍👧 Flia. Obelar Codas",grupo:"── Personal ──"},
+                      {key:"prestamos",label:"🏦 Préstamos",grupo:null},
+                      {key:"deuda_informal",label:"📝 Deuda Informal",grupo:null},
                       {key:"otros",label:"📦 Otros",grupo:"── Otros ──"},
-                    ].filter(c=>usuario?.nombre!=="Vivi"||c.key!=="flia_obelar");
-                    return cats.map(cat=>(
+                    ];
+                    const privadas=["flia_obelar","prestamos","deuda_informal"];
+                    const puedeVerPrivadas=usuario?.rol==="admin"||usuario?.nombre==="Gabi";
+                    const catsFiltradas=cats.filter(c=>!privadas.includes(c.key)||puedeVerPrivadas);
+                    return catsFiltradas.map(cat=>(
                       <Fragment key={cat.key}>
                         {cat.grupo&&<option disabled style={{color:"#8a7a6a",fontSize:10}}>{cat.grupo}</option>}
                         <option value={cat.key}>{cat.label}</option>
