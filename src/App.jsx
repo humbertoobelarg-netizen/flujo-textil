@@ -311,7 +311,7 @@ function GrupoColapsable({titulo,icon,color,count,children}){
 }
 
 // Card colapsable genérico
-function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtapa,miProceso,gastos=[],setFormGasto,setShowNuevoGasto,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido}){
+function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtapa,miProceso,gastos=[],stockTejido=[],setFormGasto,setShowNuevoGasto,setShowAsignarTejido,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido}){
   const [exp,setExp]=useState(false);
   const p=pedidos.find(x=>x.id===pedido.id)||pedido;
   const prog=pedidoProgreso(p);
@@ -423,6 +423,13 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
             );
           })()}
 
+          {/* Boton asignar tejido del stock */}
+          {(usuario?.rol==="admin"||usuario?.nombre==="Vivi")&&(p.prendas||[]).some(pr=>isRemera(pr.tipoPrenda))&&(
+            <button className="btn" onClick={()=>setShowAsignarTejido(p)}
+              style={{width:"100%",padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #06b6d4",color:"#06b6d4",letterSpacing:1,marginBottom:8}}>
+              🧵 ASIGNAR TEJIDO DEL STOCK
+            </button>
+          )}
           {/* Costos vinculados al pedido (solo Admin/Gabi) */}
           {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(()=>{
             const costosVinc={};
@@ -683,6 +690,7 @@ export default function App(){
   const [busquedaPedidoGasto,setBusquedaPedidoGasto]=useState("");
   const [stockTejido,setStockTejido]=useState([]);
   const [showNuevaCompra,setShowNuevaCompra]=useState(false);
+  const [showAsignarTejido,setShowAsignarTejido]=useState(null); // pedido
   const [formCompra,setFormCompra]=useState({fecha:hoy(),proveedor:"",items:[{tipo:"90",kilos:"",precioKg:""}],pedidosVinculados:[],tipoGasto:"real"});
   const [busquedaPedidoStock,setBusquedaPedidoStock]=useState("");
   const [showNuevoAjuste,setShowNuevoAjuste]=useState(false);
@@ -744,6 +752,42 @@ export default function App(){
     setFormAjuste({fecha:hoy(),tipo:"90",kilos:"",motivo:"sobrante",descripcion:""});
     setShowNuevoAjuste(false);
     showToast("✓ Ajuste registrado");
+  }
+
+  async function asignarTejidoStock(pedido, ancho){
+    const RENDS={"90":3.6,"120":3,"rib":2.3};
+    const TIPOS={"90":"Jersey 90cm","120":"Jersey 1.20m","rib":"Rib 0.70m"};
+    // Calculate metros needed from pedido prendas
+    let metrosNecesarios=0;
+    (pedido.prendas||[]).forEach(pr=>{
+      if(isRemera(pr.tipoPrenda)){
+        const tej=calcTejidoRemera(pr.talles||{});
+        if(ancho==="90")metrosNecesarios+=tej.a90;
+        else if(ancho==="120")metrosNecesarios+=tej.a120;
+        else if(ancho==="rib")metrosNecesarios+=tej.rib;
+      }
+    });
+    if(metrosNecesarios===0){showToast("No hay metros calculados para este pedido","#ef4444");return;}
+    // Calculate kilos needed from metros
+    const kilosNecesarios=metrosNecesarios/RENDS[ancho];
+    // Get PPP for this ancho
+    const stockAncho=stockTejido.filter(s=>s.ancho===ancho);
+    const totalKg=stockAncho.reduce((s,i)=>s+(parseFloat(i.kilos)||0),0);
+    const totalGs=stockAncho.reduce((s,i)=>s+(parseFloat(i.total)||0),0);
+    const ppp=totalKg>0?totalGs/totalKg:0;
+    if(ppp===0){showToast("No hay PPP disponible para este tejido","#ef4444");return;}
+    const costoTejido=Math.round(kilosNecesarios*ppp);
+    // Register as gasto linked to pedido
+    const nuevoGasto={id:"G"+Date.now(),fecha:hoy(),categoria:"mat_tejido",descripcion:`${TIPOS[ancho]} del stock (${metrosNecesarios.toFixed(2)} mts · ${kilosNecesarios.toFixed(2)} kg · PPP $${Math.round(ppp).toLocaleString("es-AR")}/kg)`,monto:costoTejido,tipo:"real",registrado_por:usuario?.nombre||"Admin",pedidos_vinculados:[{id:pedido.id,monto:costoTejido}]};
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/gastos`,{method:"POST",headers:H,body:JSON.stringify(nuevoGasto)});
+    if(!r.ok){showToast("Error al registrar","#ef4444");return;}
+    // Discount from stock (register negative entry)
+    const descuento={id:"ST"+Date.now(),fecha:hoy(),proveedor:"Descuento pedido "+pedido.id,ancho,kilos:-kilosNecesarios,precio_kg:ppp,total:-costoTejido,pedido_id:pedido.id,registrado_por:usuario?.nombre||"Admin"};
+    await fetch(`${SUPABASE_URL}/rest/v1/stock_tejido`,{method:"POST",headers:H,body:JSON.stringify(descuento)});
+    setGastos(prev=>[...prev,nuevoGasto]);
+    setStockTejido(prev=>[...prev,descuento]);
+    setShowAsignarTejido(null);
+    showToast(`✓ ${metrosNecesarios.toFixed(2)} mts asignados al pedido · Costo: $${costoTejido.toLocaleString("es-AR")}`);
   }
 
   async function crearCompraTejido(){
@@ -916,7 +960,7 @@ export default function App(){
     return true;
   }).sort((a,b)=>(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"));
 
-  const cardProps={pedidos,setPedidos,usuarios,gastos,setFormGasto,setShowNuevoGasto,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
+  const cardProps={pedidos,setPedidos,usuarios,gastos,stockTejido,setFormGasto,setShowNuevoGasto,setShowAsignarTejido,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
 
   return(
     <div style={{fontFamily:"'DM Mono','Courier New',monospace",minHeight:"100vh",background:"#f5f0e8",color:"#1a1208"}}>
@@ -1657,6 +1701,81 @@ export default function App(){
         </div>
       )}
 
+      {/* MODAL ASIGNAR TEJIDO DEL STOCK */}
+      {showAsignarTejido&&(()=>{
+        const p=showAsignarTejido;
+        const RENDS={"90":3.6,"120":3,"rib":2.3};
+        const TIPOS={"90":{label:"Jersey 90cm",color:"#06b6d4"},"120":{label:"Jersey 1.20m",color:"#a855f7"},"rib":{label:"Rib 0.70m (cuello)",color:"#f59e0b"}};
+        // Calculate metros per ancho
+        let mts90=0,mts120=0,mtsRib=0;
+        (p.prendas||[]).forEach(pr=>{
+          if(isRemera(pr.tipoPrenda)){
+            const tej=calcTejidoRemera(pr.talles||{});
+            mts90+=tej.a90;mts120+=tej.a120;mtsRib+=tej.rib;
+          }
+        });
+        const calcStock=(ancho)=>{
+          const items=stockTejido.filter(s=>s.ancho===ancho);
+          const totalKg=items.reduce((s,i)=>s+(parseFloat(i.kilos)||0),0);
+          const totalGs=items.reduce((s,i)=>s+(parseFloat(i.total)||0),0);
+          const ppp=totalKg>0?totalGs/totalKg:0;
+          return{totalKg,ppp};
+        };
+        const stock90=calcStock("90");
+        const stock120=calcStock("120");
+        const stockRib=calcStock("rib");
+        const opciones=[
+          {ancho:"90",label:"Jersey 90cm",color:"#06b6d4",mts:mts90,kg:mts90/RENDS["90"],stock:stock90},
+          {ancho:"120",label:"Jersey 1.20m",color:"#a855f7",mts:mts120,kg:mts120/RENDS["120"],stock:stock120},
+          {ancho:"rib",label:"Rib 0.70m (cuello)",color:"#f59e0b",mts:mtsRib,kg:mtsRib/RENDS["rib"],stock:stockRib},
+        ].filter(o=>o.mts>0);
+        return(
+          <div className="modal-bg" onClick={()=>setShowAsignarTejido(null)}>
+            <div className="modal" onClick={e=>e.stopPropagation()}>
+              <div style={{padding:"20px 24px",borderBottom:"1.5px solid #d8d0c0",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,color:"#06b6d4"}}>ASIGNAR TEJIDO DEL STOCK</div>
+              <div style={{padding:20}}>
+                <div style={{padding:"10px 14px",background:"#f5f0e8",marginBottom:16}}>
+                  <div style={{fontSize:11,fontWeight:600}}>{p.cliente}</div>
+                  <div style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {p.cantidad} uds</div>
+                </div>
+                <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:10}}>ELEGÍ EL TEJIDO A USAR</div>
+                {opciones.map(op=>{
+                  const costo=Math.round(op.kg*op.stock.ppp);
+                  const hayStock=op.stock.totalKg>=op.kg;
+                  return(
+                    <div key={op.ancho} style={{padding:"14px",border:`1.5px solid ${op.color}44`,marginBottom:8,background:hayStock?"#fff":"#fff0f0"}}>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:op.color,marginBottom:8}}>{op.label}</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:9,color:"#8a7a6a"}}>NECESITÁS</div>
+                          <div style={{fontSize:14,fontWeight:600}}>{op.mts.toFixed(2)} mts</div>
+                          <div style={{fontSize:10,color:"#8a7a6a"}}>{op.kg.toFixed(2)} kg</div>
+                        </div>
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:9,color:"#8a7a6a"}}>EN STOCK</div>
+                          <div style={{fontSize:14,fontWeight:600,color:hayStock?"#10b981":"#ef4444"}}>{op.stock.totalKg.toFixed(2)} kg</div>
+                          <div style={{fontSize:10,color:"#8a7a6a"}}>PPP: ${Math.round(op.stock.ppp).toLocaleString("es-AR")}/kg</div>
+                        </div>
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:9,color:"#8a7a6a"}}>COSTO EST.</div>
+                          <div style={{fontSize:14,fontWeight:600,color:op.color}}>${costo.toLocaleString("es-AR")}</div>
+                        </div>
+                      </div>
+                      {!hayStock&&<div style={{fontSize:11,color:"#ef4444",marginBottom:8}}>⚠ Stock insuficiente ({op.stock.totalKg.toFixed(2)}kg disponibles)</div>}
+                      <button className="btn" onClick={()=>asignarTejidoStock(p,op.ancho)} disabled={!hayStock||op.stock.ppp===0}
+                        style={{width:"100%",padding:"10px",fontSize:11,background:hayStock&&op.stock.ppp>0?op.color:"#c8bfaf",color:"#fff",letterSpacing:1,cursor:hayStock&&op.stock.ppp>0?"pointer":"not-allowed"}}>
+                        {op.stock.ppp===0?"SIN PRECIO EN STOCK":hayStock?"✓ USAR ESTE TEJIDO":"SIN STOCK SUFICIENTE"}
+                      </button>
+                    </div>
+                  );
+                })}
+                <button className="btn" onClick={()=>setShowAsignarTejido(null)} style={{width:"100%",padding:"10px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a",marginTop:8,letterSpacing:1}}>CANCELAR</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* MODAL NUEVA COMPRA TEJIDO */}
       {showNuevaCompra&&(
         <div className="modal-bg" onClick={()=>setShowNuevaCompra(false)}>
@@ -1672,8 +1791,9 @@ export default function App(){
                 const subtotal=(parseFloat(item.kilos)||0)*(parseFloat(item.precioKg)||0);
                 const RENDS={"90":3.6,"120":3,"rib":2.3};
                 const metros=item.kilos?((parseFloat(item.kilos)||0)*RENDS[item.tipo]).toFixed(1):0;
+                const pedidoVinc=item.pedidoId?pedidos.find(p=>p.id===item.pedidoId):null;
                 return(
-                  <div key={idx} style={{padding:"10px",background:"#f5f0e8",border:"1.5px solid #d8d0c0"}}>
+                  <div key={idx} style={{padding:"10px",background:"#f5f0e8",border:"1.5px solid #d8d0c0",marginBottom:6}}>
                     <div style={{display:"flex",gap:8,marginBottom:8}}>
                       <select style={{flex:1}} value={item.tipo} onChange={e=>{const its=[...formCompra.items];its[idx]={...its[idx],tipo:e.target.value};setFormCompra({...formCompra,items:its});}}>
                         <option value="90">Jersey 90cm</option>
@@ -1684,20 +1804,43 @@ export default function App(){
                         <button onClick={()=>setFormCompra({...formCompra,items:formCompra.items.filter((_,i)=>i!==idx)})} style={{border:"none",background:"none",cursor:"pointer",color:"#ef4444",fontSize:16}}>✕</button>
                       )}
                     </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:6}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                       <div><label style={{fontSize:9,color:"#8a7a6a",display:"block",marginBottom:3}}>KILOS</label><input type="number" min="0" style={{width:"100%"}} placeholder="0" value={item.kilos} onChange={e=>{const its=[...formCompra.items];its[idx]={...its[idx],kilos:e.target.value};setFormCompra({...formCompra,items:its});}}/></div>
                       <div><label style={{fontSize:9,color:"#8a7a6a",display:"block",marginBottom:3}}>PRECIO/KG</label><input type="number" min="0" style={{width:"100%"}} placeholder="0.00" value={item.precioKg} onChange={e=>{const its=[...formCompra.items];its[idx]={...its[idx],precioKg:e.target.value};setFormCompra({...formCompra,items:its});}}/></div>
                     </div>
+                    {/* Vincular pedido */}
+                    <div style={{marginBottom:6}}>
+                      <label style={{fontSize:9,color:"#8a7a6a",display:"block",marginBottom:3}}>PEDIDO (opcional)</label>
+                      {pedidoVinc?(
+                        <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",background:"#e85d2215",border:"1px solid #e85d2244"}}>
+                          <span style={{fontSize:11,flex:1}}>{pedidoVinc.id} — {pedidoVinc.cliente}</span>
+                          <button onClick={()=>{const its=[...formCompra.items];its[idx]={...its[idx],pedidoId:"",busquedaPedido:""};setFormCompra({...formCompra,items:its});}} style={{border:"none",background:"none",cursor:"pointer",color:"#ef4444",fontSize:13}}>✕</button>
+                        </div>
+                      ):(
+                        <div>
+                          <input type="text" placeholder="Buscar pedido por cliente o número..." value={item.busquedaPedido||""} onChange={e=>{const its=[...formCompra.items];its[idx]={...its[idx],busquedaPedido:e.target.value};setFormCompra({...formCompra,items:its});}} style={{width:"100%",fontSize:11}}/>
+                          {(item.busquedaPedido||"").trim()&&(
+                            <div style={{maxHeight:100,overflowY:"auto",border:"1px solid #d8d0c0",background:"#fff"}}>
+                              {pedidos.filter(p=>{const b=(item.busquedaPedido||"").toLowerCase();return(p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b);}).slice(0,5).map(p=>(
+                                <div key={p.id} onClick={()=>{const its=[...formCompra.items];its[idx]={...its[idx],pedidoId:p.id,busquedaPedido:""};setFormCompra({...formCompra,items:its});}} style={{padding:"6px 10px",fontSize:11,cursor:"pointer",borderBottom:"1px solid #f0ece4"}}>
+                                  {p.id} — {p.cliente} <span style={{color:"#8a7a6a"}}>({p.cantidad} uds)</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     {subtotal>0&&(
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#8a7a6a"}}>
-                        <span>≈ {metros} mts</span>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"5px 8px",background:"#fff",border:"1px solid #d8d0c0"}}>
+                        <span style={{color:"#8a7a6a"}}>≈ {metros} mts</span>
                         <span style={{fontWeight:600,color:"#1a1208"}}>Subtotal: ${subtotal.toLocaleString("es-AR")}</span>
                       </div>
                     )}
                   </div>
                 );
               })}
-              <button className="btn" onClick={()=>setFormCompra({...formCompra,items:[...formCompra.items,{tipo:"90",kilos:"",precioKg:""}]})} style={{padding:"8px",fontSize:11,background:"transparent",border:"1.5px dashed #c8bfaf",color:"#8a7a6a",letterSpacing:1}}>+ AGREGAR ÍTEM</button>
+              <button className="btn" onClick={()=>setFormCompra({...formCompra,items:[...formCompra.items,{tipo:"90",kilos:"",precioKg:"",pedidoId:"",busquedaPedido:""}]})} style={{padding:"8px",fontSize:11,background:"transparent",border:"1.5px dashed #c8bfaf",color:"#8a7a6a",letterSpacing:1}}>+ AGREGAR ÍTEM</button>
               {(()=>{
                 const totalFactura=formCompra.items.reduce((s,it)=>s+((parseFloat(it.kilos)||0)*(parseFloat(it.precioKg)||0)),0);
                 return totalFactura>0?(
