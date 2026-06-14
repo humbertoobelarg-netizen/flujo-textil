@@ -1456,9 +1456,10 @@ export default function App(){
                       return(
                         <div key={key} className="card" style={{padding:"12px"}}>
                           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:1,marginBottom:6,color:info.color}}>{info.label.toUpperCase()}</div>
-                          <div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>Stock</div>
-                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,marginBottom:6}}>{datos.totalKg.toLocaleString("es-AR")} kg</div>
-                          <div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>PPP</div>
+                          <div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>Stock total</div>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,marginBottom:4}}>{datos.totalKg.toFixed(1)} kg</div>
+                          {(()=>{const pc={};items.forEach(s=>{const col=s.color||"-";if(!pc[col])pc[col]=0;pc[col]+=parseFloat(s.kilos)||0;});return Object.entries(pc).filter(([,kg])=>kg>0).map(([col,kg])=>(<div key={col} style={{display:"flex",justifyContent:"space-between",fontSize:9,padding:"2px 4px",background:"#f5f0e8",marginBottom:1}}><span>{col}</span><span style={{fontWeight:600}}>{kg.toFixed(1)}kg</span></div>));})()}
+                          <div style={{fontSize:9,color:"#8a7a6a",marginTop:6,marginBottom:2}}>PPP</div>
                           <div style={{fontSize:12,fontWeight:600,marginBottom:6}}>${Math.round(datos.ppp).toLocaleString("es-AR")}/kg</div>
                           <div style={{padding:"6px",background:info.color+"15",border:`1px solid ${info.color}44`}}>
                             <div style={{fontSize:9,color:"#8a7a6a"}}>Costo/metro</div>
@@ -1737,6 +1738,7 @@ export default function App(){
                 <div style={{padding:"10px 14px",background:"#f5f0e8",marginBottom:16}}>
                   <div style={{fontSize:11,fontWeight:600}}>{p.cliente}</div>
                   <div style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {p.cantidad} uds</div>
+                  {(()=>{const cols=[...new Set((p.prendas||[]).filter(pr=>isRemera(pr.tipoPrenda)).map(pr=>pr.cuerpo).filter(Boolean))];return cols.length>0?(<div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}><span style={{fontSize:9,color:"#8a7a6a"}}>Colores:</span>{cols.map(col=>(<span key={col} style={{fontSize:10,background:"#e85d2222",color:"#e85d26",padding:"1px 6px",fontWeight:600}}>{col}</span>))}</div>):null;})()}
                 </div>
                 <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:10}}>ELEGÍ EL TEJIDO A USAR</div>
                 {opciones.map(op=>{
@@ -1761,6 +1763,12 @@ export default function App(){
                           <div style={{fontSize:14,fontWeight:600,color:op.color}}>${costo.toLocaleString("es-AR")}</div>
                         </div>
                       </div>
+                      {(()=>{
+                        const coloresPrenda=[...new Set((p.prendas||[]).filter(pr=>isRemera(pr.tipoPrenda)).map(pr=>pr.cuerpo).filter(Boolean))];
+                        const pc={};stockTejido.filter(s=>s.ancho===op.ancho).forEach(s=>{const col=s.color||"-";if(!pc[col])pc[col]=0;pc[col]+=parseFloat(s.kilos)||0;});
+                        const colsFilt=Object.entries(pc).filter(([,kg])=>kg>0);
+                        return colsFilt.length>0?(<div style={{marginBottom:8}}>{colsFilt.map(([col,kg])=>{const match=coloresPrenda.some(c=>c?.toLowerCase()===col?.toLowerCase());return(<div key={col} style={{display:"flex",justifyContent:"space-between",fontSize:10,padding:"3px 8px",background:match?"#10b98115":"#f5f0e8",border:match?"1px solid #10b98144":"none",marginBottom:2}}><span>{match?"✓ ":""}{col}</span><span style={{fontWeight:600}}>{kg.toFixed(1)} kg</span></div>);})}</div>):null;
+                      })()}
                       {!hayStock&&<div style={{fontSize:11,color:"#ef4444",marginBottom:8}}>⚠ Stock insuficiente ({op.stock.totalKg.toFixed(2)}kg disponibles)</div>}
                       <button className="btn" onClick={()=>asignarTejidoStock(p,op.ancho)} disabled={!hayStock||op.stock.ppp===0}
                         style={{width:"100%",padding:"10px",fontSize:11,background:hayStock&&op.stock.ppp>0?op.color:"#c8bfaf",color:"#fff",letterSpacing:1,cursor:hayStock&&op.stock.ppp>0?"pointer":"not-allowed"}}>
@@ -1840,7 +1848,7 @@ export default function App(){
                   </div>
                 );
               })}
-              <button className="btn" onClick={()=>setFormCompra({...formCompra,items:[...formCompra.items,{tipo:"90",kilos:"",precioKg:"",pedidoId:"",busquedaPedido:""}]})} style={{padding:"8px",fontSize:11,background:"transparent",border:"1.5px dashed #c8bfaf",color:"#8a7a6a",letterSpacing:1}}>+ AGREGAR ÍTEM</button>
+              <button className="btn" onClick={()=>setFormCompra({...formCompra,items:[...formCompra.items,{tipo:"90",color:"",kilos:"",precioKg:"",pedidoId:"",busquedaPedido:""}]})} style={{padding:"8px",fontSize:11,background:"transparent",border:"1.5px dashed #c8bfaf",color:"#8a7a6a",letterSpacing:1}}>+ AGREGAR ÍTEM</button>
               {(()=>{
                 const totalFactura=formCompra.items.reduce((s,it)=>s+((parseFloat(it.kilos)||0)*(parseFloat(it.precioKg)||0)),0);
                 return totalFactura>0?(
