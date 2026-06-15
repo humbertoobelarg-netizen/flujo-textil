@@ -1067,9 +1067,24 @@ export default function App(){
           const b=busquedaOp.toLowerCase();
           return(p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b);
         }).sort((a,b)=>(a.creado||"9999").localeCompare(b.creado||"9999"));
-        const nuevos=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="pendiente"&&!p.entregado;});
-        const enProceso=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="en_proceso"&&!p.entregado;});
-        const listos=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="listo"&&!p.entregado;});
+        const nuevos=filtrados.filter(p=>{
+          if(p.entregado)return false;
+          if(miProceso==="orden") return pedidoProgreso(pedidos.find(x=>x.id===p.id)||p)===0;
+          const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";
+          return et==="pendiente";
+        });
+        const enProceso=filtrados.filter(p=>{
+          if(p.entregado)return false;
+          if(miProceso==="orden"){const prog=pedidoProgreso(pedidos.find(x=>x.id===p.id)||p);return prog>0&&prog<100;}
+          const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";
+          return et==="en_proceso";
+        });
+        const listos=filtrados.filter(p=>{
+          if(p.entregado)return false;
+          if(miProceso==="orden") return pedidoProgreso(pedidos.find(x=>x.id===p.id)||p)===100;
+          const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";
+          return et==="listo";
+        });
         const entregadosOp=filtrados.filter(p=>p.entregado);
         const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevos},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProceso},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:listos},{titulo:"ENTREGADOS",icon:"🚀",color:"#64748b",items:entregadosOp}];
         return(
