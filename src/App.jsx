@@ -637,6 +637,26 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
               />
             </div>
           )}
+          {/* Botón entregado */}
+          {!p.entregado&&usuario?.nombre===p.creado_por&&(
+            <button className="btn" onClick={()=>{setShowEntregarModal(p);setFormEntrega({tipoPago:"pagado",montoCobrado:"",diasCredito:""});}}
+              style={{width:"100%",padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #64748b",color:"#64748b",letterSpacing:1,marginBottom:8}}>
+              🚀 MARCAR COMO ENTREGADO
+            </button>
+          )}
+          {p.entregado&&(usuario?.rol==="admin"||usuario?.nombre===p.creado_por)&&(
+            <div style={{padding:"8px 10px",background:"#64748b15",border:"1.5px solid #64748b44",marginBottom:8}}>
+              <div style={{fontSize:10,color:"#64748b",fontWeight:600}}>🚀 ENTREGADO el {formatFecha(p.fecha_entrega_real)}</div>
+              {p.tipo_pago_entrega==="credito"&&<div style={{fontSize:10,color:"#f59e0b"}}>📋 A crédito {p.dias_credito} días</div>}
+              {(usuario?.rol==="admin"||usuario?.nombre===p.creado_por)&&(
+                <button className="btn" onClick={async()=>{
+                  await dbPatch("pedidos",p.id,{entregado:false,fecha_entrega_real:null,tipo_pago_entrega:null,dias_credito:null});
+                  setPedidos(prev=>prev.map(x=>x.id===p.id?{...x,entregado:false,fecha_entrega_real:null}:x));
+                  showToast("↩ Movido a Terminados");
+                }} style={{fontSize:10,padding:"4px 10px",background:"transparent",border:"1px solid #c8bfaf",color:"#8a7a6a",marginTop:6,letterSpacing:0.5}}>↩ DESHACER</button>
+              )}
+            </div>
+          )}
           {/* Botones admin */}
           {!miProceso&&(
             <div style={{marginTop:10,display:"flex",gap:8,justifyContent:"flex-end"}}>
@@ -691,6 +711,8 @@ export default function App(){
   const [stockTejido,setStockTejido]=useState([]);
   const [showNuevaCompra,setShowNuevaCompra]=useState(false);
   const [showAsignarTejido,setShowAsignarTejido]=useState(null); // pedido
+  const [showEntregarModal,setShowEntregarModal]=useState(null); // pedido
+  const [formEntrega,setFormEntrega]=useState({tipoPago:"pagado",montoCobrado:"",diasCredito:""});
   const [formCompra,setFormCompra]=useState({fecha:hoy(),proveedor:"",items:[{tipo:"90",kilos:"",precioKg:""}],pedidosVinculados:[],tipoGasto:"real"});
   const [busquedaPedidoStock,setBusquedaPedidoStock]=useState("");
   const [showNuevoAjuste,setShowNuevoAjuste]=useState(false);
@@ -752,6 +774,22 @@ export default function App(){
     setFormAjuste({fecha:hoy(),tipo:"90",kilos:"",motivo:"sobrante",descripcion:""});
     setShowNuevoAjuste(false);
     showToast("✓ Ajuste registrado");
+  }
+
+  async function marcarEntregado(pedido){
+    const {tipoPago,montoCobrado,diasCredito}=formEntrega;
+    if(!montoCobrado){showToast("Ingresá el monto cobrado","#ef4444");return;}
+    if(tipoPago==="credito"&&!diasCredito){showToast("Ingresá los días de crédito","#ef4444");return;}
+    // Register final payment
+    const pagos=[...(pedido.pagos||[])];
+    const pagoFinal={monto:parseFloat(montoCobrado),tipo:tipoPago==="credito"?`crédito ${diasCredito} días`:"efectivo",fecha:hoy(),registrado_por:usuario?.nombre||"Admin"};
+    pagos.push(pagoFinal);
+    const updates={entregado:true,fecha_entrega_real:hoy(),pagos,tipo_pago_entrega:tipoPago,dias_credito:tipoPago==="credito"?parseInt(diasCredito):null};
+    await dbPatch("pedidos",pedido.id,updates);
+    setPedidos(prev=>prev.map(x=>x.id===pedido.id?{...x,...updates}:x));
+    setShowEntregarModal(null);
+    setFormEntrega({tipoPago:"pagado",montoCobrado:"",diasCredito:""});
+    showToast("✓ Pedido marcado como entregado");
   }
 
   async function asignarTejidoStock(pedido, ancho){
@@ -958,7 +996,7 @@ export default function App(){
       }
     }
     return true;
-  }).sort((a,b)=>(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"));
+  }).sort((a,b)=>(a.creado||"9999").localeCompare(b.creado||"9999"));
 
   const cardProps={pedidos,setPedidos,usuarios,gastos,stockTejido,setFormGasto,setShowNuevoGasto,setShowAsignarTejido,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
 
@@ -1028,11 +1066,12 @@ export default function App(){
           if(!busquedaOp.trim())return true;
           const b=busquedaOp.toLowerCase();
           return(p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b);
-        }).sort((a,b)=>(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"));
-        const nuevos=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="pendiente";});
-        const enProceso=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="en_proceso";});
-        const listos=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="listo";});
-        const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevos},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProceso},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:listos}];
+        }).sort((a,b)=>(a.creado||"9999").localeCompare(b.creado||"9999"));
+        const nuevos=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="pendiente"&&!p.entregado;});
+        const enProceso=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="en_proceso"&&!p.entregado;});
+        const listos=filtrados.filter(p=>{const et=((pedidos.find(x=>x.id===p.id)||p).procesos||{})[miProceso]||"pendiente";return et==="listo"&&!p.entregado;});
+        const entregadosOp=filtrados.filter(p=>p.entregado);
+        const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevos},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProceso},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:listos},{titulo:"ENTREGADOS",icon:"🚀",color:"#64748b",items:entregadosOp}];
         return(
           <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column"}}>
             <div style={{padding:"16px 20px",borderBottom:"1.5px solid #d8d0c0",background:"#fff",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -1109,10 +1148,11 @@ export default function App(){
                 </div>
                 <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
                 {(()=>{
-                  const nuevos=pedidosFiltrados.filter(p=>pedidoProgreso(p)===0);
-                  const enProc=pedidosFiltrados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100);
-                  const term=pedidosFiltrados.filter(p=>pedidoProgreso(p)===100);
-                  const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevos},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProc},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:term}];
+                  const nuevos=pedidosFiltrados.filter(p=>pedidoProgreso(p)===0&&!p.entregado);
+                  const enProc=pedidosFiltrados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100&&!p.entregado);
+                  const term=pedidosFiltrados.filter(p=>pedidoProgreso(p)===100&&!p.entregado);
+                  const entregados=pedidosFiltrados.filter(p=>p.entregado);
+                  const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevos},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProc},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:term},{titulo:"ENTREGADOS",icon:"🚀",color:"#64748b",items:entregados}];
                   return grupos.map(grupo=>(
                     <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} color={grupo.color} count={grupo.items.length}>
                       {grupo.items.map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
@@ -1696,6 +1736,58 @@ export default function App(){
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button className="btn" onClick={()=>setShowNuevoAjuste(false)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
                 <button className="btn" onClick={crearAjusteStock} style={{padding:"10px 20px",fontSize:11,background:"#f59e0b",color:"#fff",letterSpacing:1}}>REGISTRAR</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ENTREGAR PEDIDO */}
+      {showEntregarModal&&(
+        <div className="modal-bg" onClick={()=>setShowEntregarModal(null)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div style={{padding:"20px 24px",borderBottom:"1.5px solid #d8d0c0",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#64748b"}}>🚀 ENTREGAR PEDIDO</div>
+            <div style={{padding:24,display:"flex",flexDirection:"column",gap:14}}>
+              <div style={{padding:"10px 14px",background:"#f5f0e8",border:"1.5px solid #d8d0c0"}}>
+                <div style={{fontSize:13,fontWeight:600}}>{showEntregarModal.cliente}</div>
+                <div style={{fontSize:11,color:"#8a7a6a"}}>{showEntregarModal.id} · {showEntregarModal.cantidad} uds</div>
+                {(()=>{
+                  const tg=calcTotalGral(showEntregarModal.prendas||[]);
+                  const pagado=(showEntregarModal.pagos||[]).reduce((s,pg)=>s+(parseFloat(pg.monto)||0),0);
+                  const ant=parseFloat(showEntregarModal.anticipo)||0;
+                  const saldo=tg-ant-pagado;
+                  return tg>0?(
+                    <div style={{marginTop:6,fontSize:11}}>
+                      <span style={{color:"#8a7a6a"}}>Saldo pendiente: </span>
+                      <span style={{fontWeight:600,color:"#e85d26"}}>${saldo.toLocaleString("es-AR")}</span>
+                    </div>
+                  ):null;
+                })()}
+              </div>
+              <div>
+                <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:8}}>FORMA DE PAGO AL ENTREGAR</label>
+                <div style={{display:"flex",gap:8}}>
+                  {[["pagado","✅ Cobrado"],["credito","📋 A crédito"]].map(([k,l])=>(
+                    <button key={k} className="btn" onClick={()=>setFormEntrega({...formEntrega,tipoPago:k})}
+                      style={{flex:1,padding:"10px",fontSize:12,background:formEntrega.tipoPago===k?"#1a1208":"#f5f0e8",color:formEntrega.tipoPago===k?"#f5f0e8":"#1a1208",border:"1.5px solid #d8d0c0",letterSpacing:0.5}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>MONTO COBRADO AL ENTREGAR *</label>
+                <input type="number" min="0" style={{width:"100%"}} placeholder="0.00" value={formEntrega.montoCobrado} onChange={e=>setFormEntrega({...formEntrega,montoCobrado:e.target.value})}/>
+              </div>
+              {formEntrega.tipoPago==="credito"&&(
+                <div>
+                  <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>DÍAS DE CRÉDITO *</label>
+                  <input type="number" min="1" style={{width:"100%"}} placeholder="Ej: 30" value={formEntrega.diasCredito} onChange={e=>setFormEntrega({...formEntrega,diasCredito:e.target.value})}/>
+                </div>
+              )}
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <button className="btn" onClick={()=>setShowEntregarModal(null)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
+                <button className="btn" onClick={()=>marcarEntregado(showEntregarModal)} style={{padding:"10px 20px",fontSize:11,background:"#64748b",color:"#fff",letterSpacing:1}}>✓ CONFIRMAR ENTREGA</button>
               </div>
             </div>
           </div>
