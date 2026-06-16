@@ -28,6 +28,13 @@ const PRIORIDADES=[{key:"alta",label:"Alta",color:"#ef4444"},{key:"media",label:
 const ETAPA_LABEL={pendiente:"Pendiente",en_proceso:"En proceso",listo:"✓ Listo"};
 const ETAPA_COLOR={pendiente:"#64748b",en_proceso:"#f59e0b",listo:"#10b981"};
 const TALLES_LIST=["2","4","6","8","10","12","14","16","P","M","G","XG","XXG","XXXG","XXXXG","Especial"];
+const COLORES_TEJIDO=["Amarillo Oro","Naranja","Rojo","Bordo","Lila","Fucsia","Rosa Pastel","Blanco","Negro","Gris Fábrica","Gris Melange","Celeste Pastel","Celeste Fábrica","Turquesa","Azul Francia","Azul Marino","Verde Militar","Verde Musgo","Verde Hoja","Verde Manzana","Verde Limón","Verde Pastel","Amarillo Pastel","Amarillo Limón"];
+const TIPOS_TEJIDO_LIST=["Jersey","Piqué","Dry","Deportivo especial","Elizabeth"];
+const MOLDERIA_LIST=["Unisex","Dama"];
+const MANGA_TIPOS=["Corta","Larga"];
+const CUELLO_TIPOS=["Redondo","V Cruzado","V Encontrado","Polo Comprado","Polo Preparado"];
+const PUNO_OPCIONES=["Ruedo","Preparado",...COLORES_TEJIDO];
+
 const TIPOS_PRENDA=["Remera cuello redondo","Remera cuello V","Remera Polo","Camisilla","Pantalón Buzo","Campera Buzo","Canguro","Campera","Chaleco","Bermuda","Short","Otro"];
 const CONSUMO_REMERA={"2":{a90:0.28,a120:0.24},"4":{a90:0.29,a120:0.25},"6":{a90:0.30,a120:0.25},"8":{a90:0.31,a120:0.26},"10":{a90:0.42,a120:0.33},"12":{a90:0.43,a120:0.35},"14":{a90:0.45,a120:0.36},"16":{a90:0.47,a120:0.38},"P":{a90:0.64,a120:0.39},"M":{a90:0.66,a120:0.50},"G":{a90:0.68,a120:0.52},"XG":{a90:0.71,a120:0.54},"XXG":{a90:0.74,a120:0.58},"XXXG":{a90:0.78,a120:0.60},"XXXXG":{a90:1.15,a120:1.00},"Especial":{a90:1.20,a120:1.10}};
 const PRENDA_INIT={tipoPrenda:"",tipoPrendaOtro:"",tipoTejido:"",molderia:"",cuerpo:"",manga:"",color:"",puno:"",cuello:"",colorCuello:"",talles:{},precioUnit:"",cantidad:""};
@@ -206,14 +213,54 @@ function PrendaForm({prenda,idx,onChange}){
             {prenda.tipoPrenda==="Otro"&&<input type="text" style={{width:"100%"}} placeholder="Especificar..." value={prenda.tipoPrendaOtro||""} onChange={e=>onChange({...prenda,tipoPrendaOtro:e.target.value})}/>}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>TIPO DE TEJIDO</label><input type="text" style={{width:"100%"}} placeholder="Algodón..." value={prenda.tipoTejido||""} onChange={e=>onChange({...prenda,tipoTejido:e.target.value})}/></div>
-            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>MOLDERÍA</label><input type="text" style={{width:"100%"}} placeholder="Moldería..." value={prenda.molderia||""} onChange={e=>onChange({...prenda,molderia:e.target.value})}/></div>
-            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>CUERPO COLOR</label><input type="text" style={{width:"100%"}} value={prenda.cuerpo||""} onChange={e=>onChange({...prenda,cuerpo:e.target.value})}/></div>
-            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>MANGA TIPO</label><input type="text" style={{width:"100%"}} value={prenda.manga||""} onChange={e=>onChange({...prenda,manga:e.target.value})}/></div>
-            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>MANGA COLOR</label><input type="text" style={{width:"100%"}} value={prenda.color||""} onChange={e=>onChange({...prenda,color:e.target.value})}/></div>
-            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>PUÑO</label><input type="text" style={{width:"100%"}} value={prenda.puno||""} onChange={e=>onChange({...prenda,puno:e.target.value})}/></div>
-            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>CUELLO TIPO</label><input type="text" style={{width:"100%"}} value={prenda.cuello||""} onChange={e=>onChange({...prenda,cuello:e.target.value})}/></div>
-            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>COLOR CUELLO</label><input type="text" style={{width:"100%"}} value={prenda.colorCuello||""} onChange={e=>onChange({...prenda,colorCuello:e.target.value})}/></div>
+            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>TIPO DE TEJIDO</label>
+              <select style={{width:"100%"}} value={prenda.tipoTejido||""} onChange={e=>onChange({...prenda,tipoTejido:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {TIPOS_TEJIDO_LIST.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>MOLDERÍA</label>
+              <select style={{width:"100%"}} value={prenda.molderia||""} onChange={e=>onChange({...prenda,molderia:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {MOLDERIA_LIST.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>COLOR CUERPO</label>
+              <select style={{width:"100%"}} value={prenda.cuerpo||""} onChange={e=>onChange({...prenda,cuerpo:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {COLORES_TEJIDO.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>MANGA TIPO</label>
+              <select style={{width:"100%"}} value={prenda.manga||""} onChange={e=>onChange({...prenda,manga:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {MANGA_TIPOS.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>COLOR MANGA</label>
+              <select style={{width:"100%"}} value={prenda.color||""} onChange={e=>onChange({...prenda,color:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {COLORES_TEJIDO.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>PUÑO</label>
+              <select style={{width:"100%"}} value={prenda.puno||""} onChange={e=>onChange({...prenda,puno:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {PUNO_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>TIPO CUELLO</label>
+              <select style={{width:"100%"}} value={prenda.cuello||""} onChange={e=>onChange({...prenda,cuello:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {CUELLO_TIPOS.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>COLOR CUELLO (RIB)</label>
+              <select style={{width:"100%"}} value={prenda.colorCuello||""} onChange={e=>onChange({...prenda,colorCuello:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {COLORES_TEJIDO.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
           </div>
           <div>
             <label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:6}}>TALLES Y CANTIDADES</label>
