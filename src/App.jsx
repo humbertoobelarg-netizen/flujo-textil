@@ -643,12 +643,33 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
             </div>
           )}
           {/* Botón entregado */}
-          {!p.entregado&&usuario?.nombre===p.creado_por&&(
-            <button className="btn" onClick={()=>{setShowEntregarModal(p);setFormEntrega({tipoPago:"pagado",montoCobrado:"",diasCredito:""});}}
-              style={{width:"100%",padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #64748b",color:"#64748b",letterSpacing:1,marginBottom:8}}>
-              🚀 MARCAR COMO ENTREGADO
-            </button>
-          )}
+          {!p.entregado&&(usuario?.nombre===p.creado_por||usuario?.nombre==="Gabi"||usuario?.rol==="admin")&&(()=>{
+            const tg=calcTotalGral(p.prendas||[]);
+            const ant=parseFloat(p.anticipo)||0;
+            const pagado=(p.pagos||[]).reduce((s,pg)=>s+(parseFloat(pg.monto)||0),0);
+            const saldo=Math.round(tg-ant-pagado);
+            const saldoCero=tg===0||saldo<=0;
+            return(
+              <button className="btn" onClick={async()=>{
+                const procesosInc=(p.procesos_activos||[]).filter(k=>(p.procesos||{})[k]!=="listo");
+                if(procesosInc.length>0){
+                  const nombres=procesosInc.map(k=>PROCESOS.find(pr=>pr.key===k)?.label||k).join(", ");
+                  if(!window.confirm(`⚠️ Hay procesos sin completar:\n${nombres}\n\n¿Querés entregar igual?`))return;
+                }
+                if(saldoCero){
+                  const updates={entregado:true,fecha_entrega_real:hoy(),tipo_pago_entrega:"pagado",dias_credito:null,procesos_pendientes_al_entregar:procesosInc};
+                  await dbPatch("pedidos",p.id,updates);
+                  setPedidos(prev=>prev.map(x=>x.id===p.id?{...x,...updates}:x));
+                  showToast("✓ Pedido marcado como entregado");
+                }else{
+                  setShowEntregarModal(p);
+                  setFormEntrega({tipoPago:"pagado",montoCobrado:"",diasCredito:""});
+                }
+              }} style={{width:"100%",padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #64748b",color:"#64748b",letterSpacing:1,marginBottom:8}}>
+                🚀 MARCAR COMO ENTREGADO{saldoCero?" (saldo $0)":` (saldo $${saldo.toLocaleString("es-AR")})`}
+              </button>
+            );
+          })()}
           {p.entregado&&(usuario?.rol==="admin"||usuario?.nombre===p.creado_por)&&(
             <div style={{padding:"8px 10px",background:"#64748b15",border:"1.5px solid #64748b44",marginBottom:8}}>
               <div style={{fontSize:10,color:"#64748b",fontWeight:600}}>🚀 ENTREGADO el {formatFecha(p.fecha_entrega_real)}</div>
