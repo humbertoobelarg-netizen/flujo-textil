@@ -242,14 +242,12 @@ function PrendaForm({prenda,idx,onChange}){
 }
 
 function AlertasVencimiento({pedidos,usuario}){
-  const [cerrado,setCerrado]=useState(false);
-  if(cerrado)return null;
   const puedeVer=usuario?.rol==="admin"||["Vivi","Romina","Andrea"].includes(usuario?.nombre)||usuario?.proceso==="orden";
   if(!puedeVer)return null;
   const porVencer=pedidos.filter(p=>{
     const dias=diasHasta(p.fecha_entrega);
     const prog=pedidoProgreso(p);
-    if(prog===100||dias<0||dias>4)return false;
+    if(prog===100||p.entregado||dias<0||dias>4)return false;
     if(usuario?.rol==="admin"||usuario?.nombre==="Vivi")return true;
     if(usuario?.proceso==="orden")return p.creado_por===usuario.nombre;
     if(usuario?.nombre==="Andrea")return(p.procesos_activos||[]).includes("terminacion");
@@ -258,7 +256,7 @@ function AlertasVencimiento({pedidos,usuario}){
   const vencidos=pedidos.filter(p=>{
     const dias=diasHasta(p.fecha_entrega);
     const prog=pedidoProgreso(p);
-    if(prog===100||dias>=0)return false;
+    if(prog===100||p.entregado||dias>=0)return false;
     if(usuario?.rol==="admin"||usuario?.nombre==="Vivi")return true;
     if(usuario?.proceso==="orden")return p.creado_por===usuario.nombre;
     if(usuario?.nombre==="Andrea")return(p.procesos_activos||[]).includes("terminacion");
@@ -276,7 +274,6 @@ function AlertasVencimiento({pedidos,usuario}){
               <div key={p.id} style={{fontSize:11,color:"#1a1208",marginBottom:2}}>• {p.cliente} <span style={{color:"#ef4444"}}>({formatFecha(p.fecha_entrega)})</span></div>
             ))}
           </div>
-          <button onClick={()=>setCerrado(true)} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>
         </div>
       )}
       {porVencer.length>0&&(
@@ -288,7 +285,7 @@ function AlertasVencimiento({pedidos,usuario}){
               <div key={p.id} style={{fontSize:11,color:"#1a1208",marginBottom:2}}>• {p.cliente} <span style={{color:"#f59e0b"}}>({diasHasta(p.fecha_entrega)} días — {formatFecha(p.fecha_entrega)})</span></div>
             ))}
           </div>
-          <button onClick={()=>setCerrado(true)} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>
+
         </div>
       )}
     </div>
@@ -557,9 +554,17 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                 <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:6}}>PAGOS</div>
                 {pagos.length===0&&<div style={{fontSize:11,color:"#b0a898",marginBottom:6}}>Sin pagos</div>}
                 {pagos.map((pg,i)=>(
-                  <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 8px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:3,fontSize:11}}>
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 8px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:3,fontSize:11}}>
                     <span style={{fontWeight:600}}>${parseFloat(pg.monto).toLocaleString("es-AR")}</span>
                     <span style={{color:"#8a7a6a"}}>{pg.tipo} · {formatFecha(pg.fecha)}</span>
+                    {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(
+                      <button onClick={async()=>{
+                        const nuevosPagos=pagos.filter((_,idx)=>idx!==i);
+                        await dbPatch("pedidos",p.id,{pagos:nuevosPagos});
+                        setPedidos(prev=>prev.map(x=>x.id===p.id?{...x,pagos:nuevosPagos}:x));
+                        showToast("✓ Pago eliminado");
+                      }} style={{border:"none",background:"none",cursor:"pointer",color:"#ef4444",fontSize:13,padding:"0 4px"}}>✕</button>
+                    )}
                   </div>
                 ))}
                 <div style={{display:"flex",justifyContent:"space-between",padding:"5px 8px",background:"#1a1208",color:"#f5f0e8",fontSize:11,marginTop:4,marginBottom:6}}>
@@ -663,10 +668,10 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
               {(usuario?.rol==="admin"||usuario?.nombre==="Vivi"||usuario?.nombre===p.creado_por)&&setShowAgregado&&(
                 <button className="btn" onClick={()=>{setShowAgregado(p);setFormAgregado({prendas:[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],anticipo:""}); }} style={{padding:"7px 14px",fontSize:11,background:"transparent",border:"1.5px solid #10b981",color:"#10b981",letterSpacing:1}}>+ AGREGAR</button>
               )}
-              {usuario?.rol==="admin"&&setEditandoPedido&&(
+              {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&setEditandoPedido&&(
                 <button className="btn" onClick={()=>{setEditandoPedido(p.id);setFormEditar({cliente:p.cliente,prioridad:p.prioridad,fechaEntrega:p.fecha_entrega,descripcion:p.descripcion||"",datosFactura:p.datos_factura||"",anticipo:p.anticipo||"",prendas:p.prendas||[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],procesosActivos:p.procesos_activos||[]});}} style={{padding:"7px 14px",fontSize:11,background:"transparent",border:"1.5px solid #e85d26",color:"#e85d26",letterSpacing:1}}>✏️ EDITAR</button>
               )}
-              {usuario?.rol==="admin"&&eliminarPedido&&(
+              {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&eliminarPedido&&(
                 <button className="btn" onClick={()=>eliminarPedido(p.id)} style={{padding:"7px 14px",fontSize:11,background:"transparent",border:"1.5px solid #ef4444",color:"#ef4444",letterSpacing:1}}>ELIMINAR</button>
               )}
             </div>
@@ -1133,8 +1138,8 @@ export default function App(){
               <button className="btn" onClick={handleLogout} style={{padding:"9px 14px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf",letterSpacing:1}}>SALIR</button>
             </div>
           </div>
-          <div style={{display:"flex",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:24}}>
-            {[["pedidos","PEDIDOS"],["tablero","TABLERO"],["equipo","EQUIPO"],["finanzas","FINANZAS"],["stock","STOCK"]].filter(([k])=>{
+          <div style={{display:"flex",flexWrap:"wrap",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:12}}>
+            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["finanzas","FINANZAS"]].filter(([k])=>{
               if(usuario?.rol==="admin")return true;
               if(k==="equipo")return false;
               if(k==="finanzas")return usuario?.nombre==="Gabi";
