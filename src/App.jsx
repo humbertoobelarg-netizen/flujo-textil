@@ -1203,11 +1203,12 @@ ${nombres}
             </div>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:12}}>
-            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["finanzas","FINANZAS"]].filter(([k])=>{
+            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"]].filter(([k])=>{
               if(usuario?.rol==="admin")return true;
               if(k==="equipo")return false;
               if(k==="finanzas")return usuario?.nombre==="Gabi";
               if(k==="stock")return usuario?.rol==="admin"||usuario?.nombre==="Vivi";
+              if(k==="mis_gastos")return usuario?.nombre==="Vivi";
               return true;
             }).map(([k,l])=>(
               <div key={k} className={`tab${adminTab===k?" active":""}`} onClick={()=>setAdminTab(k)} style={{fontSize:11,letterSpacing:2}}>{l}</div>
@@ -1609,6 +1610,60 @@ ${nombres}
                           {esAjuste&&<div style={{fontSize:12,color:"#f59e0b"}}>{parseFloat(s.kilos)>0?"+":""}{s.kilos}kg</div>}
                         </div>
                         {(usuario?.rol==="admin"||usuario?.nombre==="Vivi")&&<button className="btn" onClick={()=>eliminarCompraTejido(s.id)} style={{padding:"4px 8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {adminTab==="mis_gastos"&&(()=>{
+              const CATEGORIAS_VIVI=[
+                {key:"mat_tejido",label:"Tejido",icon:"🧵"},
+                {key:"mat_serigrafia",label:"Serigrafía / DTF / Sub",icon:"🖨️"},
+                {key:"mat_confeccion",label:"Confección / Bordado",icon:"🪡"},
+                {key:"mat_empaque",label:"Empaque / Limpieza",icon:"📦"},
+                {key:"pago_terceros",label:"Pago Tercerizados",icon:"🤝"},
+                {key:"mano_obra",label:"Mano de obra",icon:"👷"},
+                {key:"envio",label:"Envío de pedidos",icon:"🚚"},
+                {key:"combustible",label:"Combustible",icon:"⛽"},
+                {key:"alquiler",label:"Alquiler",icon:"🏠"},
+                {key:"servicios",label:"Servicios",icon:"💡"},
+                {key:"mantenimiento",label:"Mantenimiento",icon:"🔧"},
+                {key:"marketing",label:"Marketing",icon:"📢"},
+                {key:"impuestos",label:"Impuestos",icon:"🏛️"},
+                {key:"otros",label:"Otros",icon:"📦"},
+              ];
+              const misGastos=[...gastos].filter(g=>g.registrado_por===usuario?.nombre).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+              const total=misGastos.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
+              return(
+                <div>
+                  <button className="btn" onClick={()=>setShowNuevoGasto(true)} style={{width:"100%",padding:"12px",fontSize:12,background:"#e85d26",color:"#fff",letterSpacing:1,marginBottom:12}}>+ REGISTRAR GASTO</button>
+                  {misGastos.length>0&&(
+                    <div style={{padding:"12px 16px",background:"#1a1208",color:"#f5f0e8",marginBottom:12}}>
+                      <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1}}>TOTAL MIS GASTOS</div>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#e85d26"}}>${total.toLocaleString("es-AR")}</div>
+                    </div>
+                  )}
+                  {misGastos.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>No registraste gastos todavía</div>}
+                  {misGastos.map(g=>{
+                    const catInfo=CATEGORIAS_VIVI.find(c=>c.key===g.categoria);
+                    return(
+                      <div key={g.id} className="card" style={{padding:"12px 16px",marginBottom:6,display:"flex",alignItems:"center",gap:10,borderLeft:`3px solid #e85d26`}}>
+                        <span style={{fontSize:18}}>{catInfo?.icon||"📦"}</span>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:13,fontWeight:500}}>{g.descripcion}</div>
+                          <div style={{fontSize:10,color:"#8a7a6a",display:"flex",alignItems:"center",gap:6}}>
+                            {catInfo?.label||g.categoria} · {formatFecha(g.fecha)}
+                            {g.tipo==="previsto"&&<span style={{background:"#f59e0b22",color:"#f59e0b",fontSize:9,padding:"1px 6px",fontWeight:600}}>PREVISTO</span>}
+                          </div>
+                          {(g.pedidos_vinculados||[]).length>0&&(
+                            <div style={{fontSize:10,color:"#e85d26",marginTop:2}}>
+                              Pedidos: {normalizarVinculados(g.pedidos_vinculados,g.monto).map(v=>v.id).join(", ")}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{fontSize:14,fontWeight:600,color:"#ef4444"}}>${parseFloat(g.monto).toLocaleString("es-AR")}</div>
                       </div>
                     );
                   })}
