@@ -781,15 +781,23 @@ export default function App(){
     showToast("✓ Ajuste registrado");
   }
 
-  async function marcarEntregado(pedido){
+  async function marcarEntregado(pedido, forzar=false){
     const {tipoPago,montoCobrado,diasCredito}=formEntrega;
     if(!montoCobrado){showToast("Ingresá el monto cobrado","#ef4444");return;}
     if(tipoPago==="credito"&&!diasCredito){showToast("Ingresá los días de crédito","#ef4444");return;}
-    // Register final payment
+    // Check incomplete processes
+    const procesosIncompletos=(pedido.procesos_activos||[]).filter(k=>(pedido.procesos||{})[k]!=="listo");
+    if(procesosIncompletos.length>0&&!forzar){
+      const nombres=procesosIncompletos.map(k=>PROCESOS.find(p=>p.key===k)?.label||k).join(", ");
+      if(!window.confirm(`⚠️ Hay procesos sin completar:
+${nombres}
+
+¿Querés entregar igual? Los operarios serán notificados.`))return;
+    }
     const pagos=[...(pedido.pagos||[])];
     const pagoFinal={monto:parseFloat(montoCobrado),tipo:tipoPago==="credito"?`crédito ${diasCredito} días`:"efectivo",fecha:hoy(),registrado_por:usuario?.nombre||"Admin"};
     pagos.push(pagoFinal);
-    const updates={entregado:true,fecha_entrega_real:hoy(),pagos,tipo_pago_entrega:tipoPago,dias_credito:tipoPago==="credito"?parseInt(diasCredito):null};
+    const updates={entregado:true,fecha_entrega_real:hoy(),pagos,tipo_pago_entrega:tipoPago,dias_credito:tipoPago==="credito"?parseInt(diasCredito):null,procesos_pendientes_al_entregar:procesosIncompletos};
     await dbPatch("pedidos",pedido.id,updates);
     setPedidos(prev=>prev.map(x=>x.id===pedido.id?{...x,...updates}:x));
     setShowEntregarModal(null);
@@ -964,11 +972,18 @@ export default function App(){
   }
 
   async function guardarEdicion(){
-    if(!editandoPedido||!formEditar)return;
-    const updates={cliente:formEditar.cliente,prioridad:formEditar.prioridad,fecha_entrega:formEditar.fechaEntrega,descripcion:formEditar.descripcion,datos_factura:formEditar.datosFactura||"",anticipo:formEditar.anticipo||"",prendas:formEditar.prendas||[],procesos_activos:formEditar.procesosActivos||[]};
-    await dbPatch("pedidos",editandoPedido,updates);
-    setPedidos(prev=>prev.map(p=>p.id===editandoPedido?{...p,...updates}:p));
-    setEditandoPedido(null);setFormEditar(null);showToast("✓ Pedido actualizado");
+    if(!editandoPedido){showToast("Error: no hay pedido seleccionado","#ef4444");return;}
+    if(!formEditar){showToast("Error: no hay datos para guardar","#ef4444");return;}
+    try{
+      const updates={cliente:formEditar.cliente,prioridad:formEditar.prioridad,fecha_entrega:formEditar.fechaEntrega,descripcion:formEditar.descripcion,datos_factura:formEditar.datosFactura||"",anticipo:formEditar.anticipo||"",prendas:formEditar.prendas||[],procesos_activos:formEditar.procesosActivos||[]};
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/pedidos?id=eq.${editandoPedido}`,{method:"PATCH",headers:H,body:JSON.stringify(updates)});
+      if(!r.ok){const err=await r.text();showToast("Error al guardar: "+err.slice(0,80),"#ef4444");return;}
+      setPedidos(prev=>prev.map(p=>p.id===editandoPedido?{...p,...updates}:p));
+      setEditandoPedido(null);setFormEditar(null);
+      showToast("✓ Pedido actualizado");
+    }catch(e){
+      showToast("Error: "+e.message,"#ef4444");
+    }
   }
 
   async function crearUsuario(){
@@ -1112,6 +1127,34 @@ export default function App(){
             </div>
             <div style={{flex:1,padding:16,overflowY:"auto"}}>
               <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
+              {(()=>{
+                const miProceso=usuario?.proceso;
+                if(!miProceso||miProceso==="orden")return null;
+                const pendientesEntregados=pedidos.filter(p=>
+                  p.entregado&&
+                  (p.procesos_activos||[]).includes(miProceso)&&
+                  (p.procesos||{})[miProceso]!=="listo"
+                );
+                if(!pendientesEntregados.length)return null;
+                return(
+                  <div style={{background:"#f59e0b15",border:"1.5px solid #f59e0b44",padding:"10px 14px",marginBottom:12}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"#f59e0b",letterSpacing:1,marginBottom:6}}>📋 PEDIDOS ENTREGADOS SIN MARCAR ({pendientesEntregados.length})</div>
+                    <div style={{fontSize:11,color:"#5a4a3a",marginBottom:8}}>Estos pedidos ya fueron entregados. Por favor marcá tu proceso como listo:</div>
+                    {pendientesEntregados.map(p=>(
+                      <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"#fff",border:"1px solid #f59e0b44",marginBottom:4}}>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:500}}>{p.cliente}</div>
+                          <div style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · Entregado {formatFecha(p.fecha_entrega_real)}</div>
+                        </div>
+                        <button className="btn" onClick={()=>marcarEtapa(p.id,miProceso,"listo")}
+                          style={{padding:"6px 12px",fontSize:10,background:"#10b981",color:"#fff",border:"none",letterSpacing:0.5}}>
+                          ✓ MARCAR LISTO
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
               {!filtrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898"}}><div style={{fontSize:40,marginBottom:12}}>🎉</div><div style={{fontSize:14}}>Sin pedidos</div></div>}
               {grupos.map(grupo=>(
                 <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} color={grupo.color} count={grupo.items.length}>
