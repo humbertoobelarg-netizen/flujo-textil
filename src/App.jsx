@@ -1162,9 +1162,21 @@ ${nombres}
       {/* PANTALLA MARCADO EMPLEADO (pública via hash) */}
       {pantalla==="marcado"&&(()=>{
         const hash=window.location.hash.replace("#asistencia/","");
-        const emp=empleados.find(e=>e.codigo===hash.toUpperCase());
-        // Show loading if empleados not loaded yet
-        if(empleados.length===0)return(
+        const [empData,setEmpData]=useState(null);
+        const [empCargado,setEmpCargado]=useState(false);
+        useEffect(()=>{
+          const codigo=hash.toUpperCase();
+          // Try from already loaded empleados first
+          const empLocal=empleados.find(e=>e.codigo===codigo);
+          if(empLocal){setEmpData(empLocal);setEmpCargado(true);return;}
+          // Otherwise load directly
+          dbGet("empleados",`codigo=eq.${codigo}&activo=eq.true`).then(res=>{
+            if(Array.isArray(res)&&res.length>0)setEmpData(res[0]);
+            setEmpCargado(true);
+          }).catch(()=>setEmpCargado(true));
+        },[hash,empleados.length]);
+        const emp=empData;
+        if(!empCargado)return(
           <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:16}}>FLUJO TEXTIL</div>
             <div style={{fontSize:14,color:"#8a7a6a"}}>Cargando...</div>
