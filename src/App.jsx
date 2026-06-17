@@ -798,10 +798,23 @@ export default function App(){
   const [tipoFiltroMes,setTipoFiltroMes]=useState("entrega");
   const [mesSeleccionado,setMesSeleccionado]=useState(new Date().toISOString().slice(0,7));
 
-  useEffect(()=>{cargarDatos();},[]);
+  // ASISTENCIA
+  const [empleados,setEmpleados]=useState([]);
+  const [asistencia,setAsistencia]=useState([]);
+  const [showNuevoEmpleado,setShowNuevoEmpleado]=useState(false);
+  const [formEmpleado,setFormEmpleado]=useState({nombre:"",codigo:""});
+  const [asistenciaFecha,setAsistenciaFecha]=useState(hoy());
+
+  useEffect(()=>{
+    cargarDatos();
+    // Detectar pantalla de marcado via hash
+    if(window.location.hash.startsWith("#asistencia/")){
+      setPantalla("marcado");
+    }
+  },[]);
 
   async function cargarDatos(){
-    try{const[p,u,g,ie,st]=await Promise.all([dbGet("pedidos"),dbGet("usuarios"),dbGet("gastos"),dbGet("ingresos_extra"),dbGet("stock_tejido")]);setPedidos(Array.isArray(p)?p:[]);setUsuarios(Array.isArray(u)?u:[]);setGastos(Array.isArray(g)?g:[]);setIngresosExtra(Array.isArray(ie)?ie:[]);setStockTejido(Array.isArray(st)?st:[]);}
+    try{const[p,u,g,ie,st,emp,as]=await Promise.all([dbGet("pedidos"),dbGet("usuarios"),dbGet("gastos"),dbGet("ingresos_extra"),dbGet("stock_tejido"),dbGet("empleados","activo=eq.true&order=nombre.asc"),dbGet("asistencia","order=hora.desc&limit=500")]);setPedidos(Array.isArray(p)?p:[]);setUsuarios(Array.isArray(u)?u:[]);setGastos(Array.isArray(g)?g:[]);setIngresosExtra(Array.isArray(ie)?ie:[]);setStockTejido(Array.isArray(st)?st:[]);setEmpleados(Array.isArray(emp)?emp:[]);setAsistencia(Array.isArray(as)?as:[]);}
     catch(e){showToast("Error al cargar","#ef4444");}
   }
 
@@ -1119,6 +1132,70 @@ ${nombres}
 
 
 
+      {/* PANTALLA MARCADO EMPLEADO (pública via hash) */}
+      {pantalla==="marcado"&&(()=>{
+        const hash=window.location.hash.replace("#asistencia/","");
+        const emp=empleados.find(e=>e.codigo===hash.toUpperCase());
+        const [marcando,setMarcando]=useState(false);
+        const [resultado,setResultado]=useState(null);
+        async function marcar(tipo){
+          if(marcando||!emp)return;
+          setMarcando(true);
+          try{
+            const reg={empleado_id:emp.id,tipo,hora:new Date().toISOString()};
+            const r=await dbInsert("asistencia",reg);
+            if(r&&r[0]){
+              setAsistencia(prev=>[r[0],...prev]);
+              setResultado({tipo,hora:new Date()});
+            }else setResultado({error:true});
+          }catch(e){setResultado({error:true});}
+          setMarcando(false);
+        }
+        function formatHoraLocal(d){return d.toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"});}
+        if(!emp)return(
+          <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
+            <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
+              <div style={{fontSize:32,marginBottom:12}}>❌</div>
+              <div style={{fontSize:14,color:"#ef4444",marginBottom:8}}>Código no encontrado</div>
+              <div style={{fontSize:12,color:"#8a7a6a"}}>Código: <strong>{hash}</strong></div>
+              <div style={{fontSize:11,color:"#8a7a6a",marginTop:8}}>Verificá el link con tu encargado</div>
+            </div>
+          </div>
+        );
+        if(resultado&&!resultado.error)return(
+          <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
+            <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
+              <div style={{fontSize:48,marginBottom:12}}>{resultado.tipo==="entrada"?"✅":"👋"}</div>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:2,marginBottom:4}}>{emp.nombre}</div>
+              <div style={{fontSize:13,color:"#8a7a6a",marginBottom:12}}>{resultado.tipo==="entrada"?"ENTRADA REGISTRADA":"SALIDA REGISTRADA"}</div>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:42,color:"#e85d26",lineHeight:1}}>{formatHoraLocal(resultado.hora)}</div>
+              <button className="btn" onClick={()=>setResultado(null)} style={{marginTop:20,width:"100%",padding:"12px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf",letterSpacing:1}}>VOLVER</button>
+            </div>
+          </div>
+        );
+        return(
+          <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
+            <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
+              <div style={{width:64,height:64,background:"#e85d26",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:28,margin:"0 auto 16px"}}>{emp.nombre[0].toUpperCase()}</div>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,marginBottom:4}}>{emp.nombre}</div>
+              <div style={{fontSize:12,color:"#8a7a6a",marginBottom:24}}>{new Date().toLocaleDateString("es-PY",{weekday:"long",day:"numeric",month:"long"})}</div>
+              {resultado?.error&&<div style={{fontSize:12,color:"#ef4444",marginBottom:12}}>Error al registrar. Intentá de nuevo.</div>}
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                <button className="btn" onClick={()=>marcar("entrada")} disabled={marcando} style={{padding:"18px",fontSize:14,background:"#10b981",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
+                  {marcando?"...":"☀️ MARCAR ENTRADA"}
+                </button>
+                <button className="btn" onClick={()=>marcar("salida")} disabled={marcando} style={{padding:"18px",fontSize:14,background:"#e85d26",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
+                  {marcando?"...":"🌙 MARCAR SALIDA"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* LOGIN */}
       {pantalla==="login"&&(
         <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
@@ -1250,9 +1327,10 @@ ${nombres}
             </div>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:12}}>
-            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"]].filter(([k])=>{
+            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"]].filter(([k])=>{
               if(usuario?.rol==="admin")return true;
               if(k==="equipo")return false;
+              if(k==="asistencia")return usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
               if(k==="finanzas")return usuario?.nombre==="Gabi";
               if(k==="stock")return usuario?.rol==="admin"||usuario?.nombre==="Vivi";
               if(k==="mis_gastos")return usuario?.nombre==="Vivi";
@@ -1747,6 +1825,123 @@ ${nombres}
                 })}
               </div>
             )}
+
+            {adminTab==="asistencia"&&(()=>{
+              const registrosHoy=asistencia.filter(a=>a.hora&&a.hora.startsWith(asistenciaFecha));
+              const presentes=new Set(registrosHoy.map(a=>a.empleado_id));
+              async function crearEmpleado(){
+                if(!formEmpleado.nombre||!formEmpleado.codigo){showToast("Nombre y código son requeridos","#ef4444");return;}
+                const nuevo={nombre:formEmpleado.nombre,codigo:formEmpleado.codigo.toUpperCase(),activo:true};
+                const r=await dbInsert("empleados",nuevo);
+                if(r&&r[0]){setEmpleados(prev=>[...prev,r[0]]);setFormEmpleado({nombre:"",codigo:""});setShowNuevoEmpleado(false);showToast("✓ Empleado creado");}
+                else showToast("Error al crear empleado","#ef4444");
+              }
+              async function eliminarEmpleado(id){
+                if(!window.confirm("¿Eliminar empleado?"))return;
+                await dbPatch("empleados",id,{activo:false});
+                setEmpleados(prev=>prev.filter(e=>e.id!==id));
+                showToast("Empleado eliminado");
+              }
+              async function eliminarRegistro(id){
+                await dbDelete("asistencia",id);
+                setAsistencia(prev=>prev.filter(a=>a.id!==id));
+                showToast("Registro eliminado");
+              }
+              function formatHora(iso){if(!iso)return"-";const d=new Date(iso);return d.toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"});}
+              const empleadosConRegistros=empleados.map(emp=>{
+                const regs=registrosHoy.filter(a=>a.empleado_id===emp.id).sort((a,b)=>a.hora.localeCompare(b.hora));
+                const entrada=regs.find(a=>a.tipo==="entrada");
+                const salida=regs.find(a=>a.tipo==="salida");
+                return{...emp,entrada,salida,presente:presentes.has(emp.id)};
+              });
+              const linkBase=`${window.location.origin}${window.location.pathname}#asistencia/`;
+              return(
+                <div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+                    <div>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2}}>CONTROL DE ASISTENCIA</div>
+                      <div style={{fontSize:11,color:"#8a7a6a"}}>Los empleados marcan desde su celular</div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <input type="date" value={asistenciaFecha} onChange={e=>setAsistenciaFecha(e.target.value)} style={{fontSize:12,padding:"7px 10px"}}/>
+                      {(usuario?.rol==="admin"||usuario?.nombre==="Vivi")&&<button className="btn" onClick={()=>setShowNuevoEmpleado(true)} style={{padding:"9px 14px",fontSize:11,background:"#1a1208",color:"#f5f0e8",letterSpacing:1}}>+ EMPLEADO</button>}
+                    </div>
+                  </div>
+
+                  {/* Resumen del día */}
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+                    <div className="card" style={{padding:"12px 14px"}}>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:"#10b981",lineHeight:1}}>{empleadosConRegistros.filter(e=>e.entrada).length}</div>
+                      <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1}}>PRESENTES</div>
+                    </div>
+                    <div className="card" style={{padding:"12px 14px"}}>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:"#ef4444",lineHeight:1}}>{empleados.length-empleadosConRegistros.filter(e=>e.entrada).length}</div>
+                      <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1}}>AUSENTES</div>
+                    </div>
+                    <div className="card" style={{padding:"12px 14px"}}>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:"#1a1208",lineHeight:1}}>{empleados.length}</div>
+                      <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1}}>TOTAL EMPLS</div>
+                    </div>
+                  </div>
+
+                  {/* Lista empleados */}
+                  {empleadosConRegistros.map(emp=>(
+                    <div key={emp.id} className="card" style={{padding:"12px 16px",marginBottom:8}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          <div style={{width:36,height:36,background:emp.entrada?"#10b981":"#ef4444",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,flexShrink:0}}>{emp.nombre[0].toUpperCase()}</div>
+                          <div>
+                            <div style={{fontWeight:500,fontSize:13}}>{emp.nombre}</div>
+                            <div style={{fontSize:10,color:"#8a7a6a"}}>Código: {emp.codigo}</div>
+                          </div>
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                          <div style={{textAlign:"center"}}>
+                            <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1}}>ENTRADA</div>
+                            <div style={{fontSize:13,fontWeight:600,color:emp.entrada?"#10b981":"#c8bfaf"}}>{emp.entrada?formatHora(emp.entrada.hora):"--:--"}</div>
+                          </div>
+                          <div style={{textAlign:"center"}}>
+                            <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1}}>SALIDA</div>
+                            <div style={{fontSize:13,fontWeight:600,color:emp.salida?"#e85d26":"#c8bfaf"}}>{emp.salida?formatHora(emp.salida.hora):"--:--"}</div>
+                          </div>
+                          <button className="btn" onClick={async()=>{
+                            const txt=`${linkBase}${emp.codigo}`;
+                            if(navigator.share){navigator.share({title:`Asistencia ${emp.nombre}`,url:txt});}
+                            else{navigator.clipboard.writeText(txt).then(()=>showToast("✓ Link copiado"));}
+                          }} style={{padding:"6px 10px",fontSize:10,background:"transparent",border:"1.5px solid #06b6d4",color:"#06b6d4",letterSpacing:0.5}}>🔗 LINK</button>
+                          {usuario?.rol==="admin"&&<button className="btn" onClick={()=>eliminarEmpleado(emp.id)} style={{padding:"6px 10px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {empleados.length===0&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>No hay empleados. Creá el primero con el botón + EMPLEADO</div>}
+
+                  {/* Modal nuevo empleado */}
+                  {showNuevoEmpleado&&(
+                    <div className="modal-bg" onClick={()=>setShowNuevoEmpleado(false)}>
+                      <div className="modal" onClick={e=>e.stopPropagation()}>
+                        <div style={{padding:"20px 24px",borderBottom:"1.5px solid #d8d0c0",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2}}>NUEVO EMPLEADO</div>
+                        <div style={{padding:24,display:"flex",flexDirection:"column",gap:14}}>
+                          <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>NOMBRE *</label><input type="text" style={{width:"100%"}} placeholder="Nombre completo" value={formEmpleado.nombre} onChange={e=>setFormEmpleado({...formEmpleado,nombre:e.target.value})}/></div>
+                          <div><label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:5}}>CÓDIGO ÚNICO *</label><input type="text" style={{width:"100%"}} placeholder="Ej: ANA01, JUAN02" value={formEmpleado.codigo} onChange={e=>setFormEmpleado({...formEmpleado,codigo:e.target.value.toUpperCase().replace(/\s/g,"")})}/>
+                            <div style={{fontSize:10,color:"#8a7a6a",marginTop:4}}>Este código forma parte del link de marcado</div>
+                          </div>
+                          {formEmpleado.nombre&&formEmpleado.codigo&&(
+                            <div style={{padding:"10px 12px",background:"#f0fdf4",border:"1.5px solid #10b98144",fontSize:11,color:"#10b981"}}>
+                              🔗 Link: {linkBase}{formEmpleado.codigo.toUpperCase()}
+                            </div>
+                          )}
+                          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                            <button className="btn" onClick={()=>setShowNuevoEmpleado(false)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
+                            <button className="btn" onClick={crearEmpleado} style={{padding:"10px 20px",fontSize:11,background:"#1a1208",color:"#f5f0e8",letterSpacing:1}}>CREAR</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
