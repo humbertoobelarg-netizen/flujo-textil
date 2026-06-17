@@ -41,6 +41,56 @@ const PRENDA_INIT={tipoPrenda:"",tipoPrendaOtro:"",tipoTejido:"",molderia:"",cue
 const FORM_INIT={cliente:"",prioridad:"media",fechaEntrega:"",descripcion:"",datosFactura:"",procesosActivos:["orden","terminacion"],prendas:[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],anticipo:"",imagenes:[]};
 
 function hoy(){return new Date().toISOString().split("T")[0];}
+function getMesInfo(offset=0){
+  const d=new Date();
+  d.setMonth(d.getMonth()+offset);
+  d.setDate(1);
+  const year=d.getFullYear();
+  const mes=d.getMonth();
+  const primerDia=new Date(year,mes,1);
+  const ultimoDia=new Date(year,mes+1,0);
+  const diasDelMes=[];
+  for(let i=1;i<=ultimoDia.getDate();i++){
+    const fecha=new Date(year,mes,i);
+    const diaSemana=fecha.getDay();
+    if(diaSemana!==0){ // Excluir domingos
+      diasDelMes.push({
+        fecha:fecha.toISOString().split("T")[0],
+        dia:i,
+        diaSemana,
+        nombre:["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][diaSemana]
+      });
+    }
+  }
+  const meses=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  return{diasDelMes,nombreMes:meses[mes],year};
+}
+
+function getLunesDeSemana(offset=0){
+  const d=new Date();
+  const dia=d.getDay();
+  const diff=d.getDate()-(dia===0?6:dia-1)+(offset*7);
+  d.setDate(diff);
+  return d.toISOString().split("T")[0];
+}
+function addDias(fecha,dias){
+  const d=new Date(fecha+"T12:00:00");
+  d.setDate(d.getDate()+dias);
+  return d.toISOString().split("T")[0];
+}
+function esTarde(hora,limite){
+  if(!hora)return false;
+  const [h,m]=hora.slice(11,16).split(":").map(Number);
+  const [lh,lm]=limite.split(":").map(Number);
+  return h>lh||(h===lh&&m>lm);
+}
+function tieneHorario(nombreEmp,diaSemana){
+  // 0=Dom,1=Lun...6=Sab
+  const SABADO_OBLIGATORIO=["Viviana","David","Romina"];
+  if(diaSemana===0)return false; // Domingo no
+  if(diaSemana===6)return SABADO_OBLIGATORIO.some(n=>nombreEmp.includes(n)); // Sabado solo algunos
+  return true; // Lun-Vie todos
+}
 // Device fingerprint
 async function getFingerprint(){
   const data=[
@@ -945,6 +995,9 @@ export default function App(){
   const [showNuevoEmpleado,setShowNuevoEmpleado]=useState(false);
   const [formEmpleado,setFormEmpleado]=useState({nombre:"",codigo:""});
   const [asistenciaFecha,setAsistenciaFecha]=useState(hoy());
+  const [semanaOffset,setSemanaOffset]=useState(0);
+  const [mesOffset,setMesOffset]=useState(0);
+  const [vistaAsistencia,setVistaAsistencia]=useState("semana"); // semana | dia
 
   useEffect(()=>{
     cargarDatos();
@@ -1964,37 +2017,262 @@ ${nombres}
                     </div>
                   </div>
 
-                  {/* Lista empleados */}
-                  {empleadosConRegistros.map(emp=>(
-                    <div key={emp.id} className="card" style={{padding:"12px 16px",marginBottom:8}}>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-                        <div style={{display:"flex",alignItems:"center",gap:10}}>
-                          <div style={{width:36,height:36,background:emp.entrada?"#10b981":"#ef4444",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,flexShrink:0}}>{emp.nombre[0].toUpperCase()}</div>
-                          <div>
-                            <div style={{fontWeight:500,fontSize:13}}>{emp.nombre}</div>
-                            <div style={{fontSize:10,color:"#8a7a6a"}}>Código: {emp.codigo}</div>
-                          </div>
-                        </div>
-                        <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                  {/* Toggle vista */}
+                  <div style={{display:"flex",gap:8,marginBottom:12}}>
+                    {[["semana","📅 SEMANA"],["mes","📆 MES"],["dia","📋 DÍA"]].map(([k,l])=>(
+                      <button key={k} className="btn" onClick={()=>setVistaAsistencia(k)}
+                        style={{flex:1,padding:"8px",fontSize:11,background:vistaAsistencia===k?"#1a1208":"#f5f0e8",color:vistaAsistencia===k?"#f5f0e8":"#1a1208",border:"1.5px solid #d8d0c0",letterSpacing:1}}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* VISTA SEMANAL */}
+                  {vistaAsistencia==="semana"&&(()=>{
+                    const lunes=getLunesDeSemana(semanaOffset);
+                    const diasSemana=[0,1,2,3,4,5].map(i=>({
+                      fecha:addDias(lunes,i),
+                      nombre:["Lun","Mar","Mié","Jue","Vie","Sáb"][i],
+                      diaSemana:i+1===7?0:i+1
+                    }));
+                    const DIAS_NOMBRES=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+                    return(
+                      <div>
+                        {/* Navegación semana */}
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                          <button className="btn" onClick={()=>setSemanaOffset(o=>o-1)} style={{padding:"8px 14px",fontSize:14,background:"transparent",border:"1.5px solid #d8d0c0"}}>←</button>
                           <div style={{textAlign:"center"}}>
-                            <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1}}>ENTRADA</div>
-                            <div style={{fontSize:13,fontWeight:600,color:emp.entrada?"#10b981":"#c8bfaf"}}>{emp.entrada?formatHora(emp.entrada.hora):"--:--"}</div>
+                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1}}>
+                              {formatFecha(lunes)} — {formatFecha(addDias(lunes,5))}
+                            </div>
+                            {semanaOffset===0&&<div style={{fontSize:10,color:"#e85d26"}}>SEMANA ACTUAL</div>}
                           </div>
-                          <div style={{textAlign:"center"}}>
-                            <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1}}>SALIDA</div>
-                            <div style={{fontSize:13,fontWeight:600,color:emp.salida?"#e85d26":"#c8bfaf"}}>{emp.salida?formatHora(emp.salida.hora):"--:--"}</div>
-                          </div>
-                          <button className="btn" onClick={async()=>{
-                            const txt=`${linkBase}${emp.codigo}`;
-                            if(navigator.share){navigator.share({title:`Asistencia ${emp.nombre}`,url:txt});}
-                            else{navigator.clipboard.writeText(txt).then(()=>showToast("✓ Link copiado"));}
-                          }} style={{padding:"6px 10px",fontSize:10,background:"transparent",border:"1.5px solid #06b6d4",color:"#06b6d4",letterSpacing:0.5}}>🔗 LINK</button>
-                          {usuario?.rol==="admin"&&<button className="btn" onClick={()=>eliminarEmpleado(emp.id)} style={{padding:"6px 10px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
+                          <button className="btn" onClick={()=>setSemanaOffset(o=>o+1)} style={{padding:"8px 14px",fontSize:14,background:"transparent",border:"1.5px solid #d8d0c0"}} disabled={semanaOffset>=0}>→</button>
                         </div>
+
+                        {/* Planilla por empleado */}
+                        {empleados.map(emp=>(
+                          <div key={emp.id} className="card" style={{marginBottom:10,overflow:"hidden"}}>
+                            <div style={{padding:"8px 12px",background:"#1a1208",color:"#f5f0e8",display:"flex",alignItems:"center",gap:10}}>
+                              <div style={{width:28,height:28,background:"#e85d26",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:14}}>{emp.nombre[0]}</div>
+                              <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:1}}>{emp.nombre}</span>
+                              <span style={{fontSize:10,color:"#8a7a6a",marginLeft:"auto"}}>{emp.codigo}</span>
+                            </div>
+                            <div style={{overflowX:"auto"}}>
+                              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:400}}>
+                                <thead>
+                                  <tr style={{background:"#f5f0e8"}}>
+                                    <th style={{padding:"5px 8px",textAlign:"left",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>DÍA</th>
+                                    <th style={{padding:"5px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>ENTRADA</th>
+                                    <th style={{padding:"5px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>VUELTA ALM.</th>
+                                    <th style={{padding:"5px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>SALIDA</th>
+                                    <th style={{padding:"5px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>ESTADO</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {diasSemana.map(({fecha,nombre,diaSemana})=>{
+                                    const esSabado=diaSemana===6;
+                                    const tieneOblig=tieneHorario(emp.nombre,diaSemana);
+                                    const regsdia=asistencia.filter(a=>a.empleado_id===emp.id&&a.hora&&a.hora.startsWith(fecha)).sort((a,b)=>a.hora.localeCompare(b.hora));
+                                    const entrada=regsdia.find(a=>a.tipo==="entrada");
+                                    const vueltas=regsdia.filter(a=>a.tipo==="vuelta_almuerzo"||a.tipo==="entrada_almuerzo");
+                                    const vuelta=vueltas[0];
+                                    const salida=regsdia.find(a=>a.tipo==="salida");
+                                    const limiteEntrada=esSabado?"08:00":"07:00";
+                                    const limiteVuelta="12:45";
+                                    const entradaTarde=entrada&&esTarde(entrada.hora,limiteEntrada);
+                                    const vueltaTarde=vuelta&&esTarde(vuelta.hora,limiteVuelta);
+                                    const esHoy=fecha===hoy();
+                                    return(
+                                      <tr key={fecha} style={{borderBottom:"1px solid #f0ece4",background:esHoy?"#fef3ee":"#fff"}}>
+                                        <td style={{padding:"6px 8px",fontWeight:esHoy?600:400}}>
+                                          {nombre} <span style={{fontSize:9,color:"#8a7a6a"}}>{fecha.slice(8)}/{fecha.slice(5,7)}</span>
+                                        </td>
+                                        <td style={{padding:"6px 8px",textAlign:"center"}}>
+                                          {entrada?(
+                                            <span style={{fontWeight:600,color:entradaTarde?"#ef4444":"#10b981"}}>
+                                              {formatHora(entrada.hora)}{entradaTarde?" ⚠":""}
+                                            </span>
+                                          ):(tieneOblig?<span style={{color:"#c8bfaf"}}>--:--</span>:<span style={{color:"#e8e0d0",fontSize:9}}>-</span>)}
+                                        </td>
+                                        <td style={{padding:"6px 8px",textAlign:"center"}}>
+                                          {!esSabado?(vuelta?(
+                                            <span style={{fontWeight:600,color:vueltaTarde?"#ef4444":"#10b981"}}>
+                                              {formatHora(vuelta.hora)}{vueltaTarde?" ⚠":""}
+                                            </span>
+                                          ):(tieneOblig?<span style={{color:"#c8bfaf"}}>--:--</span>:<span style={{color:"#e8e0d0",fontSize:9}}>-</span>)):<span style={{color:"#e8e0d0",fontSize:9}}>-</span>}
+                                        </td>
+                                        <td style={{padding:"6px 8px",textAlign:"center"}}>
+                                          {salida?(
+                                            <span style={{fontWeight:600,color:"#64748b"}}>{formatHora(salida.hora)}</span>
+                                          ):(tieneOblig?<span style={{color:"#c8bfaf"}}>--:--</span>:<span style={{color:"#e8e0d0",fontSize:9}}>-</span>)}
+                                        </td>
+                                        <td style={{padding:"6px 8px",textAlign:"center"}}>
+                                          {!tieneOblig?<span style={{fontSize:9,color:"#c8bfaf"}}>LIBRE</span>:
+                                          !entrada?<span style={{fontSize:9,color:"#ef4444",fontWeight:600}}>AUSENTE</span>:
+                                          (entradaTarde||vueltaTarde)?<span style={{fontSize:9,color:"#f59e0b",fontWeight:600}}>TARDE</span>:
+                                          <span style={{fontSize:9,color:"#10b981",fontWeight:600}}>OK</span>}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
+                        {empleados.length===0&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>No hay empleados registrados</div>}
                       </div>
+                    );
+                  })()}
+
+                  {/* VISTA MENSUAL */}
+                  {vistaAsistencia==="mes"&&(()=>{
+                    const {diasDelMes,nombreMes,year}=getMesInfo(mesOffset);
+                    return(
+                      <div>
+                        {/* Navegación mes */}
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                          <button className="btn" onClick={()=>setMesOffset(o=>o-1)} style={{padding:"8px 14px",fontSize:14,background:"transparent",border:"1.5px solid #d8d0c0"}}>←</button>
+                          <div style={{textAlign:"center"}}>
+                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:2}}>{nombreMes} {year}</div>
+                            {mesOffset===0&&<div style={{fontSize:10,color:"#e85d26"}}>MES ACTUAL</div>}
+                          </div>
+                          <button className="btn" onClick={()=>setMesOffset(o=>o+1)} style={{padding:"8px 14px",fontSize:14,background:"transparent",border:"1.5px solid #d8d0c0"}} disabled={mesOffset>=0}>→</button>
+                        </div>
+
+                        {/* Resumen del mes por empleado */}
+                        {empleados.map(emp=>{
+                          let tardanzas=0,ausencias=0,presentes=0;
+                          diasDelMes.forEach(({fecha,diaSemana})=>{
+                            const tieneOblig=tieneHorario(emp.nombre,diaSemana);
+                            if(!tieneOblig)return;
+                            const regsdia=asistencia.filter(a=>a.empleado_id===emp.id&&a.hora&&a.hora.startsWith(fecha));
+                            const entrada=regsdia.find(a=>a.tipo==="entrada");
+                            const vuelta=regsdia.find(a=>a.tipo==="vuelta_almuerzo"||a.tipo==="entrada_almuerzo");
+                            const esSabado=diaSemana===6;
+                            const limiteEntrada=esSabado?"08:00":"07:00";
+                            if(!entrada){ausencias++;return;}
+                            presentes++;
+                            if(esTarde(entrada.hora,limiteEntrada))tardanzas++;
+                            if(!esSabado&&vuelta&&esTarde(vuelta.hora,"12:45"))tardanzas++;
+                          });
+                          return(
+                            <div key={emp.id} className="card" style={{marginBottom:10,overflow:"hidden"}}>
+                              <div style={{padding:"8px 12px",background:"#1a1208",color:"#f5f0e8",display:"flex",alignItems:"center",gap:10}}>
+                                <div style={{width:28,height:28,background:"#e85d26",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:14}}>{emp.nombre[0]}</div>
+                                <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:1,flex:1}}>{emp.nombre}</span>
+                              </div>
+                              {/* Resumen */}
+                              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:0,borderBottom:"1px solid #e8e0d0"}}>
+                                <div style={{padding:"10px",textAlign:"center",borderRight:"1px solid #e8e0d0"}}>
+                                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#10b981",lineHeight:1}}>{presentes}</div>
+                                  <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1}}>PRESENTES</div>
+                                </div>
+                                <div style={{padding:"10px",textAlign:"center",borderRight:"1px solid #e8e0d0"}}>
+                                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#ef4444",lineHeight:1}}>{ausencias}</div>
+                                  <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1}}>AUSENCIAS</div>
+                                </div>
+                                <div style={{padding:"10px",textAlign:"center"}}>
+                                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#f59e0b",lineHeight:1}}>{tardanzas}</div>
+                                  <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1}}>TARDANZAS</div>
+                                </div>
+                              </div>
+                              {/* Detalle por día */}
+                              <div style={{overflowX:"auto"}}>
+                                <table style={{width:"100%",borderCollapse:"collapse",fontSize:10,minWidth:500}}>
+                                  <thead>
+                                    <tr style={{background:"#f5f0e8"}}>
+                                      <th style={{padding:"4px 8px",textAlign:"left",fontSize:9,color:"#8a7a6a",fontWeight:600}}>DÍA</th>
+                                      <th style={{padding:"4px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",fontWeight:600}}>ENTRADA</th>
+                                      <th style={{padding:"4px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",fontWeight:600}}>VUELTA</th>
+                                      <th style={{padding:"4px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",fontWeight:600}}>SALIDA</th>
+                                      <th style={{padding:"4px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",fontWeight:600}}>EST.</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {diasDelMes.map(({fecha,dia,diaSemana,nombre})=>{
+                                      const esSabado=diaSemana===6;
+                                      const tieneOblig=tieneHorario(emp.nombre,diaSemana);
+                                      const regsdia=asistencia.filter(a=>a.empleado_id===emp.id&&a.hora&&a.hora.startsWith(fecha)).sort((a,b)=>a.hora.localeCompare(b.hora));
+                                      const entrada=regsdia.find(a=>a.tipo==="entrada");
+                                      const vuelta=regsdia.find(a=>a.tipo==="vuelta_almuerzo"||a.tipo==="entrada_almuerzo");
+                                      const salida=regsdia.find(a=>a.tipo==="salida");
+                                      const limiteEntrada=esSabado?"08:00":"07:00";
+                                      const entradaTarde=entrada&&esTarde(entrada.hora,limiteEntrada);
+                                      const vueltaTarde=vuelta&&esTarde(vuelta.hora,"12:45");
+                                      const esHoy=fecha===hoy();
+                                      return(
+                                        <tr key={fecha} style={{borderBottom:"1px solid #f0ece4",background:esHoy?"#fef3ee":"#fff"}}>
+                                          <td style={{padding:"4px 8px",fontWeight:esHoy?600:400,whiteSpace:"nowrap"}}>
+                                            {nombre} {dia}
+                                          </td>
+                                          <td style={{padding:"4px 8px",textAlign:"center"}}>
+                                            {entrada?<span style={{fontWeight:600,color:entradaTarde?"#ef4444":"#10b981"}}>{formatHora(entrada.hora)}</span>:tieneOblig?<span style={{color:"#c8bfaf"}}>--</span>:<span style={{color:"#e8e0d0"}}>-</span>}
+                                          </td>
+                                          <td style={{padding:"4px 8px",textAlign:"center"}}>
+                                            {!esSabado?(vuelta?<span style={{fontWeight:600,color:vueltaTarde?"#ef4444":"#10b981"}}>{formatHora(vuelta.hora)}</span>:tieneOblig?<span style={{color:"#c8bfaf"}}>--</span>:<span style={{color:"#e8e0d0"}}>-</span>):<span style={{color:"#e8e0d0"}}>-</span>}
+                                          </td>
+                                          <td style={{padding:"4px 8px",textAlign:"center"}}>
+                                            {salida?<span style={{fontWeight:600,color:"#64748b"}}>{formatHora(salida.hora)}</span>:tieneOblig?<span style={{color:"#c8bfaf"}}>--</span>:<span style={{color:"#e8e0d0"}}>-</span>}
+                                          </td>
+                                          <td style={{padding:"4px 8px",textAlign:"center"}}>
+                                            {!tieneOblig?<span style={{fontSize:8,color:"#c8bfaf"}}>-</span>:
+                                            !entrada?<span style={{fontSize:8,color:"#ef4444",fontWeight:600}}>AUS</span>:
+                                            (entradaTarde||vueltaTarde)?<span style={{fontSize:8,color:"#f59e0b",fontWeight:600}}>⚠</span>:
+                                            <span style={{fontSize:8,color:"#10b981",fontWeight:600}}>✓</span>}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
+                  {/* VISTA DIARIA */}
+                  {vistaAsistencia==="dia"&&(
+                    <div>
+                      <div style={{marginBottom:12}}>
+                        <input type="date" value={asistenciaFecha} onChange={e=>setAsistenciaFecha(e.target.value)} style={{width:"100%",fontSize:12,padding:"8px"}}/>
+                      </div>
+                      {empleadosConRegistros.map(emp=>(
+                        <div key={emp.id} className="card" style={{padding:"12px 16px",marginBottom:8}}>
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+                            <div style={{display:"flex",alignItems:"center",gap:10}}>
+                              <div style={{width:36,height:36,background:emp.entrada?"#10b981":"#ef4444",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,flexShrink:0}}>{emp.nombre[0].toUpperCase()}</div>
+                              <div>
+                                <div style={{fontWeight:500,fontSize:13}}>{emp.nombre}</div>
+                                <div style={{fontSize:10,color:"#8a7a6a"}}>Código: {emp.codigo}</div>
+                              </div>
+                            </div>
+                            <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                              <div style={{textAlign:"center"}}>
+                                <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1}}>ENTRADA</div>
+                                <div style={{fontSize:13,fontWeight:600,color:emp.entrada?esTarde(emp.entrada.hora,"07:00")?"#ef4444":"#10b981":"#c8bfaf"}}>{emp.entrada?formatHora(emp.entrada.hora):"--:--"}</div>
+                              </div>
+                              <div style={{textAlign:"center"}}>
+                                <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1}}>SALIDA</div>
+                                <div style={{fontSize:13,fontWeight:600,color:emp.salida?"#64748b":"#c8bfaf"}}>{emp.salida?formatHora(emp.salida.hora):"--:--"}</div>
+                              </div>
+                              <button className="btn" onClick={async()=>{
+                                const txt=`${linkBase}${emp.codigo}`;
+                                if(navigator.share){navigator.share({title:`Asistencia ${emp.nombre}`,url:txt});}
+                                else{navigator.clipboard.writeText(txt).then(()=>showToast("✓ Link copiado"));}
+                              }} style={{padding:"6px 10px",fontSize:10,background:"transparent",border:"1.5px solid #06b6d4",color:"#06b6d4",letterSpacing:0.5}}>🔗 LINK</button>
+                              {usuario?.rol==="admin"&&<button className="btn" onClick={()=>eliminarEmpleado(emp.id)} style={{padding:"6px 10px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {empleados.length===0&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>No hay empleados. Creá el primero con el botón + EMPLEADO</div>}
                     </div>
-                  ))}
-                  {empleados.length===0&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>No hay empleados. Creá el primero con el botón + EMPLEADO</div>}
+                  )}
 
                   {/* Modal nuevo empleado */}
                   {showNuevoEmpleado&&(
