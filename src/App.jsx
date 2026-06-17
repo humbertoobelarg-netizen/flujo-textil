@@ -781,6 +781,120 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
   );
 }
 
+function PantallaMarcado({empleados}){
+  const hash=window.location.hash.replace("#asistencia/","");
+  const [empData,setEmpData]=useState(null);
+  const [empCargado,setEmpCargado]=useState(false);
+  const [marcando,setMarcando]=useState(false);
+  const [resultado,setResultado]=useState(null);
+
+  useEffect(()=>{
+    const codigo=hash.toUpperCase();
+    const empLocal=empleados.find(e=>e.codigo===codigo);
+    if(empLocal){setEmpData(empLocal);setEmpCargado(true);return;}
+    dbGet("empleados",`codigo=eq.${codigo}&activo=eq.true`).then(res=>{
+      if(Array.isArray(res)&&res.length>0)setEmpData(res[0]);
+      setEmpCargado(true);
+    }).catch(()=>setEmpCargado(true));
+  },[hash]);
+
+  async function marcar(tipo){
+    if(marcando||!empData)return;
+    setMarcando(true);
+    const fp=await getFingerprint();
+    if(empData.dispositivo&&empData.dispositivo!==fp){
+      setResultado({error:true,msg:"Este dispositivo no está autorizado. Solo podés marcar desde tu celular registrado."});
+      setMarcando(false);return;
+    }
+    if(!navigator.geolocation){
+      setResultado({error:true,msg:"Tu dispositivo no tiene GPS"});
+      setMarcando(false);return;
+    }
+    navigator.geolocation.getCurrentPosition(async(pos)=>{
+      try{
+        const dist=calcDistancia(pos.coords.latitude,pos.coords.longitude,TALLER_LAT,TALLER_LNG);
+        if(dist>RADIO_METROS){
+          setResultado({error:true,msg:`Estás a ${Math.round(dist)}m del taller. Tenés que estar dentro de ${RADIO_METROS}m para marcar.`});
+          setMarcando(false);return;
+        }
+        if(!empData.dispositivo){
+          await dbPatch("empleados",empData.id,{dispositivo:fp});
+        }
+        const reg={empleado_id:empData.id,tipo,hora:new Date().toISOString(),distancia:Math.round(dist)};
+        const r=await dbInsert("asistencia",reg);
+        if(r&&r[0]){
+          setResultado({tipo,hora:new Date(),distancia:Math.round(dist),primerVez:!empData.dispositivo});
+        }else setResultado({error:true,msg:"Error al registrar. Intentá de nuevo."});
+      }catch(e){setResultado({error:true,msg:"Error de conexión"});}
+      setMarcando(false);
+    },(err)=>{
+      setResultado({error:true,msg:"Permiso de ubicación denegado. Activá el GPS para marcar asistencia."});
+      setMarcando(false);
+    },{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+  }
+
+  if(!empCargado)return(
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:16}}>FLUJO TEXTIL</div>
+      <div style={{fontSize:14,color:"#8a7a6a"}}>Cargando...</div>
+    </div>
+  );
+
+  if(!empData)return(
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
+      <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
+        <div style={{fontSize:32,marginBottom:12}}>❌</div>
+        <div style={{fontSize:14,color:"#ef4444",marginBottom:8}}>Código no encontrado</div>
+        <div style={{fontSize:12,color:"#8a7a6a"}}>Código: <strong>{hash}</strong></div>
+        <div style={{fontSize:11,color:"#8a7a6a",marginTop:8}}>Verificá el link con tu encargado</div>
+      </div>
+    </div>
+  );
+
+  if(resultado&&!resultado.error)return(
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
+      <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
+        <div style={{fontSize:48,marginBottom:12}}>{resultado.tipo==="entrada"?"☀️":"🌙"}</div>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,marginBottom:4}}>{resultado.tipo==="entrada"?"ENTRADA REGISTRADA":"SALIDA REGISTRADA"}</div>
+        <div style={{fontSize:20,fontWeight:600,color:"#e85d26",marginBottom:4}}>{empData.nombre}</div>
+        <div style={{fontSize:16,marginBottom:4}}>{resultado.hora.toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"})}</div>
+        <div style={{fontSize:11,color:"#8a7a6a",marginBottom:8}}>{resultado.hora.toLocaleDateString("es-PY",{weekday:"long",day:"numeric",month:"long"})}</div>
+        {resultado.distancia&&<div style={{fontSize:11,color:"#10b981"}}>📍 A {resultado.distancia}m del taller</div>}
+        {resultado.primerVez&&<div style={{fontSize:11,color:"#06b6d4",marginTop:6}}>✓ Dispositivo registrado automáticamente</div>}
+        <button className="btn" onClick={()=>setResultado(null)} style={{marginTop:20,width:"100%",padding:"12px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf",letterSpacing:1}}>VOLVER</button>
+      </div>
+    </div>
+  );
+
+  return(
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
+      <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
+        <div style={{width:64,height:64,background:"#e85d26",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:28,margin:"0 auto 16px"}}>{empData.nombre[0].toUpperCase()}</div>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,marginBottom:4}}>{empData.nombre}</div>
+        <div style={{fontSize:12,color:"#8a7a6a",marginBottom:24}}>{new Date().toLocaleDateString("es-PY",{weekday:"long",day:"numeric",month:"long"})}</div>
+        {resultado?.error&&(
+          <div style={{padding:"10px 14px",background:"#ef444415",border:"1.5px solid #ef444444",marginBottom:12}}>
+            <div style={{fontSize:20,marginBottom:4}}>❌</div>
+            <div style={{fontSize:12,color:"#ef4444"}}>{resultado.msg}</div>
+            <button className="btn" onClick={()=>setResultado(null)} style={{marginTop:8,width:"100%",padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #ef4444",color:"#ef4444",letterSpacing:1}}>INTENTAR DE NUEVO</button>
+          </div>
+        )}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <button className="btn" onClick={()=>marcar("entrada")} disabled={marcando} style={{padding:"18px",fontSize:14,background:"#10b981",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
+            {marcando?"...":"☀️ MARCAR ENTRADA"}
+          </button>
+          <button className="btn" onClick={()=>marcar("salida")} disabled={marcando} style={{padding:"18px",fontSize:14,background:"#e85d26",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
+            {marcando?"...":"🌙 MARCAR SALIDA"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── APP PRINCIPAL ─────────────────────────────────────────────
 export default function App(){
   const [pedidos,setPedidos]=useState([]);
@@ -1160,122 +1274,7 @@ ${nombres}
 
 
       {/* PANTALLA MARCADO EMPLEADO (pública via hash) */}
-      {pantalla==="marcado"&&(()=>{
-        const hash=window.location.hash.replace("#asistencia/","");
-        const [empData,setEmpData]=useState(null);
-        const [empCargado,setEmpCargado]=useState(false);
-        useEffect(()=>{
-          const codigo=hash.toUpperCase();
-          // Try from already loaded empleados first
-          const empLocal=empleados.find(e=>e.codigo===codigo);
-          if(empLocal){setEmpData(empLocal);setEmpCargado(true);return;}
-          // Otherwise load directly
-          dbGet("empleados",`codigo=eq.${codigo}&activo=eq.true`).then(res=>{
-            if(Array.isArray(res)&&res.length>0)setEmpData(res[0]);
-            setEmpCargado(true);
-          }).catch(()=>setEmpCargado(true));
-        },[hash,empleados.length]);
-        const emp=empData;
-        if(!empCargado)return(
-          <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:16}}>FLUJO TEXTIL</div>
-            <div style={{fontSize:14,color:"#8a7a6a"}}>Cargando...</div>
-          </div>
-        );
-        const [marcando,setMarcando]=useState(false);
-        const [resultado,setResultado]=useState(null);
-        async function marcar(tipo){
-          if(marcando||!emp)return;
-          setMarcando(true);
-          // Get device fingerprint
-          const fp=await getFingerprint();
-          // Check if employee has a registered device
-          if(emp.dispositivo&&emp.dispositivo!==fp){
-            setResultado({error:true,msg:"Este dispositivo no está autorizado. Solo podés marcar desde tu celular registrado."});
-            setMarcando(false);
-            return;
-          }
-          if(!navigator.geolocation){
-            setResultado({error:true,msg:"Tu dispositivo no tiene GPS"});
-            setMarcando(false);
-            return;
-          }
-          navigator.geolocation.getCurrentPosition(async(pos)=>{
-            try{
-              const dist=calcDistancia(pos.coords.latitude,pos.coords.longitude,TALLER_LAT,TALLER_LNG);
-              if(dist>RADIO_METROS){
-                setResultado({error:true,msg:`Estás a ${Math.round(dist)}m del taller. Tenés que estar dentro de ${RADIO_METROS}m para marcar.`});
-                setMarcando(false);
-                return;
-              }
-              // Register device on first use
-              if(!emp.dispositivo){
-                await dbPatch("empleados",emp.id,{dispositivo:fp});
-                setEmpleados(prev=>prev.map(e=>e.id===emp.id?{...e,dispositivo:fp}:e));
-              }
-              const reg={empleado_id:emp.id,tipo,hora:new Date().toISOString(),distancia:Math.round(dist)};
-              const r=await dbInsert("asistencia",reg);
-              if(r&&r[0]){
-                setAsistencia(prev=>[r[0],...prev]);
-                setResultado({tipo,hora:new Date(),distancia:Math.round(dist),primerVez:!emp.dispositivo});
-              }else setResultado({error:true,msg:"Error al registrar"});
-            }catch(e){setResultado({error:true,msg:"Error de conexión"});}
-            setMarcando(false);
-          },(err)=>{
-            setResultado({error:true,msg:"Permiso de ubicación denegado. Activá el GPS para marcar asistencia."});
-            setMarcando(false);
-          },{enableHighAccuracy:true,timeout:10000,maximumAge:0});
-        }
-        function formatHoraLocal(d){return d.toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"});}
-        if(!emp)return(
-          <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
-            <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
-              <div style={{fontSize:32,marginBottom:12}}>❌</div>
-              <div style={{fontSize:14,color:"#ef4444",marginBottom:8}}>Código no encontrado</div>
-              <div style={{fontSize:12,color:"#8a7a6a"}}>Código: <strong>{hash}</strong></div>
-              <div style={{fontSize:11,color:"#8a7a6a",marginTop:8}}>Verificá el link con tu encargado</div>
-            </div>
-          </div>
-        );
-        if(resultado&&!resultado.error)return(
-          <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
-            <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
-              <div style={{fontSize:48,marginBottom:12}}>{resultado.tipo==="entrada"?"✅":"👋"}</div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:2,marginBottom:4}}>{emp.nombre}</div>
-              <div style={{fontSize:13,color:"#8a7a6a",marginBottom:12}}>{resultado.tipo==="entrada"?"ENTRADA REGISTRADA":"SALIDA REGISTRADA"}</div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:42,color:"#e85d26",lineHeight:1}}>{formatHoraLocal(resultado.hora)}</div>
-              <button className="btn" onClick={()=>setResultado(null)} style={{marginTop:20,width:"100%",padding:"12px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf",letterSpacing:1}}>VOLVER</button>
-            </div>
-          </div>
-        );
-        return(
-          <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
-            <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
-              <div style={{width:64,height:64,background:"#e85d26",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:28,margin:"0 auto 16px"}}>{emp.nombre[0].toUpperCase()}</div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,marginBottom:4}}>{emp.nombre}</div>
-              <div style={{fontSize:12,color:"#8a7a6a",marginBottom:24}}>{new Date().toLocaleDateString("es-PY",{weekday:"long",day:"numeric",month:"long"})}</div>
-              {resultado?.error&&(
-                <div style={{padding:"10px 14px",background:"#ef444415",border:"1.5px solid #ef444444",marginBottom:12}}>
-                  <div style={{fontSize:20,marginBottom:4}}>❌</div>
-                  <div style={{fontSize:12,color:"#ef4444"}}>{resultado.msg||"Error al registrar. Intentá de nuevo."}</div>
-                  <button className="btn" onClick={()=>setResultado(null)} style={{marginTop:8,width:"100%",padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #ef4444",color:"#ef4444",letterSpacing:1}}>INTENTAR DE NUEVO</button>
-                </div>
-              )}
-              <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                <button className="btn" onClick={()=>marcar("entrada")} disabled={marcando} style={{padding:"18px",fontSize:14,background:"#10b981",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
-                  {marcando?"...":"☀️ MARCAR ENTRADA"}
-                </button>
-                <button className="btn" onClick={()=>marcar("salida")} disabled={marcando} style={{padding:"18px",fontSize:14,background:"#e85d26",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
-                  {marcando?"...":"🌙 MARCAR SALIDA"}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {pantalla==="marcado"&&<PantallaMarcado empleados={empleados}/>}
 
       {/* LOGIN */}
       {pantalla==="login"&&(
