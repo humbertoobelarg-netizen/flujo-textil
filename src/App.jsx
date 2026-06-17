@@ -41,6 +41,33 @@ const PRENDA_INIT={tipoPrenda:"",tipoPrendaOtro:"",tipoTejido:"",molderia:"",cue
 const FORM_INIT={cliente:"",prioridad:"media",fechaEntrega:"",descripcion:"",datosFactura:"",procesosActivos:["orden","terminacion"],prendas:[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],anticipo:"",imagenes:[]};
 
 function hoy(){return new Date().toISOString().split("T")[0];}
+// Device fingerprint
+async function getFingerprint(){
+  const data=[
+    navigator.userAgent,
+    navigator.language,
+    screen.width+"x"+screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency||"",
+    navigator.platform||"",
+  ].join("|");
+  // Simple hash
+  let hash=0;
+  for(let i=0;i<data.length;i++){hash=((hash<<5)-hash)+data.charCodeAt(i);hash|=0;}
+  return "fp_"+Math.abs(hash).toString(36);
+}
+
+const TALLER_LAT=-25.282475;
+const TALLER_LNG=-57.618849;
+const RADIO_METROS=150;
+function calcDistancia(lat1,lng1,lat2,lng2){
+  const R=6371000;
+  const dLat=(lat2-lat1)*Math.PI/180;
+  const dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
 function normalizarVinculados(arr,montoTotal){
   if(!Array.isArray(arr)||arr.length===0)return[];
   // Separate strings (old format) and objects (new format)
@@ -1141,15 +1168,44 @@ ${nombres}
         async function marcar(tipo){
           if(marcando||!emp)return;
           setMarcando(true);
-          try{
-            const reg={empleado_id:emp.id,tipo,hora:new Date().toISOString()};
-            const r=await dbInsert("asistencia",reg);
-            if(r&&r[0]){
-              setAsistencia(prev=>[r[0],...prev]);
-              setResultado({tipo,hora:new Date()});
-            }else setResultado({error:true});
-          }catch(e){setResultado({error:true});}
-          setMarcando(false);
+          // Get device fingerprint
+          const fp=await getFingerprint();
+          // Check if employee has a registered device
+          if(emp.dispositivo&&emp.dispositivo!==fp){
+            setResultado({error:true,msg:"Este dispositivo no está autorizado. Solo podés marcar desde tu celular registrado."});
+            setMarcando(false);
+            return;
+          }
+          if(!navigator.geolocation){
+            setResultado({error:true,msg:"Tu dispositivo no tiene GPS"});
+            setMarcando(false);
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(async(pos)=>{
+            try{
+              const dist=calcDistancia(pos.coords.latitude,pos.coords.longitude,TALLER_LAT,TALLER_LNG);
+              if(dist>RADIO_METROS){
+                setResultado({error:true,msg:`Estás a ${Math.round(dist)}m del taller. Tenés que estar dentro de ${RADIO_METROS}m para marcar.`});
+                setMarcando(false);
+                return;
+              }
+              // Register device on first use
+              if(!emp.dispositivo){
+                await dbPatch("empleados",emp.id,{dispositivo:fp});
+                setEmpleados(prev=>prev.map(e=>e.id===emp.id?{...e,dispositivo:fp}:e));
+              }
+              const reg={empleado_id:emp.id,tipo,hora:new Date().toISOString(),distancia:Math.round(dist)};
+              const r=await dbInsert("asistencia",reg);
+              if(r&&r[0]){
+                setAsistencia(prev=>[r[0],...prev]);
+                setResultado({tipo,hora:new Date(),distancia:Math.round(dist),primerVez:!emp.dispositivo});
+              }else setResultado({error:true,msg:"Error al registrar"});
+            }catch(e){setResultado({error:true,msg:"Error de conexión"});}
+            setMarcando(false);
+          },(err)=>{
+            setResultado({error:true,msg:"Permiso de ubicación denegado. Activá el GPS para marcar asistencia."});
+            setMarcando(false);
+          },{enableHighAccuracy:true,timeout:10000,maximumAge:0});
         }
         function formatHoraLocal(d){return d.toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"});}
         if(!emp)return(
@@ -1182,7 +1238,13 @@ ${nombres}
               <div style={{width:64,height:64,background:"#e85d26",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:28,margin:"0 auto 16px"}}>{emp.nombre[0].toUpperCase()}</div>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,marginBottom:4}}>{emp.nombre}</div>
               <div style={{fontSize:12,color:"#8a7a6a",marginBottom:24}}>{new Date().toLocaleDateString("es-PY",{weekday:"long",day:"numeric",month:"long"})}</div>
-              {resultado?.error&&<div style={{fontSize:12,color:"#ef4444",marginBottom:12}}>Error al registrar. Intentá de nuevo.</div>}
+              {resultado?.error&&(
+                <div style={{padding:"10px 14px",background:"#ef444415",border:"1.5px solid #ef444444",marginBottom:12}}>
+                  <div style={{fontSize:20,marginBottom:4}}>❌</div>
+                  <div style={{fontSize:12,color:"#ef4444"}}>{resultado.msg||"Error al registrar. Intentá de nuevo."}</div>
+                  <button className="btn" onClick={()=>setResultado(null)} style={{marginTop:8,width:"100%",padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #ef4444",color:"#ef4444",letterSpacing:1}}>INTENTAR DE NUEVO</button>
+                </div>
+              )}
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 <button className="btn" onClick={()=>marcar("entrada")} disabled={marcando} style={{padding:"18px",fontSize:14,background:"#10b981",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
                   {marcando?"...":"☀️ MARCAR ENTRADA"}
