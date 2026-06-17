@@ -820,7 +820,7 @@ function PantallaMarcado({empleados}){
         if(!empData.dispositivo){
           await dbPatch("empleados",empData.id,{dispositivo:fp});
         }
-        const reg={empleado_id:empData.id,tipo,hora:new Date().toISOString(),distancia:Math.round(dist)};
+        const horaPY=new Date().toLocaleString("sv-SE",{timeZone:"America/Asuncion"});const reg={empleado_id:empData.id,tipo,hora:horaPY,distancia:Math.round(dist)};
         const r=await dbInsert("asistencia",reg);
         if(r&&r[0]){
           setResultado({tipo,hora:new Date(),distancia:Math.round(dist),primerVez:!empData.dispositivo});
@@ -859,7 +859,7 @@ function PantallaMarcado({empleados}){
         <div style={{fontSize:48,marginBottom:12}}>{resultado.tipo==="entrada"?"☀️":"🌙"}</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,marginBottom:4}}>{resultado.tipo==="entrada"?"ENTRADA REGISTRADA":"SALIDA REGISTRADA"}</div>
         <div style={{fontSize:20,fontWeight:600,color:"#e85d26",marginBottom:4}}>{empData.nombre}</div>
-        <div style={{fontSize:16,marginBottom:4}}>{resultado.hora.toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"})}</div>
+        <div style={{fontSize:16,marginBottom:4}}>{resultado.hora.toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit",timeZone:"America/Asuncion"})}</div>
         <div style={{fontSize:11,color:"#8a7a6a",marginBottom:8}}>{resultado.hora.toLocaleDateString("es-PY",{weekday:"long",day:"numeric",month:"long"})}</div>
         {resultado.distancia&&<div style={{fontSize:11,color:"#10b981"}}>📍 A {resultado.distancia}m del taller</div>}
         {resultado.primerVez&&<div style={{fontSize:11,color:"#06b6d4",marginTop:6}}>✓ Dispositivo registrado automáticamente</div>}
@@ -1927,7 +1927,7 @@ ${nombres}
                 setAsistencia(prev=>prev.filter(a=>a.id!==id));
                 showToast("Registro eliminado");
               }
-              function formatHora(iso){if(!iso)return"-";const d=new Date(iso);return d.toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"});}
+              function formatHora(iso){if(!iso)return"-";return iso.length>=16?iso.slice(11,16):new Date(iso).toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit",timeZone:"America/Asuncion"});}
               const empleadosConRegistros=empleados.map(emp=>{
                 const regs=registrosHoy.filter(a=>a.empleado_id===emp.id).sort((a,b)=>a.hora.localeCompare(b.hora));
                 const entrada=regs.find(a=>a.tipo==="entrada");
