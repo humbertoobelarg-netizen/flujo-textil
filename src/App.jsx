@@ -1163,6 +1163,13 @@ ${nombres}
       {pantalla==="marcado"&&(()=>{
         const hash=window.location.hash.replace("#asistencia/","");
         const emp=empleados.find(e=>e.codigo===hash.toUpperCase());
+        // Show loading if empleados not loaded yet
+        if(empleados.length===0)return(
+          <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:16}}>FLUJO TEXTIL</div>
+            <div style={{fontSize:14,color:"#8a7a6a"}}>Cargando...</div>
+          </div>
+        );
         const [marcando,setMarcando]=useState(false);
         const [resultado,setResultado]=useState(null);
         async function marcar(tipo){
