@@ -870,7 +870,14 @@ function PantallaMarcado({empleados}){
         if(!empData.dispositivo){
           await dbPatch("empleados",empData.id,{dispositivo:fp});
         }
-        const horaPY=new Date().toLocaleString("sv-SE",{timeZone:"America/Asuncion"});const reg={empleado_id:empData.id,tipo,hora:horaPY,distancia:Math.round(dist)};
+        // Calcular hora de Paraguay de forma robusta
+        const ahora=new Date();
+        const offsetPY=-4; // Paraguay UTC-4 (verificar si es -3 en horario de verano)
+        const utc=ahora.getTime()+(ahora.getTimezoneOffset()*60000);
+        const horaPYDate=new Date(utc+(offsetPY*3600000));
+        const pad=n=>String(n).padStart(2,"0");
+        const horaPY=`${horaPYDate.getFullYear()}-${pad(horaPYDate.getMonth()+1)}-${pad(horaPYDate.getDate())} ${pad(horaPYDate.getHours())}:${pad(horaPYDate.getMinutes())}:${pad(horaPYDate.getSeconds())}`;
+        const reg={empleado_id:empData.id,tipo,hora:horaPY,distancia:Math.round(dist)};
         const r=await dbInsert("asistencia",reg);
         if(r&&r[0]){
           setResultado({tipo,hora:new Date(),distancia:Math.round(dist),primerVez:!empData.dispositivo});
