@@ -888,13 +888,14 @@ function PantallaMarcado({empleados}){
         if(!empData.dispositivo){
           await dbPatch("empleados",empData.id,{dispositivo:fp});
         }
-        // Calcular hora de Paraguay de forma robusta
+        // Hora Paraguay: UTC-4 fijo (sin horario de verano desde 2024)
+        // Usamos UTC puro del dispositivo y restamos 4 horas exactas
         const ahora=new Date();
-        // Paraguay: UTC-4 (todo el año, no tiene horario de verano desde 2024)
-        const utc=ahora.getTime()+(ahora.getTimezoneOffset()*60000);
-        const horaPYDate=new Date(utc+(-3*3600000));
+        const utcMs=ahora.getTime(); // milisegundos UTC puros
+        const offsetPY=-4*60*60*1000; // -4 horas en ms
+        const horaPYDate=new Date(utcMs+offsetPY);
         const pad=n=>String(n).padStart(2,"0");
-        const horaPY=`${horaPYDate.getFullYear()}-${pad(horaPYDate.getMonth()+1)}-${pad(horaPYDate.getDate())} ${pad(horaPYDate.getHours())}:${pad(horaPYDate.getMinutes())}:${pad(horaPYDate.getSeconds())}`;
+        const horaPY=`${horaPYDate.getUTCFullYear()}-${pad(horaPYDate.getUTCMonth()+1)}-${pad(horaPYDate.getUTCDate())} ${pad(horaPYDate.getUTCHours())}:${pad(horaPYDate.getUTCMinutes())}:${pad(horaPYDate.getUTCSeconds())}`;
         const reg={empleado_id:empData.id,tipo,hora:horaPY,distancia:Math.round(dist)};
         const r=await dbInsert("asistencia",reg);
         if(r&&r[0]){
