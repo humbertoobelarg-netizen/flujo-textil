@@ -1010,6 +1010,7 @@ export default function App(){
   const [formEmpleado,setFormEmpleado]=useState({nombre:"",codigo:""});
   const [asistenciaFecha,setAsistenciaFecha]=useState(hoy());
   const [semanaOffset,setSemanaOffset]=useState(0);
+  const [ordenPor,setOrdenPor]=useState("entrega");
   const [mesOffset,setMesOffset]=useState(0);
   const [vistaAsistencia,setVistaAsistencia]=useState("semana"); // semana | dia
 
@@ -1305,7 +1306,7 @@ ${nombres}
       }
     }
     return true;
-  }).sort((a,b)=>(a.creado||"9999").localeCompare(b.creado||"9999"));
+  }).sort((a,b)=>(ordenPor==="entrega"?(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"):(a.creado||"9999").localeCompare(b.creado||"9999")));
 
   const cardProps={pedidos,setPedidos,usuarios,gastos,stockTejido,setFormGasto,setShowNuevoGasto,setShowAsignarTejido,setShowEntregarModal,setFormEntrega,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
 
@@ -1417,6 +1418,15 @@ ${nombres}
               <input type="text" placeholder="Buscar pedido..." value={busquedaOp} onChange={e=>setBusquedaOp(e.target.value)} style={{flex:1,border:"none",background:"transparent",fontSize:13,outline:"none",padding:0}}/>
               {busquedaOp&&<button onClick={()=>setBusquedaOp("")} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>}
             </div>
+            <div style={{padding:"6px 16px",borderBottom:"1px solid #e8e0d0",background:"#fff",display:"flex",gap:6,alignItems:"center"}}>
+              <span style={{fontSize:10,color:"#8a7a6a"}}>Ordenar:</span>
+              {[["entrega","📅 Entrega"],["pedido","📝 Pedido"]].map(([k,l])=>(
+                <button key={k} className="btn" onClick={()=>setOrdenPor(k)}
+                  style={{padding:"4px 10px",fontSize:10,background:ordenPor===k?"#1a1208":"#f5f0e8",color:ordenPor===k?"#f5f0e8":"#1a1208",border:"1.5px solid #d8d0c0"}}>
+                  {l}
+                </button>
+              ))}
+            </div>
             <div style={{flex:1,padding:16,overflowY:"auto"}}>
               <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
               {(()=>{
@@ -1490,6 +1500,17 @@ ${nombres}
 
             {adminTab==="pedidos"&&(
               <div>
+                <div style={{display:"flex",gap:8,marginBottom:8}}>
+                  <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,display:"flex",alignItems:"center",gap:6}}>
+                    ORDENAR POR:
+                    {[["entrega","📅 F. Entrega"],["pedido","📝 F. Pedido"]].map(([k,l])=>(
+                      <button key={k} className="btn" onClick={()=>setOrdenPor(k)}
+                        style={{padding:"5px 10px",fontSize:11,background:ordenPor===k?"#1a1208":"#f5f0e8",color:ordenPor===k?"#f5f0e8":"#1a1208",border:"1.5px solid #d8d0c0",letterSpacing:0.5}}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,background:"#fff",border:"1.5px solid #d8d0c0",padding:"10px 14px"}}>
                   <span style={{fontSize:16}}>🔍</span>
                   <input type="text" placeholder="Buscar por cliente, número o responsable..." value={busqueda} onChange={e=>setBusqueda(e.target.value)} style={{flex:1,border:"none",background:"transparent",fontSize:13,outline:"none",padding:0}}/>
