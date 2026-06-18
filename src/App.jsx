@@ -740,11 +740,20 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
             <div style={{marginTop:8,padding:"8px 10px",background:"#f5f0e8"}}>
               <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:6}}>ARCHIVOS ADJUNTOS</div>
               {(p.archivos_urls||[]).map((archivo,i)=>(
-                <a key={i} href={archivo.url} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:4,textDecoration:"none",color:"#1a1208"}}>
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:4}}>
                   <span style={{fontSize:16}}>📎</span>
-                  <span style={{fontSize:12,flex:1}}>{archivo.nombre}</span>
-                  <span style={{fontSize:10,color:"#e85d26"}}>Descargar</span>
-                </a>
+                  <a href={archivo.url} target="_blank" rel="noreferrer" style={{fontSize:12,flex:1,textDecoration:"none",color:"#1a1208"}}>{archivo.nombre}</a>
+                  <span style={{fontSize:10,color:"#e85d26",marginRight:4}}>↓</span>
+                  {(usuario?.rol==="admin"||["Gabi","David"].includes(usuario?.nombre))&&(
+                    <button onClick={async()=>{
+                      if(!window.confirm(`¿Eliminar "${archivo.nombre}"?`))return;
+                      const nuevosArchivos=(p.archivos_urls||[]).filter((_,idx)=>idx!==i);
+                      await dbPatch("pedidos",p.id,{archivos_urls:nuevosArchivos});
+                      setPedidos(prev=>prev.map(x=>x.id===p.id?{...x,archivos_urls:nuevosArchivos}:x));
+                      showToast("✓ Archivo eliminado");
+                    }} style={{border:"none",background:"none",cursor:"pointer",color:"#ef4444",fontSize:14,padding:"0 4px"}}>✕</button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -1387,7 +1396,7 @@ ${nombres}
           if(!busquedaOp.trim())return true;
           const b=busquedaOp.toLowerCase();
           return(p.cliente||"").toLowerCase().includes(b)||(p.id||"").toLowerCase().includes(b);
-        }).sort((a,b)=>(a.creado||"9999").localeCompare(b.creado||"9999"));
+        }).sort((a,b)=>(ordenPor==="entrega"?(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"):(a.creado||"9999").localeCompare(b.creado||"9999")));
         const nuevos=filtrados.filter(p=>{
           if(p.entregado)return false;
           if(miProceso==="orden") return pedidoProgreso(pedidos.find(x=>x.id===p.id)||p)===0;
