@@ -29,15 +29,15 @@ const ETAPA_LABEL={pendiente:"Pendiente",en_proceso:"En proceso",listo:"✓ List
 const ETAPA_COLOR={pendiente:"#64748b",en_proceso:"#f59e0b",listo:"#10b981"};
 const TALLES_LIST=["2","4","6","8","10","12","14","16","P","M","G","XG","XXG","XXXG","XXXXG","Especial"];
 const COLORES_TEJIDO=["Amarillo Oro","Naranja","Rojo","Bordo","Lila","Fucsia","Rosa Pastel","Blanco","Negro","Gris Fábrica","Gris Melange","Celeste Pastel","Celeste Fábrica","Turquesa","Azul Francia","Azul Marino","Verde Militar","Verde Musgo","Verde Hoja","Verde Manzana","Verde Limón","Verde Pastel","Amarillo Pastel","Amarillo Limón"];
-const TIPOS_TEJIDO_LIST=["Jersey","Piqué","Dry","Deportivo especial","Elizabeth"];
+const TIPOS_TEJIDO_LIST=["Jersey","Piqué","Dry","Deportivo especial","Elizabeth","Moleton frizado","Molerin terry","Polar","Tejido buzo PA","Acetato","Impermeable"];
 const MOLDERIA_LIST=["Unisex","Dama"];
 const MANGA_TIPOS=["Corta","Larga"];
 const CUELLO_TIPOS=["Redondo","V Cruzado","V Encontrado","Polo Comprado","Polo Preparado"];
-const PUNO_OPCIONES=["Ruedo","Preparado",...COLORES_TEJIDO];
+const PUNO_OPCIONES=["Ruedo","Pretina"];
 
 const TIPOS_PRENDA=["Remera cuello redondo","Remera cuello V","Remera Polo","Camisilla","Pantalón Buzo","Campera Buzo","Canguro","Campera","Chaleco","Bermuda","Short","Otro"];
 const CONSUMO_REMERA={"2":{a90:0.28,a120:0.24},"4":{a90:0.29,a120:0.25},"6":{a90:0.30,a120:0.25},"8":{a90:0.31,a120:0.26},"10":{a90:0.42,a120:0.33},"12":{a90:0.43,a120:0.35},"14":{a90:0.45,a120:0.36},"16":{a90:0.47,a120:0.38},"P":{a90:0.64,a120:0.39},"M":{a90:0.66,a120:0.50},"G":{a90:0.68,a120:0.52},"XG":{a90:0.71,a120:0.54},"XXG":{a90:0.74,a120:0.58},"XXXG":{a90:0.78,a120:0.60},"XXXXG":{a90:1.15,a120:1.00},"Especial":{a90:1.20,a120:1.10}};
-const PRENDA_INIT={tipoPrenda:"",tipoPrendaOtro:"",tipoTejido:"",molderia:"",cuerpo:"",manga:"",color:"",puno:"",cuello:"",colorCuello:"",talles:{},precioUnit:"",cantidad:""};
+const PRENDA_INIT={tipoPrenda:"",tipoPrendaOtro:"",tipoTejido:"",molderia:"",cuerpo:"",manga:"",color:"",puno:"",colorPuno:"",cuello:"",colorCuello:"",talles:{},precioUnit:"",cantidad:""};
 const FORM_INIT={cliente:"",prioridad:"media",fechaEntrega:"",descripcion:"",datosFactura:"",procesosActivos:["orden","terminacion"],prendas:[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],anticipo:"",imagenes:[]};
 
 function hoy(){return new Date().toISOString().split("T")[0];}
@@ -213,7 +213,7 @@ function PrendaDetalle({prenda,idx,showTejido=false,showPrecios=false}){
             {prenda.cuerpo&&<div style={{padding:"5px 8px",background:"#f5f0e8"}}><div style={{fontSize:9,color:"#8a7a6a"}}>CUERPO COLOR</div><div style={{fontSize:11,fontWeight:500}}>{prenda.cuerpo}</div></div>}
             {prenda.manga&&<div style={{padding:"5px 8px",background:"#f5f0e8"}}><div style={{fontSize:9,color:"#8a7a6a"}}>MANGA TIPO</div><div style={{fontSize:11,fontWeight:500}}>{prenda.manga}</div></div>}
             {prenda.color&&<div style={{padding:"5px 8px",background:"#f5f0e8"}}><div style={{fontSize:9,color:"#8a7a6a"}}>MANGA COLOR</div><div style={{fontSize:11,fontWeight:500}}>{prenda.color}</div></div>}
-            {prenda.puno&&<div style={{padding:"5px 8px",background:"#f5f0e8"}}><div style={{fontSize:9,color:"#8a7a6a"}}>PUÑO</div><div style={{fontSize:11,fontWeight:500}}>{prenda.puno}</div></div>}
+            {prenda.puno&&<div style={{padding:"5px 8px",background:"#f5f0e8"}}><div style={{fontSize:9,color:"#8a7a6a"}}>PUÑO</div><div style={{fontSize:11,fontWeight:500}}>{prenda.puno}{prenda.colorPuno?" - "+prenda.colorPuno:""}</div></div>}
             {prenda.cuello&&<div style={{padding:"5px 8px",background:"#f5f0e8"}}><div style={{fontSize:9,color:"#8a7a6a"}}>CUELLO TIPO</div><div style={{fontSize:11,fontWeight:500}}>{prenda.cuello}</div></div>}
             {prenda.colorCuello&&<div style={{padding:"5px 8px",background:"#f5f0e8"}}><div style={{fontSize:9,color:"#8a7a6a"}}>COLOR CUELLO</div><div style={{fontSize:11,fontWeight:500}}>{prenda.colorCuello}</div></div>}
           </div>
@@ -320,11 +320,18 @@ function PrendaForm({prenda,idx,onChange}){
                 {COLORES_TEJIDO.map(t=><option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>PUÑO</label>
-              <select style={{width:"100%"}} value={prenda.puno||""} onChange={e=>onChange({...prenda,puno:e.target.value})}>
+            <div>
+              <label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>PUÑO</label>
+              <select style={{width:"100%",marginBottom:prenda.puno==="Pretina"?6:0}} value={prenda.puno||""} onChange={e=>onChange({...prenda,puno:e.target.value,colorPuno:""})}>
                 <option value="">Seleccionar...</option>
                 {PUNO_OPCIONES.map(t=><option key={t} value={t}>{t}</option>)}
               </select>
+              {prenda.puno==="Pretina"&&(
+                <select style={{width:"100%"}} value={prenda.colorPuno||""} onChange={e=>onChange({...prenda,colorPuno:e.target.value})}>
+                  <option value="">Color de pretina...</option>
+                  {COLORES_TEJIDO.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              )}
             </div>
             <div><label style={{fontSize:9,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>TIPO CUELLO</label>
               <select style={{width:"100%"}} value={prenda.cuello||""} onChange={e=>onChange({...prenda,cuello:e.target.value})}>
