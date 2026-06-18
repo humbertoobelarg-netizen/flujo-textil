@@ -91,6 +91,8 @@ function tieneHorario(nombreEmp,diaSemana){
   if(diaSemana===6)return SABADO_OBLIGATORIO.some(n=>nombreEmp.includes(n)); // Sabado solo algunos
   return true; // Lun-Vie todos
 }
+// Horarios: Entrada 7:00, Salida almuerzo 12:00, Vuelta almuerzo 12:45, Salida 17:00
+// Sabado (obligatorios): Entrada 8:00, Salida 12:00
 // Device fingerprint
 async function getFingerprint(){
   const data=[
@@ -879,9 +881,9 @@ function PantallaMarcado({empleados}){
         }
         // Calcular hora de Paraguay de forma robusta
         const ahora=new Date();
-        const offsetPY=-4; // Paraguay UTC-4 (verificar si es -3 en horario de verano)
+        // Paraguay: UTC-4 (todo el año, no tiene horario de verano desde 2024)
         const utc=ahora.getTime()+(ahora.getTimezoneOffset()*60000);
-        const horaPYDate=new Date(utc+(offsetPY*3600000));
+        const horaPYDate=new Date(utc+(-3*3600000));
         const pad=n=>String(n).padStart(2,"0");
         const horaPY=`${horaPYDate.getFullYear()}-${pad(horaPYDate.getMonth()+1)}-${pad(horaPYDate.getDate())} ${pad(horaPYDate.getHours())}:${pad(horaPYDate.getMinutes())}:${pad(horaPYDate.getSeconds())}`;
         const reg={empleado_id:empData.id,tipo,hora:horaPY,distancia:Math.round(dist)};
@@ -946,12 +948,18 @@ function PantallaMarcado({empleados}){
             <button className="btn" onClick={()=>setResultado(null)} style={{marginTop:8,width:"100%",padding:"8px",fontSize:11,background:"transparent",border:"1.5px solid #ef4444",color:"#ef4444",letterSpacing:1}}>INTENTAR DE NUEVO</button>
           </div>
         )}
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <button className="btn" onClick={()=>marcar("entrada")} disabled={marcando} style={{padding:"18px",fontSize:14,background:"#10b981",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
-            {marcando?"...":"☀️ MARCAR ENTRADA"}
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <button className="btn" onClick={()=>marcar("entrada")} disabled={marcando} style={{padding:"16px",fontSize:14,background:"#10b981",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
+            {marcando?"...":"☀️ ENTRADA (7:00)"}
           </button>
-          <button className="btn" onClick={()=>marcar("salida")} disabled={marcando} style={{padding:"18px",fontSize:14,background:"#e85d26",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
-            {marcando?"...":"🌙 MARCAR SALIDA"}
+          <button className="btn" onClick={()=>marcar("salida_almuerzo")} disabled={marcando} style={{padding:"16px",fontSize:14,background:"#f59e0b",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
+            {marcando?"...":"🍽️ SALIDA ALMUERZO (12:00)"}
+          </button>
+          <button className="btn" onClick={()=>marcar("vuelta_almuerzo")} disabled={marcando} style={{padding:"16px",fontSize:14,background:"#06b6d4",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
+            {marcando?"...":"↩️ VUELTA ALMUERZO (12:45)"}
+          </button>
+          <button className="btn" onClick={()=>marcar("salida")} disabled={marcando} style={{padding:"16px",fontSize:14,background:"#e85d26",color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue',sans-serif",border:"none",opacity:marcando?0.6:1}}>
+            {marcando?"...":"🌙 SALIDA (17:00)"}
           </button>
         </div>
       </div>
@@ -2099,7 +2107,8 @@ ${nombres}
                                   <tr style={{background:"#f5f0e8"}}>
                                     <th style={{padding:"5px 8px",textAlign:"left",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>DÍA</th>
                                     <th style={{padding:"5px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>ENTRADA</th>
-                                    <th style={{padding:"5px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>VUELTA ALM.</th>
+                                    <th style={{padding:"5px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>SAL. ALM.</th>
+                                    <th style={{padding:"5px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>VTA. ALM.</th>
                                     <th style={{padding:"5px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>SALIDA</th>
                                     <th style={{padding:"5px 8px",textAlign:"center",fontSize:9,color:"#8a7a6a",letterSpacing:1,fontWeight:600}}>ESTADO</th>
                                   </tr>
@@ -2129,6 +2138,11 @@ ${nombres}
                                               {formatHora(entrada.hora)}{entradaTarde?" ⚠":""}
                                             </span>
                                           ):(tieneOblig?<span style={{color:"#c8bfaf"}}>--:--</span>:<span style={{color:"#e8e0d0",fontSize:9}}>-</span>)}
+                                        </td>
+                                        <td style={{padding:"6px 8px",textAlign:"center"}}>
+                                          {!esSabado?(salidaAlm?(
+                                            <span style={{fontWeight:600,color:"#f59e0b"}}>{formatHora(salidaAlm.hora)}</span>
+                                          ):(tieneOblig?<span style={{color:"#c8bfaf"}}>--:--</span>:<span style={{color:"#e8e0d0",fontSize:9}}>-</span>)):<span style={{color:"#e8e0d0",fontSize:9}}>-</span>}
                                         </td>
                                         <td style={{padding:"6px 8px",textAlign:"center"}}>
                                           {!esSabado?(vuelta?(
@@ -2231,7 +2245,8 @@ ${nombres}
                                       const tieneOblig=tieneHorario(emp.nombre,diaSemana);
                                       const regsdia=asistencia.filter(a=>a.empleado_id===emp.id&&a.hora&&a.hora.startsWith(fecha)).sort((a,b)=>a.hora.localeCompare(b.hora));
                                       const entrada=regsdia.find(a=>a.tipo==="entrada");
-                                      const vuelta=regsdia.find(a=>a.tipo==="vuelta_almuerzo"||a.tipo==="entrada_almuerzo");
+                                      const salidaAlm=regsdia.find(a=>a.tipo==="salida_almuerzo");
+                                    const vuelta=regsdia.find(a=>a.tipo==="vuelta_almuerzo"||a.tipo==="entrada_almuerzo");
                                       const salida=regsdia.find(a=>a.tipo==="salida");
                                       const limiteEntrada=esSabado?"08:00":"07:00";
                                       const entradaTarde=entrada&&esTarde(entrada.hora,limiteEntrada);
