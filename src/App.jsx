@@ -2119,6 +2119,7 @@ ${nombres}
                                     const tieneOblig=tieneHorario(emp.nombre,diaSemana);
                                     const regsdia=asistencia.filter(a=>a.empleado_id===emp.id&&a.hora&&a.hora.startsWith(fecha)).sort((a,b)=>a.hora.localeCompare(b.hora));
                                     const entrada=regsdia.find(a=>a.tipo==="entrada");
+                                    const salidaAlm=regsdia.find(a=>a.tipo==="salida_almuerzo");
                                     const vueltas=regsdia.filter(a=>a.tipo==="vuelta_almuerzo"||a.tipo==="entrada_almuerzo");
                                     const vuelta=vueltas[0];
                                     const salida=regsdia.find(a=>a.tipo==="salida");
@@ -2246,7 +2247,7 @@ ${nombres}
                                       const regsdia=asistencia.filter(a=>a.empleado_id===emp.id&&a.hora&&a.hora.startsWith(fecha)).sort((a,b)=>a.hora.localeCompare(b.hora));
                                       const entrada=regsdia.find(a=>a.tipo==="entrada");
                                       const salidaAlm=regsdia.find(a=>a.tipo==="salida_almuerzo");
-                                    const vuelta=regsdia.find(a=>a.tipo==="vuelta_almuerzo"||a.tipo==="entrada_almuerzo");
+                                      const vuelta=regsdia.find(a=>a.tipo==="vuelta_almuerzo"||a.tipo==="entrada_almuerzo");
                                       const salida=regsdia.find(a=>a.tipo==="salida");
                                       const limiteEntrada=esSabado?"08:00":"07:00";
                                       const entradaTarde=entrada&&esTarde(entrada.hora,limiteEntrada);
@@ -2259,6 +2260,9 @@ ${nombres}
                                           </td>
                                           <td style={{padding:"4px 8px",textAlign:"center"}}>
                                             {entrada?<span style={{fontWeight:600,color:entradaTarde?"#ef4444":"#10b981"}}>{formatHora(entrada.hora)}</span>:tieneOblig?<span style={{color:"#c8bfaf"}}>--</span>:<span style={{color:"#e8e0d0"}}>-</span>}
+                                          </td>
+                                          <td style={{padding:"4px 8px",textAlign:"center"}}>
+                                            {!esSabado?(salidaAlm?<span style={{fontWeight:600,color:"#f59e0b"}}>{formatHora(salidaAlm.hora)}</span>:tieneOblig?<span style={{color:"#c8bfaf"}}>--</span>:<span style={{color:"#e8e0d0"}}>-</span>):<span style={{color:"#e8e0d0"}}>-</span>}
                                           </td>
                                           <td style={{padding:"4px 8px",textAlign:"center"}}>
                                             {!esSabado?(vuelta?<span style={{fontWeight:600,color:vueltaTarde?"#ef4444":"#10b981"}}>{formatHora(vuelta.hora)}</span>:tieneOblig?<span style={{color:"#c8bfaf"}}>--</span>:<span style={{color:"#e8e0d0"}}>-</span>):<span style={{color:"#e8e0d0"}}>-</span>}
