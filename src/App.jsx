@@ -888,19 +888,20 @@ function PantallaMarcado({empleados}){
         if(!empData.dispositivo){
           await dbPatch("empleados",empData.id,{dispositivo:fp});
         }
-        // Hora Paraguay: UTC-4 fijo (sin horario de verano desde 2024)
-        // Usamos UTC puro del dispositivo y restamos 4 horas exactas
-        const ahora=new Date();
-        const utcMs=ahora.getTime(); // milisegundos UTC puros
-        const offsetPY=-4*60*60*1000; // -4 horas en ms
-        const horaPYDate=new Date(utcMs+offsetPY);
-        const pad=n=>String(n).padStart(2,"0");
-        const horaPY=`${horaPYDate.getUTCFullYear()}-${pad(horaPYDate.getUTCMonth()+1)}-${pad(horaPYDate.getUTCDate())} ${pad(horaPYDate.getUTCHours())}:${pad(horaPYDate.getUTCMinutes())}:${pad(horaPYDate.getUTCSeconds())}`;
-        const reg={empleado_id:empData.id,tipo,hora:horaPY,distancia:Math.round(dist)};
-        const r=await dbInsert("asistencia",reg);
-        if(r&&r[0]){
+        // Usar Edge Function para calcular hora en servidor (Paraguay UTC-4)
+        const edgeFnUrl=`${SUPABASE_URL}/functions/v1/registrar-asistencia`;
+        const resp=await fetch(edgeFnUrl,{
+          method:"POST",
+          headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`},
+          body:JSON.stringify({empleado_id:empData.id,tipo,distancia:Math.round(dist)})
+        });
+        if(resp.ok){
+          const r=await resp.json();
           setResultado({tipo,hora:new Date(),distancia:Math.round(dist),primerVez:!empData.dispositivo});
-        }else setResultado({error:true,msg:"Error al registrar. Intentá de nuevo."});
+        }else{
+          const err=await resp.json();
+          setResultado({error:true,msg:"Error al registrar: "+(err.error||"intentá de nuevo")});
+        }
       }catch(e){setResultado({error:true,msg:"Error de conexión"});}
       setMarcando(false);
     },(err)=>{
@@ -1038,6 +1039,32 @@ export default function App(){
     if(window.location.hash.startsWith("#asistencia/")){
       setPantalla("marcado");
     }
+    // Realtime subscriptions
+    const canal=new EventSource(`${SUPABASE_URL}/rest/v1/pedidos?apikey=${SUPABASE_KEY}`);
+    const setupRealtime=async()=>{
+      try{
+        // Subscribe to pedidos changes
+        const ws=new WebSocket(`${SUPABASE_URL.replace("https","wss")}/realtime/v1/websocket?apikey=${SUPABASE_KEY}&vsn=1.0.0`);
+        ws.onopen=()=>{
+          ws.send(JSON.stringify({topic:"realtime:public:pedidos",event:"phx_join",payload:{},ref:"1"}));
+          ws.send(JSON.stringify({topic:"realtime:public:gastos",event:"phx_join",payload:{},ref:"2"}));
+          ws.send(JSON.stringify({topic:"realtime:public:asistencia",event:"phx_join",payload:{},ref:"3"}));
+        };
+        ws.onmessage=(e)=>{
+          const msg=JSON.parse(e.data);
+          if(msg.event==="INSERT"||msg.event==="UPDATE"||msg.event==="DELETE"){
+            const tabla=msg.topic?.replace("realtime:public:","");
+            if(tabla==="pedidos")cargarDatos();
+            if(tabla==="gastos")dbGet("gastos").then(g=>setGastos(Array.isArray(g)?g:[]));
+            if(tabla==="asistencia")dbGet("asistencia","order=hora.desc&limit=500").then(a=>setAsistencia(Array.isArray(a)?a:[]));
+          }
+        };
+        ws.onerror=()=>{}; // Silent fail - realtime is optional
+        return ()=>ws.close();
+      }catch(e){}
+    };
+    const cleanup=setupRealtime();
+    return()=>{cleanup.then(fn=>fn&&fn()).catch(()=>{});};
   },[]);
 
   async function cargarDatos(){
