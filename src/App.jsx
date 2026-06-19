@@ -1043,7 +1043,6 @@ export default function App(){
       setPantalla("marcado");
     }
     // Realtime subscriptions
-    const canal=new EventSource(`${SUPABASE_URL}/rest/v1/pedidos?apikey=${SUPABASE_KEY}`);
     const setupRealtime=async()=>{
       try{
         // Subscribe to pedidos changes
