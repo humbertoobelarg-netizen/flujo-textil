@@ -1355,6 +1355,27 @@ ${nombres}
         .grupo-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;}
       `}</style>
 
+      {/* RECORDATORIO BACKUP */}
+      {usuario?.rol==="admin"&&(()=>{
+        const hoyDate=new Date();
+        const dia=hoyDate.getDate();
+        const ultimoDia=new Date(hoyDate.getFullYear(),hoyDate.getMonth()+1,0).getDate();
+        const mostrar=dia>=ultimoDia-1||dia<=2;
+        const [backupCerrado,setBackupCerrado]=useState(false);
+        if(!mostrar||backupCerrado)return null;
+        const esPrimerDias=dia<=2;
+        return(
+          <div style={{position:"fixed",bottom:70,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 32px)",maxWidth:480,zIndex:999,background:"#1a1208",color:"#f5f0e8",padding:"12px 16px",border:"1.5px solid #e85d26",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:20}}>💾</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:600,letterSpacing:0.5}}>{esPrimerDias?"¿Ya hiciste el backup de fin de mes?":"Recordatorio: hacer backup antes de fin de mes"}</div>
+              <div style={{fontSize:10,color:"#8a7a6a",marginTop:2}}>Supabase → Settings → Database → Backups → Download</div>
+            </div>
+            <button onClick={()=>setBackupCerrado(true)} style={{border:"none",background:"none",cursor:"pointer",color:"#8a7a6a",fontSize:18}}>✕</button>
+          </div>
+        );
+      })()}
+
       {toast&&<div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:toast.color,color:"#fff",padding:"10px 24px",fontSize:13,zIndex:100,letterSpacing:0.5}}>{toast.msg}</div>}
 
 
