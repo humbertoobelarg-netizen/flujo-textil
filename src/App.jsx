@@ -441,7 +441,7 @@ function GrupoColapsable({titulo,icon,color,count,children}){
 }
 
 // Card colapsable genérico
-function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtapa,miProceso,gastos=[],stockTejido=[],setFormGasto,setShowNuevoGasto,setShowAsignarTejido,setShowEntregarModal,setFormEntrega,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido}){
+function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtapa,miProceso,gastos=[],stockTejido=[],setFormGasto,setShowNuevoGasto,setShowAsignarTejido,setShowEntregarModal,setFormEntrega,setShowModalCorte,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido}){
   const [exp,setExp]=useState(false);
   const p=pedidos.find(x=>x.id===pedido.id)||pedido;
   const prog=pedidoProgreso(p);
@@ -1008,6 +1008,8 @@ export default function App(){
   const [stockTejido,setStockTejido]=useState([]);
   const [showNuevaCompra,setShowNuevaCompra]=useState(false);
   const [showAsignarTejido,setShowAsignarTejido]=useState(null); // pedido
+  const [showModalCorte,setShowModalCorte]=useState(null); // {pedido, proceso}
+  const [anchoCorte,setAnchoCorte]=useState("90");
   const [showEntregarModal,setShowEntregarModal]=useState(null); // pedido
   const [formEntrega,setFormEntrega]=useState({tipoPago:"pagado",montoCobrado:"",diasCredito:""});
   const [formCompra,setFormCompra]=useState({fecha:hoy(),proveedor:"",items:[{tipo:"90",kilos:"",precioKg:""}],pedidosVinculados:[],tipoGasto:"real"});
@@ -1138,6 +1140,51 @@ ${nombres}
     setShowEntregarModal(null);
     setFormEntrega({tipoPago:"pagado",montoCobrado:"",diasCredito:""});
     showToast("✓ Pedido marcado como entregado");
+  }
+
+  async function confirmarCorte(pedido, ancho){
+    const RENDS={"90":3.6,"120":3,"rib":2.3};
+    // Calculate metros needed
+    let mts90=0,mts120=0,mtsRib=0;
+    (pedido.prendas||[]).forEach(pr=>{
+      if(isRemera(pr.tipoPrenda)){
+        const tej=calcTejidoRemera(pr.talles||{});
+        mts90+=tej.a90;mts120+=tej.a120;mtsRib+=tej.rib;
+      }
+    });
+    const mtsJersey=ancho==="90"?mts90:mts120;
+    const kgJersey=mtsJersey/RENDS[ancho];
+    const kgRib=mtsRib/RENDS["rib"];
+    // Get color from prenda
+    const colorCuerpo=(pedido.prendas||[]).find(pr=>isRemera(pr.tipoPrenda))?.cuerpo||"-";
+    const colorRib=(pedido.prendas||[]).find(pr=>isRemera(pr.tipoPrenda))?.colorCuello||colorCuerpo;
+    // Get PPP for jersey
+    const stockJersey=stockTejido.filter(s=>s.ancho===ancho);
+    const totalKgJ=stockJersey.reduce((s,i)=>s+(parseFloat(i.kilos)||0),0);
+    const totalGsJ=stockJersey.reduce((s,i)=>s+(parseFloat(i.total)||0),0);
+    const pppJersey=totalKgJ>0?totalGsJ/totalKgJ:0;
+    // Get PPP for rib
+    const stockRib=stockTejido.filter(s=>s.ancho==="rib");
+    const totalKgR=stockRib.reduce((s,i)=>s+(parseFloat(i.kilos)||0),0);
+    const totalGsR=stockRib.reduce((s,i)=>s+(parseFloat(i.total)||0),0);
+    const pppRib=totalKgR>0?totalGsR/totalKgR:0;
+    // Register descuentos in stock
+    const descuentos=[];
+    if(kgJersey>0&&pppJersey>0){
+      const desc={id:"ST"+Date.now()+"_j",fecha:hoy(),proveedor:`Corte - ${pedido.id}`,ancho,color:colorCuerpo,kilos:-kgJersey,precio_kg:pppJersey,total:-(kgJersey*pppJersey),pedido_id:pedido.id,registrado_por:usuario?.nombre||"Guido"};
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/stock_tejido`,{method:"POST",headers:H,body:JSON.stringify(desc)});
+      if(r.ok)descuentos.push(desc);
+    }
+    if(kgRib>0&&pppRib>0){
+      const desc={id:"ST"+Date.now()+"_r",fecha:hoy(),proveedor:`Corte - ${pedido.id}`,ancho:"rib",color:colorRib,kilos:-kgRib,precio_kg:pppRib,total:-(kgRib*pppRib),pedido_id:pedido.id,registrado_por:usuario?.nombre||"Guido"};
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/stock_tejido`,{method:"POST",headers:H,body:JSON.stringify(desc)});
+      if(r.ok)descuentos.push(desc);
+    }
+    if(descuentos.length>0)setStockTejido(prev=>[...prev,...descuentos]);
+    // Mark proceso as listo
+    await marcarEtapa(pedido.id,"corte","listo");
+    setShowModalCorte(null);
+    showToast(`✓ Corte marcado · ${mtsJersey.toFixed(1)} mts Jersey ${ancho==="90"?"90cm":"1.20m"} + ${mtsRib.toFixed(2)} mts Rib descontados del stock`);
   }
 
   async function asignarTejidoStock(pedido, ancho){
@@ -1353,7 +1400,7 @@ ${nombres}
     return true;
   }).sort((a,b)=>(ordenPor==="entrega"?(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"):(a.creado||"9999").localeCompare(b.creado||"9999")));
 
-  const cardProps={pedidos,setPedidos,usuarios,gastos,stockTejido,setFormGasto,setShowNuevoGasto,setShowAsignarTejido,setShowEntregarModal,setFormEntrega,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
+  const cardProps={pedidos,setPedidos,usuarios,gastos,stockTejido,setFormGasto,setShowNuevoGasto,setShowAsignarTejido,setShowEntregarModal,setFormEntrega,setShowModalCorte,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
 
   return(
     <div style={{fontFamily:"'DM Mono','Courier New',monospace",minHeight:"100vh",background:"#f5f0e8",color:"#1a1208"}}>
@@ -2649,6 +2696,59 @@ ${nombres}
           </div>
         </div>
       )}
+
+      {/* MODAL CORTE - SELECCIONAR ANCHO */}
+      {showModalCorte&&(()=>{
+        const p=showModalCorte;
+        let mts90=0,mts120=0,mtsRib=0;
+        (p.prendas||[]).forEach(pr=>{
+          if(isRemera(pr.tipoPrenda)){
+            const tej=calcTejidoRemera(pr.talles||{});
+            mts90+=tej.a90;mts120+=tej.a120;mtsRib+=tej.rib;
+          }
+        });
+        const colorCuerpo=(p.prendas||[]).find(pr=>isRemera(pr.tipoPrenda))?.cuerpo||"-";
+        const RENDS={"90":3.6,"120":3};
+        return(
+          <div className="modal-bg" onClick={()=>setShowModalCorte(null)}>
+            <div className="modal" onClick={e=>e.stopPropagation()}>
+              <div style={{padding:"20px 24px",borderBottom:"1.5px solid #d8d0c0",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,color:"#1a1208"}}>✂️ CONFIRMAR CORTE</div>
+              <div style={{padding:24,display:"flex",flexDirection:"column",gap:14}}>
+                <div style={{padding:"10px 14px",background:"#f5f0e8"}}>
+                  <div style={{fontSize:13,fontWeight:600}}>{p.cliente}</div>
+                  <div style={{fontSize:11,color:"#8a7a6a"}}>{p.id} · Color: <strong>{colorCuerpo}</strong></div>
+                </div>
+                <div>
+                  <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:8}}>¿CON QUÉ ANCHO CORTASTE?</label>
+                  <div style={{display:"flex",gap:8}}>
+                    {[["90","Jersey 90cm"],["120","Jersey 1.20m"]].map(([k,l])=>(
+                      <button key={k} className="btn" onClick={()=>setAnchoCorte(k)}
+                        style={{flex:1,padding:"14px",fontSize:12,background:anchoCorte===k?"#1a1208":"#f5f0e8",color:anchoCorte===k?"#f5f0e8":"#1a1208",border:"1.5px solid #d8d0c0",letterSpacing:1}}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{padding:"10px 14px",background:"#1a1208",color:"#f5f0e8"}}>
+                  <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:6}}>SE DESCONTARÁ DEL STOCK</div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
+                    <span>Jersey {anchoCorte==="90"?"90cm":"1.20m"} · {colorCuerpo}</span>
+                    <span>{anchoCorte==="90"?mts90.toFixed(2):mts120.toFixed(2)} mts ({((anchoCorte==="90"?mts90:mts120)/RENDS[anchoCorte]).toFixed(2)} kg)</span>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
+                    <span>Rib · {(p.prendas||[]).find(pr=>isRemera(pr.tipoPrenda))?.colorCuello||colorCuerpo}</span>
+                    <span>{mtsRib.toFixed(3)} mts ({(mtsRib/2.3).toFixed(3)} kg)</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                  <button className="btn" onClick={()=>setShowModalCorte(null)} style={{padding:"10px 20px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",letterSpacing:1}}>CANCELAR</button>
+                  <button className="btn" onClick={()=>confirmarCorte(p,anchoCorte)} style={{padding:"10px 20px",fontSize:11,background:"#1a1208",color:"#f5f0e8",letterSpacing:1}}>✓ CONFIRMAR Y DESCONTAR STOCK</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* MODAL ASIGNAR TEJIDO DEL STOCK */}
       {showAsignarTejido&&(()=>{
