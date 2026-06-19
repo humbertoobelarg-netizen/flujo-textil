@@ -1010,6 +1010,7 @@ export default function App(){
   const [showAsignarTejido,setShowAsignarTejido]=useState(null); // pedido
   const [showModalCorte,setShowModalCorte]=useState(null); // {pedido, proceso}
   const [anchoCorte,setAnchoCorte]=useState("90");
+  const [backupCerrado,setBackupCerrado]=useState(false);
   const [showEntregarModal,setShowEntregarModal]=useState(null); // pedido
   const [formEntrega,setFormEntrega]=useState({tipoPago:"pagado",montoCobrado:"",diasCredito:""});
   const [formCompra,setFormCompra]=useState({fecha:hoy(),proveedor:"",items:[{tipo:"90",kilos:"",precioKg:""}],pedidosVinculados:[],tipoGasto:"real"});
@@ -1435,7 +1436,6 @@ ${nombres}
         const dia=hoyDate.getDate();
         const ultimoDia=new Date(hoyDate.getFullYear(),hoyDate.getMonth()+1,0).getDate();
         const mostrar=dia>=ultimoDia-1||dia<=2;
-        const [backupCerrado,setBackupCerrado]=useState(false);
         if(!mostrar||backupCerrado)return null;
         const esPrimerDias=dia<=2;
         return(
