@@ -30,6 +30,20 @@ const ETAPA_COLOR={pendiente:"#64748b",en_proceso:"#f59e0b",listo:"#10b981"};
 const TALLES_LIST=["2","4","6","8","10","12","14","16","P","M","G","XG","XXG","XXXG","XXXXG","Especial"];
 const COLORES_TEJIDO=["Amarillo Oro","Naranja","Rojo","Bordo","Lila","Fucsia","Rosa Pastel","Blanco","Negro","Gris Fábrica","Gris Melange","Celeste Pastel","Celeste Fábrica","Turquesa","Azul Francia","Azul Marino","Verde Militar","Verde Musgo","Verde Hoja","Verde Manzana","Verde Limón","Verde Pastel","Amarillo Pastel","Amarillo Limón"];
 const TIPOS_TEJIDO_LIST=["Jersey","Piqué","Dry","Deportivo especial","Elizabeth","Moleton frizado","Molerin terry","Polar","Tejido buzo PA","Acetato","Impermeable"];
+const COSTO_CONFECCION={
+  "Remera cuello redondo":2150,
+  "Remera cuello V":2150,
+  "Remera polo":4300,
+  "Camisilla":1720,
+  "Canguro":5700,
+};
+function calcCostoConfeccion(prendas){
+  return(prendas||[]).reduce((s,pr)=>{
+    const costo=COSTO_CONFECCION[pr.tipoPrenda]||0;
+    const cant=parseFloat(pr.cantidad)||0;
+    return s+(costo*cant);
+  },0);
+}
 const MOLDERIA_LIST=["Unisex","Dama"];
 const MANGA_TIPOS=["Corta","Larga"];
 const CUELLO_TIPOS=["Redondo","V Cruzado","V Encontrado","Polo Comprado","Polo Preparado"];
@@ -571,7 +585,9 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                 }
               });
             });
-            const totalCostos=Object.values(costosVinc).reduce((s,v)=>s+v,0);
+            const tieneTercerizado=p.marcado_terceros||(gastos.some(g=>g.categoria==="pago_terceros"&&normalizarVinculados(g.pedidos_vinculados,g.monto).some(v=>v.id===p.id)));
+            const costoConfeccion=tieneTercerizado?0:calcCostoConfeccion(p.prendas||[]);
+            const totalCostos=Object.values(costosVinc).reduce((s,v)=>s+v,0)+costoConfeccion;
             if(totalCostos===0)return null;
             const LABELS={mat_tejido:"🧵 Tejido",pago_terceros:"🪡 Tercerizado",envio:"🚚 Envío",mat_serigrafia:"🖨️ Serigrafía/DTF/Sub",mat_confeccion:"🪡 Confección/Bordado",mat_empaque:"📦 Empaque"};
             return(
@@ -583,6 +599,12 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                     <span>${monto.toLocaleString("es-AR")}</span>
                   </div>
                 ))}
+                {costoConfeccion>0&&(
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+                    <span>🪡 Confección (mano de obra)</span>
+                    <span>${costoConfeccion.toLocaleString("es-AR")}</span>
+                  </div>
+                )}
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:13,fontWeight:600,borderTop:"1px solid #3a3a3a",paddingTop:6,marginTop:4,color:"#e85d26"}}>
                   <span>TOTAL COSTOS</span>
                   <span>${totalCostos.toLocaleString("es-AR")}</span>
