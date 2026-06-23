@@ -934,14 +934,14 @@ function PantallaMarcado({empleados}){
 
   if(!empCargado)return(
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:16}}>FLUJO TEXTIL</div>
+      <div style={{marginBottom:16,textAlign:"center"}}><img src="https://drive.google.com/uc?export=view&id=1ba2BEmXxNgt4c89O3qJwNGxyuQcXSjYE" alt="Técnica Remeras" style={{maxWidth:200,maxHeight:80,objectFit:"contain"}}/></div>
       <div style={{fontSize:14,color:"#8a7a6a"}}>Cargando...</div>
     </div>
   );
 
   if(!empData)return(
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
+      <div style={{marginBottom:8,textAlign:"center"}}><img src="https://drive.google.com/uc?export=view&id=1ba2BEmXxNgt4c89O3qJwNGxyuQcXSjYE" alt="Técnica Remeras" style={{maxWidth:200,maxHeight:80,objectFit:"contain"}}/></div>
       <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
         <div style={{fontSize:32,marginBottom:12}}>❌</div>
         <div style={{fontSize:14,color:"#ef4444",marginBottom:8}}>Código no encontrado</div>
@@ -953,7 +953,7 @@ function PantallaMarcado({empleados}){
 
   if(resultado&&!resultado.error)return(
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
+      <div style={{marginBottom:8,textAlign:"center"}}><img src="https://drive.google.com/uc?export=view&id=1ba2BEmXxNgt4c89O3qJwNGxyuQcXSjYE" alt="Técnica Remeras" style={{maxWidth:200,maxHeight:80,objectFit:"contain"}}/></div>
       <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
         <div style={{fontSize:48,marginBottom:12}}>{resultado.tipo==="entrada"?"☀️":"🌙"}</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,marginBottom:4}}>{resultado.tipo==="entrada"?"ENTRADA REGISTRADA":"SALIDA REGISTRADA"}</div>
@@ -969,7 +969,7 @@ function PantallaMarcado({empleados}){
 
   return(
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"#f5f0e8"}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:3,marginBottom:8}}>FLUJO TEXTIL</div>
+      <div style={{marginBottom:8,textAlign:"center"}}><img src="https://drive.google.com/uc?export=view&id=1ba2BEmXxNgt4c89O3qJwNGxyuQcXSjYE" alt="Técnica Remeras" style={{maxWidth:200,maxHeight:80,objectFit:"contain"}}/></div>
       <div style={{padding:32,background:"#fff",border:"1.5px solid #d8d0c0",textAlign:"center",maxWidth:320,width:"100%"}}>
         <div style={{width:64,height:64,background:"#e85d26",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:28,margin:"0 auto 16px"}}>{empData.nombre[0].toUpperCase()}</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,marginBottom:4}}>{empData.nombre}</div>
@@ -1482,7 +1482,7 @@ ${nombres}
       {pantalla==="login"&&(
         <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{marginBottom:32,textAlign:"center"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:52,letterSpacing:4,lineHeight:1}}>FLUJO TEXTIL</div>
+            <div style={{textAlign:"center",marginBottom:8}}><img src="https://drive.google.com/uc?export=view&id=1ba2BEmXxNgt4c89O3qJwNGxyuQcXSjYE" alt="Técnica Remeras" style={{maxWidth:220,maxHeight:90,objectFit:"contain"}}/></div>
             <div style={{fontSize:11,color:"#8a7a6a",letterSpacing:3,marginTop:4}}>SISTEMA DE PRODUCCIÓN</div>
           </div>
           <div className="card" style={{padding:32,width:"100%",maxWidth:340}}>
@@ -1609,7 +1609,7 @@ ${nombres}
       {pantalla==="admin"&&(
         <div style={{minHeight:"100vh",display:"flex",flexDirection:"column"}}>
           <div style={{padding:"14px 24px",borderBottom:"1.5px solid #d8d0c0",background:"#fff",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:3}}>FLUJO TEXTIL <span style={{fontSize:14,letterSpacing:2,color:"#8a7a6a"}}>{usuario?.rol==="admin"?"ADMIN":usuario?.nombre?.toUpperCase()}</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}><img src="https://drive.google.com/uc?export=view&id=1ba2BEmXxNgt4c89O3qJwNGxyuQcXSjYE" alt="Técnica Remeras" style={{height:36,objectFit:"contain"}}/><span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:2,color:"#8a7a6a"}}>{usuario?.rol==="admin"?"ADMIN":usuario?.nombre?.toUpperCase()}</span></div>
             <div style={{display:"flex",gap:8}}>
               <button className="btn" onClick={cargarDatos} style={{padding:"9px 12px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf"}}>↻</button>
               {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&<button className="btn" onClick={()=>setShowNuevoPedido(true)} style={{padding:"9px 16px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>+ PEDIDO</button>}
