@@ -610,7 +610,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                   <span>${totalCostos.toLocaleString("es-AR")}</span>
                 </div>
                 {(()=>{
-                  const totalVenta=calcTotalGral(p.prendas||[]);
+                  const totalVenta=calcTotalGral(p.prendas?p.prendas:[]);
                   if(totalVenta===0)return null;
                   const margen=totalVenta-totalCostos;
                   const pct=totalVenta>0?Math.round((margen/totalVenta)*100):0;
@@ -699,7 +699,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
 
           {/* Pagos */}
           {verPrecios&&(()=>{
-            const tg=calcTotalGral(p.prendas||[]);
+            const tg=calcTotalGral(p.prendas?p.prendas:[]);
             const pagos=p.pagos||[];
             const pagado=pagos.reduce((s,pg)=>s+(parseFloat(pg.monto)||0),0);
             const ant=parseFloat(p.anticipo)||0;
@@ -808,7 +808,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
           )}
           {/* Botón entregado */}
           {!p.entregado&&(usuario?.nombre===p.creado_por||usuario?.nombre==="Gabi"||usuario?.rol==="admin")&&(()=>{
-            const tg=calcTotalGral(p.prendas||[]);
+            const tg=calcTotalGral(p.prendas?p.prendas:[]);
             const ant=parseFloat(p.anticipo)||0;
             const pagado=(p.pagos||[]).reduce((s,pg)=>s+(parseFloat(pg.monto)||0),0);
             const saldo=Math.round(tg-ant-pagado);
@@ -1725,10 +1725,10 @@ ${nombres}
                   {filtroMes&&<button onClick={()=>setFiltroMes("")} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>}
                 </div>
                 {puedeVerFinanciero(usuario)&&pedidos.length>0&&(()=>{
-                  const tg=pedidos.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
-                  const saldo=pedidos.reduce((s,p)=>{const t=calcTotalGral(p.prendas||[]);const ant=parseFloat(p.anticipo)||0;const pagado=(p.pagos||[]).reduce((sp,pg)=>sp+(parseFloat(pg.monto)||0),0);return s+(t-ant-pagado);},0);
+                  const tg=pedidos.reduce((s,p)=>s+calcTotalGral(p.prendas?p.prendas:[]),0);
+                  const saldo=pedidos.reduce((s,p)=>{const t=calcTotalGral(p.prendas?p.prendas:[]);const ant=parseFloat(p.anticipo)||0;const pagado=(p.pagos||[]).reduce((sp,pg)=>sp+(parseFloat(pg.monto)||0),0);return s+(t-ant-pagado);},0);
                   const porMes={};
-                  pedidos.forEach(p=>{const f=p.creado||p.fecha_entrega;if(!f)return;const mes=f.slice(0,7);if(!porMes[mes])porMes[mes]={total:0,saldo:0,cantidad:0,pedidosCount:0};const t=calcTotalGral(p.prendas||[]);const ant=parseFloat(p.anticipo)||0;const pagado=(p.pagos||[]).reduce((sp,pg)=>sp+(parseFloat(pg.monto)||0),0);const cantPrendas=(p.prendas||[]).reduce((s,pr)=>s+(parseInt(pr.cantidad)||0),0);porMes[mes].total+=t;porMes[mes].saldo+=(t-ant-pagado);porMes[mes].cantidad+=cantPrendas;porMes[mes].pedidosCount+=1;});
+                  pedidos.forEach(p=>{const f=p.creado||p.fecha_entrega;if(!f)return;const mes=f.slice(0,7);if(!porMes[mes])porMes[mes]={total:0,saldo:0,cantidad:0,pedidosCount:0};const t=calcTotalGral(p.prendas?p.prendas:[]);const ant=parseFloat(p.anticipo)||0;const pagado=(p.pagos||[]).reduce((sp,pg)=>sp+(parseFloat(pg.monto)||0),0);const cantPrendas=(p.prendas||[]).reduce((s,pr)=>s+(parseInt(pr.cantidad)||0),0);porMes[mes].total+=t;porMes[mes].saldo+=(t-ant-pagado);porMes[mes].cantidad+=cantPrendas;porMes[mes].pedidosCount+=1;});
                   return(
                     <div style={{marginTop:20,padding:"16px",background:"#1a1208",color:"#f5f0e8"}}>
                       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:2,marginBottom:12}}>RESUMEN FINANCIERO</div>
@@ -2162,34 +2162,33 @@ ${nombres}
               function getPedidosTec(key){
                 if(key==="mixto"){
                   return pedidosMes.filter(p=>{
-                    const procs=(p.procesos_activos||[]).filter(k=>TECS_DECO.includes(k));
-                    return procs.length>1;
+                    const pa=p.procesos_activos?p.procesos_activos:[];
+                    return pa.filter(k=>TECS_DECO.includes(k)).length>1;
                   });
                 }
                 return pedidosMes.filter(p=>{
-                  const procs=(p.procesos_activos||[]).filter(k=>TECS_DECO.includes(k));
-                  return procs.length===1&&procs[0]===key;
+                  const pa=p.procesos_activos?p.procesos_activos:[];
+                  const td=pa.filter(k=>TECS_DECO.includes(k));
+                  return td.length===1&&td[0]===key;
                 });
               }
               return(
                 <div style={{paddingBottom:40}}>
-                  {/* Navegador de mes */}
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,marginBottom:20,padding:"12px 0",borderBottom:"1px solid #e8e0d0"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,marginBottom:12,padding:"12px 0",borderBottom:"1px solid #e8e0d0"}}>
                     <button onClick={()=>{if(mesTec===0){setMesTec(11);setAnioTec(a=>a-1);}else setMesTec(m=>m-1);setTecActiva(null);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#5a4a3a"}}>◀</button>
                     <span style={{fontSize:15,fontWeight:700,color:"#1a1208",minWidth:160,textAlign:"center"}}>{MESES[mesTec]} {anioTec}</span>
                     <button onClick={()=>{if(mesTec===11){setMesTec(0);setAnioTec(a=>a+1);}else setMesTec(m=>m+1);setTecActiva(null);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#5a4a3a"}}>▶</button>
                   </div>
                   <div style={{textAlign:"center",fontSize:11,color:"#8a7a6a",marginBottom:12}}>{pedidosMes.length} pedidos ingresados en {MESES[mesTec]} {anioTec}</div>
-                  {/* Cards de técnicas */}
                   <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:16}}>
                     {TECNICAS_DEF.map(tec=>{
                       const items=getPedidosTec(tec.key);
-                      const total=items.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
+                      const total=items.reduce((s,p)=>s+calcTotalGral(p.prendas?p.prendas:[]),0);
                       const activa=tecActiva===tec.key;
                       return(
                         <div key={tec.key} onClick={()=>setTecActiva(activa?null:tec.key)}
-                          style={{flex:"1 1 140px",background:activa?tec.color:"#fff",border:"2px solid "+tec.color,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"all 0.2s"}}>
-                          <div style={{fontSize:18,marginBottom:4}}>{tec.icon} <span style={{fontSize:13,fontWeight:700,color:activa?"#fff":tec.color}}>{tec.label}</span></div>
+                          style={{flex:"1 1 140px",background:activa?tec.color:"#fff",border:"2px solid "+tec.color,borderRadius:10,padding:"12px 14px",cursor:"pointer"}}>
+                          <div style={{fontSize:13,fontWeight:700,color:activa?"#fff":tec.color,marginBottom:4}}>{tec.icon} {tec.label}</div>
                           <div style={{fontSize:22,fontWeight:800,color:activa?"#fff":"#1a1208"}}>{items.length}</div>
                           <div style={{fontSize:10,color:activa?"#fff":"#8a7a6a"}}>pedidos</div>
                           <div style={{fontSize:13,fontWeight:700,color:activa?"#fff":tec.color,marginTop:4}}>{"$"}{total.toLocaleString("es-AR")}</div>
@@ -2197,30 +2196,39 @@ ${nombres}
                       );
                     })}
                   </div>
-                  {/* Detalle de pedidos */}
-                  {tecActiva&&TECNICAS_DEF.find(t=>t.key===tecActiva)&&<div style={{background:"#fff",border:"2px solid "+TECNICAS_DEF.find(t=>t.key===tecActiva).color,borderRadius:10,padding:14}}>
-                    <div style={{fontSize:13,fontWeight:700,color:TECNICAS_DEF.find(t=>t.key===tecActiva).color,marginBottom:10}}>{TECNICAS_DEF.find(t=>t.key===tecActiva).icon} {TECNICAS_DEF.find(t=>t.key===tecActiva).label} — {MESES[mesTec]} {anioTec}</div>
-                    {getPedidosTec(tecActiva).length===0&&<div style={{color:"#b0a898",fontSize:12,textAlign:"center",padding:20}}>Sin pedidos este mes</div>}
-                    {getPedidosTec(tecActiva).map(p=>{
-                      const total=calcTotalGral(p.prendas||[]);
-                      const procs=(p.procesos_activos||[]).filter(k=>["serigrafia","dtf","sublimacion","bordado"].includes(k));
-                      const tecColor=TECNICAS_DEF.find(t=>t.key===tecActiva).color;
-                      return(
-                        <div key={p.id} style={{borderBottom:"1px solid #f0ece4",padding:"8px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                          <div>
-                            <div style={{fontSize:12,fontWeight:600,color:"#1a1208"}}>{p.cliente}</div>
-                            <div style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {p.cantidad} uds · {formatFecha(p.creado)}</div>
-                            {tecActiva==="mixto"&&<div style={{fontSize:10,color:tecColor}}>{procs.map(k=>PROCESOS.find(pr=>pr.key===k)?.label||k).join(" + ")}</div>}
-                          </div>
-                          <div style={{fontSize:13,fontWeight:700,color:tecColor}}>{"$"}{total.toLocaleString("es-AR")}</div>
+                  {(()=>{
+                    if(!tecActiva)return null;
+                    const tecDet=TECNICAS_DEF.find(t=>t.key===tecActiva);
+                    if(!tecDet)return null;
+                    const itemsDet=getPedidosTec(tecActiva);
+                    const totalDet=itemsDet.reduce((s,p)=>s+calcTotalGral(p.prendas?p.prendas:[]),0);
+                    return(
+                      <div style={{background:"#fff",border:"2px solid "+tecDet.color,borderRadius:10,padding:14}}>
+                        <div style={{fontSize:13,fontWeight:700,color:tecDet.color,marginBottom:10}}>{tecDet.icon} {tecDet.label} — {MESES[mesTec]} {anioTec}</div>
+                        {itemsDet.length===0&&<div style={{color:"#b0a898",fontSize:12,textAlign:"center",padding:20}}>Sin pedidos este mes</div>}
+                        {itemsDet.map(p=>{
+                          const tot=calcTotalGral(p.prendas?p.prendas:[]);
+                          const pa=p.procesos_activos?p.procesos_activos:[];
+                          const procs=pa.filter(k=>TECS_DECO.includes(k));
+                          const procsLabel=procs.map(k=>{const pr=PROCESOS.find(x=>x.key===k);return pr?pr.label:k;}).join(", ");
+                          return(
+                            <div key={p.id} style={{borderBottom:"1px solid #f0ece4",padding:"8px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                              <div>
+                                <div style={{fontSize:12,fontWeight:600,color:"#1a1208"}}>{p.cliente}</div>
+                                <div style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {p.cantidad} uds · {formatFecha(p.creado)}</div>
+                                {tecActiva==="mixto"&&<div style={{fontSize:10,color:tecDet.color}}>{procsLabel}</div>}
+                              </div>
+                              <div style={{fontSize:13,fontWeight:700,color:tecDet.color}}>{"$"}{tot.toLocaleString("es-AR")}</div>
+                            </div>
+                          );
+                        })}
+                        <div style={{marginTop:10,paddingTop:8,borderTop:"2px solid "+tecDet.color,display:"flex",justifyContent:"space-between"}}>
+                          <span style={{fontSize:12,fontWeight:700,color:"#1a1208"}}>TOTAL</span>
+                          <span style={{fontSize:14,fontWeight:800,color:tecDet.color}}>{"$"}{totalDet.toLocaleString("es-AR")}</span>
                         </div>
-                      );
-                    })}
-                    <div style={{marginTop:10,paddingTop:8,borderTop:"2px solid "+TECNICAS_DEF.find(t=>t.key===tecActiva).color,display:"flex",justifyContent:"space-between"}}>
-                      <span style={{fontSize:12,fontWeight:700,color:"#1a1208"}}>TOTAL</span>
-                      <span style={{fontSize:14,fontWeight:800,color:TECNICAS_DEF.find(t=>t.key===tecActiva).color}}>{"$"}{getPedidosTec(tecActiva).reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0).toLocaleString("es-AR")}</span>
-                    </div>
-                  </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
