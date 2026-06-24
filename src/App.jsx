@@ -1653,7 +1653,7 @@ ${nombres}
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,background:"#fff",border:"1.5px solid #d8d0c0",padding:"10px 14px"}}>
                   <span style={{fontSize:16}}>🔍</span>
-                  <input type="text" placeholder="Buscar por cliente, número o responsable..." value={busqueda} onChange={e=>setBusqueda(e.target.value);setPagina(1)} style={{flex:1,border:"none",background:"transparent",fontSize:13,outline:"none",padding:0}}/>
+                  <input type="text" placeholder="Buscar por cliente, número o responsable..." value={busqueda} onChange={e=>{setBusqueda(e.target.value);setPagina(1)}} style={{flex:1,border:"none",background:"transparent",fontSize:13,outline:"none",padding:0}}/>
                   {busqueda&&<button onClick={()=>setBusqueda("")} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>}
                 </div>
                 <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
