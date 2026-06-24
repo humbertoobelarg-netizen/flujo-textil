@@ -1680,9 +1680,9 @@ ${nombres}
                     const total=Math.ceil(items.length/ITEMS_POR_PAGINA)||1;
                     if(items.length<=ITEMS_POR_PAGINA)return null;
                     return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,padding:"8px 0",borderTop:"1px solid #e8e0d0",marginTop:4}}>
-                      <button onClick={()=>setPagina(p=>Math.max(1,p-1))} disabled={pagina===1} style={{padding:"6px 14px",fontSize:11,background:pagina===1?"#e8e0d0":"#1a1208",color:pagina===1?"#b0a898":"#f5f0e8",border:"none",borderRadius:4,opacity:pagina===1?0.5:1}}>← Ant</button>
+                      <button onClick={()=>{setPagina(p=>Math.max(1,p-1));window.scrollTo({top:0,behavior:"smooth"});}} disabled={pagina===1} style={{padding:"6px 14px",fontSize:11,background:pagina===1?"#e8e0d0":"#1a1208",color:pagina===1?"#b0a898":"#f5f0e8",border:"none",borderRadius:4,opacity:pagina===1?0.5:1}}>← Ant</button>
                       <span style={{fontSize:11,color:"#5a4a3a",fontWeight:600}}>{pagina}/{total}</span>
-                      <button onClick={()=>setPagina(p=>Math.min(total,p+1))} disabled={pagina===total} style={{padding:"6px 14px",fontSize:11,background:pagina===total?"#e8e0d0":"#1a1208",color:pagina===total?"#b0a898":"#f5f0e8",border:"none",borderRadius:4,opacity:pagina===total?0.5:1}}>Sig →</button>
+                      <button onClick={()=>{setPagina(p=>Math.min(total,p+1));window.scrollTo({top:0,behavior:"smooth"});}} disabled={pagina===total} style={{padding:"6px 14px",fontSize:11,background:pagina===total?"#e8e0d0":"#1a1208",color:pagina===total?"#b0a898":"#f5f0e8",border:"none",borderRadius:4,opacity:pagina===total?0.5:1}}>Sig →</button>
                     </div>);
                   }
                   return(<>
