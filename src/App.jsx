@@ -2179,6 +2179,7 @@ ${nombres}
                     <span style={{fontSize:15,fontWeight:700,color:"#1a1208",minWidth:160,textAlign:"center"}}>{MESES[mesTec]} {anioTec}</span>
                     <button onClick={()=>{if(mesTec===11){setMesTec(0);setAnioTec(a=>a+1);}else setMesTec(m=>m+1);setTecActiva(null);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#5a4a3a"}}>▶</button>
                   </div>
+                  <div style={{textAlign:"center",fontSize:11,color:"#8a7a6a",marginBottom:12}}>{pedidosMes.length} pedidos ingresados en {MESES[mesTec]} {anioTec}</div>
                   {/* Cards de técnicas */}
                   <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:16}}>
                     {TECNICAS_DEF.map(tec=>{
