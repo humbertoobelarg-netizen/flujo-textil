@@ -1003,7 +1003,10 @@ function PantallaMarcado({empleados}){
 // ── APP PRINCIPAL ─────────────────────────────────────────────
 export default function App(){
   const [cargando,setCargando]=useState(true);
-  const [pagina,setPagina]=useState(1);
+  const [paginaNuevos,setPaginaNuevos]=useState(1);
+  const [paginaEnProc,setPaginaEnProc]=useState(1);
+  const [paginaTerm,setPaginaTerm]=useState(1);
+  const [paginaEntregados,setPaginaEntregados]=useState(1);
   const ITEMS_POR_PAGINA=30;
   const [pedidos,setPedidos]=useState([]);
   const [usuarios,setUsuarios]=useState([]);
@@ -1653,7 +1656,7 @@ ${nombres}
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,background:"#fff",border:"1.5px solid #d8d0c0",padding:"10px 14px"}}>
                   <span style={{fontSize:16}}>🔍</span>
-                  <input type="text" placeholder="Buscar por cliente, número o responsable..." value={busqueda} onChange={e=>{setBusqueda(e.target.value);setPagina(1)}} style={{flex:1,border:"none",background:"transparent",fontSize:13,outline:"none",padding:0}}/>
+                  <input type="text" placeholder="Buscar por cliente, número o responsable..." value={busqueda} onChange={e=>{setBusqueda(e.target.value);setPaginaNuevos(1);setPaginaEnProc(1);setPaginaTerm(1);setPaginaEntregados(1);}} style={{flex:1,border:"none",background:"transparent",fontSize:13,outline:"none",padding:0}}/>
                   {busqueda&&<button onClick={()=>setBusqueda("")} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>}
                 </div>
                 <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
@@ -1667,35 +1670,44 @@ ${nombres}
                 <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
                 
                 {(()=>{
-                  // Paginar por grupos: primero activos ordenados, luego entregados
                   const activos=pedidosFiltrados.filter(p=>!p.entregado);
                   const entregados=pedidosFiltrados.filter(p=>p.entregado);
-                  const todosOrdenados=[...activos,...entregados];
-                  const totalPaginas=Math.ceil(todosOrdenados.length/ITEMS_POR_PAGINA)||1;
-                  const pedidosPaginados=todosOrdenados.slice((pagina-1)*ITEMS_POR_PAGINA,pagina*ITEMS_POR_PAGINA);
-                  const nuevosP=pedidosPaginados.filter(p=>pedidoProgreso(p)===0&&!p.entregado);
-                  const enProcP=pedidosPaginados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100&&!p.entregado);
-                  const termP=pedidosPaginados.filter(p=>pedidoProgreso(p)===100&&!p.entregado);
-                  const entregadosP=pedidosPaginados.filter(p=>p.entregado);
-                  const totalNuevos=activos.filter(p=>pedidoProgreso(p)===0).length;
-                  const totalEnProc=activos.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100).length;
-                  const totalTerm=activos.filter(p=>pedidoProgreso(p)===100).length;
-                  const totalEntregados=entregados.length;
-                  const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevosP,total:totalNuevos},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProcP,total:totalEnProc},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:termP,total:totalTerm},{titulo:"ENTREGADOS",icon:"🚀",color:"#64748b",items:entregadosP,total:totalEntregados}];
+                  const allNuevos=activos.filter(p=>pedidoProgreso(p)===0);
+                  const allEnProc=activos.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100);
+                  const allTerm=activos.filter(p=>pedidoProgreso(p)===100);
+                  const allEntregados=entregados;
+                  function Paginador({items,pagina,setPagina}){
+                    const total=Math.ceil(items.length/ITEMS_POR_PAGINA)||1;
+                    if(items.length<=ITEMS_POR_PAGINA)return null;
+                    return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,padding:"8px 0",borderTop:"1px solid #e8e0d0",marginTop:4}}>
+                      <button onClick={()=>setPagina(p=>Math.max(1,p-1))} disabled={pagina===1} style={{padding:"6px 14px",fontSize:11,background:pagina===1?"#e8e0d0":"#1a1208",color:pagina===1?"#b0a898":"#f5f0e8",border:"none",borderRadius:4,opacity:pagina===1?0.5:1}}>← Ant</button>
+                      <span style={{fontSize:11,color:"#5a4a3a",fontWeight:600}}>{pagina}/{total}</span>
+                      <button onClick={()=>setPagina(p=>Math.min(total,p+1))} disabled={pagina===total} style={{padding:"6px 14px",fontSize:11,background:pagina===total?"#e8e0d0":"#1a1208",color:pagina===total?"#b0a898":"#f5f0e8",border:"none",borderRadius:4,opacity:pagina===total?0.5:1}}>Sig →</button>
+                    </div>);
+                  }
                   return(<>
                     {cargando&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>⏳ Cargando...</div>}
                     {!cargando&&!pedidosFiltrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>{busqueda||filtroMes?"Sin resultados":"No hay pedidos."}</div>}
-                    {grupos.map(grupo=>(
-                      <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} color={grupo.color} count={grupo.total}>
-                        {grupo.items.map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
-                        {grupo.items.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
-                      </GrupoColapsable>
-                    ))}
-                    {todosOrdenados.length>ITEMS_POR_PAGINA&&<div style={{position:"sticky",bottom:0,zIndex:100,background:"#f5f0e8",borderTop:"2px solid #c8bfaf",display:"flex",justifyContent:"center",alignItems:"center",gap:16,padding:"12px 16px",boxShadow:"0 -2px 8px rgba(0,0,0,0.08)"}}>
-                      <button className="btn" onClick={()=>{setPagina(p=>Math.max(1,p-1));window.scrollTo(0,0);}} disabled={pagina===1} style={{padding:"8px 18px",fontSize:13,background:pagina===1?"#e8e0d0":"#1a1208",color:pagina===1?"#b0a898":"#f5f0e8",border:"none",opacity:pagina===1?0.5:1,borderRadius:4}}>← Anterior</button>
-                      <span style={{fontSize:13,color:"#5a4a3a",fontWeight:600}}>Página {pagina} de {totalPaginas}</span>
-                      <button className="btn" onClick={()=>{setPagina(p=>Math.min(totalPaginas,p+1));window.scrollTo(0,0);}} disabled={pagina===totalPaginas} style={{padding:"8px 18px",fontSize:13,background:pagina===totalPaginas?"#e8e0d0":"#1a1208",color:pagina===totalPaginas?"#b0a898":"#f5f0e8",border:"none",opacity:pagina===totalPaginas?0.5:1,borderRadius:4}}>Siguiente →</button>
-                    </div>}
+                    <GrupoColapsable titulo="PEDIDOS NUEVOS" icon="📋" color="#ef4444" count={allNuevos.length}>
+                      {allNuevos.slice((paginaNuevos-1)*ITEMS_POR_PAGINA,paginaNuevos*ITEMS_POR_PAGINA).map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
+                      {allNuevos.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
+                      <Paginador items={allNuevos} pagina={paginaNuevos} setPagina={setPaginaNuevos}/>
+                    </GrupoColapsable>
+                    <GrupoColapsable titulo="EN PROCESO" icon="⚙️" color="#f59e0b" count={allEnProc.length}>
+                      {allEnProc.slice((paginaEnProc-1)*ITEMS_POR_PAGINA,paginaEnProc*ITEMS_POR_PAGINA).map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
+                      {allEnProc.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
+                      <Paginador items={allEnProc} pagina={paginaEnProc} setPagina={setPaginaEnProc}/>
+                    </GrupoColapsable>
+                    <GrupoColapsable titulo="TERMINADOS" icon="✅" color="#10b981" count={allTerm.length}>
+                      {allTerm.slice((paginaTerm-1)*ITEMS_POR_PAGINA,paginaTerm*ITEMS_POR_PAGINA).map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
+                      {allTerm.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
+                      <Paginador items={allTerm} pagina={paginaTerm} setPagina={setPaginaTerm}/>
+                    </GrupoColapsable>
+                    <GrupoColapsable titulo="ENTREGADOS" icon="🚀" color="#64748b" count={allEntregados.length}>
+                      {allEntregados.slice((paginaEntregados-1)*ITEMS_POR_PAGINA,paginaEntregados*ITEMS_POR_PAGINA).map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
+                      {allEntregados.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
+                      <Paginador items={allEntregados} pagina={paginaEntregados} setPagina={setPaginaEntregados}/>
+                    </GrupoColapsable>
                   </>);
                 })()}
                 {/* Filtro por mes */}
