@@ -1568,6 +1568,7 @@ ${nombres}
             </div>
             <div style={{flex:1,padding:16,overflowY:"auto"}}>
               <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
+                <div style={{fontSize:11,color:"#8a7a6a",padding:"4px 8px",background:"#f0ece4",marginBottom:8}}>DEBUG: pedidosFiltrados={pedidosFiltrados.length} | pagina={pagina} | ITEMS={ITEMS_POR_PAGINA}</div>
               {(()=>{
                 const miProceso=usuario?.proceso;
                 if(!miProceso||miProceso==="orden")return null;
@@ -1664,6 +1665,7 @@ ${nombres}
                   ))}
                 </div>
                 <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
+                <div style={{fontSize:11,color:"#8a7a6a",padding:"4px 8px",background:"#f0ece4",marginBottom:8}}>DEBUG: pedidosFiltrados={pedidosFiltrados.length} | pagina={pagina} | ITEMS={ITEMS_POR_PAGINA}</div>
                 {(()=>{
                   const pedidosPaginados=pedidosFiltrados.slice((pagina-1)*ITEMS_POR_PAGINA,pagina*ITEMS_POR_PAGINA);
                   const totalPaginas=Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA)||1;
