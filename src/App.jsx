@@ -1,11 +1,11 @@
 import { useState, useEffect, Fragment } from "react";
 
-const EMAILJS_SERVICE = "service_dyev5fd";
-const EMAILJS_TEMPLATE = "template_49esy8s";
-const EMAILJS_KEY = "HkDT9ars93LJ1NhsY";
+const EMAILJS_SERVICE = import.meta.env.VITE_EMAILJS_SERVICE;
+const EMAILJS_TEMPLATE = import.meta.env.VITE_EMAILJS_TEMPLATE;
+const EMAILJS_KEY = import.meta.env.VITE_EMAILJS_KEY;
 
-const SUPABASE_URL = "https://avybrjvhltvcybdiyvvv.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2eWJyanZobHR2Y3liZGl5dnZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMTE4NDYsImV4cCI6MjA5NDc4Nzg0Nn0.wbiU8qmRTPiaKU6At97_djP0p0obKGyVRM9rn-nbr84";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 const H = { "Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"return=representation","x-app-secret":"FT2026_8x9kQm3vZpL7nR2wTy5sJh4cBn6dAe1g" };
 
 async function dbGet(t,q=""){const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}?${q}`,{headers:H});return r.json();}
