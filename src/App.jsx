@@ -1677,12 +1677,16 @@ ${nombres}
                   const enProcP=pedidosPaginados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100&&!p.entregado);
                   const termP=pedidosPaginados.filter(p=>pedidoProgreso(p)===100&&!p.entregado);
                   const entregadosP=pedidosPaginados.filter(p=>p.entregado);
-                  const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevosP},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProcP},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:termP},{titulo:"ENTREGADOS",icon:"🚀",color:"#64748b",items:entregadosP}];
+                  const totalNuevos=activos.filter(p=>pedidoProgreso(p)===0).length;
+                  const totalEnProc=activos.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100).length;
+                  const totalTerm=activos.filter(p=>pedidoProgreso(p)===100).length;
+                  const totalEntregados=entregados.length;
+                  const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevosP,total:totalNuevos},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProcP,total:totalEnProc},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:termP,total:totalTerm},{titulo:"ENTREGADOS",icon:"🚀",color:"#64748b",items:entregadosP,total:totalEntregados}];
                   return(<>
                     {cargando&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>⏳ Cargando...</div>}
                     {!cargando&&!pedidosFiltrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>{busqueda||filtroMes?"Sin resultados":"No hay pedidos."}</div>}
                     {grupos.map(grupo=>(
-                      <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} color={grupo.color} count={grupo.items.length}>
+                      <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} color={grupo.color} count={grupo.total}>
                         {grupo.items.map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
                         {grupo.items.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
                       </GrupoColapsable>
