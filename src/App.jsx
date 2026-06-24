@@ -1004,7 +1004,7 @@ function PantallaMarcado({empleados}){
 export default function App(){
   const [cargando,setCargando]=useState(true);
   const [pagina,setPagina]=useState(1);
-  const ITEMS_POR_PAGINA=50;
+  const ITEMS_POR_PAGINA=30;
   const [pedidos,setPedidos]=useState([]);
   const [usuarios,setUsuarios]=useState([]);
   const [usuario,setUsuario]=useState(null);
@@ -1669,7 +1669,10 @@ ${nombres}
                   const enProc=pedidosFiltrados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100&&!p.entregado);
                   const term=pedidosFiltrados.filter(p=>pedidoProgreso(p)===100&&!p.entregado);
                   const entregados=pedidosFiltrados.filter(p=>p.entregado);
-                  const totalPaginas=Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA);
+                  const pedidosActivos=pedidosFiltrados.filter(p=>!p.entregado);
+                  const pedidosEntregados=pedidosFiltrados.filter(p=>p.entregado);
+                  const totalItems=pedidosActivos.length+pedidosEntregados.length;
+                  const totalPaginas=Math.ceil(totalItems/ITEMS_POR_PAGINA);
                   const pedidosPaginados=pedidosFiltrados.slice((pagina-1)*ITEMS_POR_PAGINA,pagina*ITEMS_POR_PAGINA);
                   const nuevosP=pedidosPaginados.filter(p=>pedidoProgreso(p)===0&&!p.entregado);
                   const enProcP=pedidosPaginados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100&&!p.entregado);
@@ -1697,8 +1700,8 @@ ${nombres}
                 {!cargando&&!pedidosFiltrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>{busqueda||filtroMes?"Sin resultados":"No hay pedidos."}</div>}
                 {!cargando&&pedidosFiltrados.length>ITEMS_POR_PAGINA&&<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,padding:"16px 0",borderTop:"1px solid #e8e0d0"}}>
                   <button className="btn" onClick={()=>setPagina(p=>Math.max(1,p-1))} disabled={pagina===1} style={{padding:"6px 14px",fontSize:12,background:pagina===1?"#f0ece4":"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===1?0.5:1}}>← Anterior</button>
-                  <span style={{fontSize:12,color:"#8a7a6a"}}>Página {pagina} de {Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA)}</span>
-                  <button className="btn" onClick={()=>setPagina(p=>Math.min(Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA),p+1))} disabled={pagina===Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA)} style={{padding:"6px 14px",fontSize:12,background:"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA)?0.5:1}}>Siguiente →</button>
+                  <span style={{fontSize:12,color:"#8a7a6a"}}>Página {pagina} de {totalPaginas}</span>
+                  <button className="btn" onClick={()=>setPagina(p=>Math.min(totalPaginas,p+1))} disabled={pagina===totalPaginas} style={{padding:"6px 14px",fontSize:12,background:"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===totalPaginas?0.5:1}}>Siguiente →</button>
                 </div>}
                 {puedeVerFinanciero(usuario)&&pedidos.length>0&&(()=>{
                   const tg=pedidos.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
