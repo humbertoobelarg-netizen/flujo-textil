@@ -1005,6 +1005,9 @@ export default function App(){
   const [cargando,setCargando]=useState(true);
   const [paginaNuevos,setPaginaNuevos]=useState(1);
   const [mesTec,setMesTec]=useState(new Date().getMonth());
+  const [mesCant,setMesCant]=useState(new Date().getMonth());
+  const [anioCant,setAnioCant]=useState(new Date().getFullYear());
+  const [prendaActiva,setPrendaActiva]=useState(null);
   const [anioTec,setAnioTec]=useState(new Date().getFullYear());
   const [tecActiva,setTecActiva]=useState(null);
   const [paginaEnProc,setPaginaEnProc]=useState(1);
@@ -1630,10 +1633,11 @@ ${nombres}
             </div>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:12}}>
-            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"],["tecnicas","TÉCNICAS"]].filter(([k])=>{
+            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"],["tecnicas","TÉCNICAS"],["cantidad","CANTIDAD"]].filter(([k])=>{
               if(usuario?.rol==="admin")return true;
               if(k==="equipo")return false;
               if(k==="tecnicas")return usuario?.nombre==="Gabi";
+              if(k==="cantidad")return usuario?.nombre==="Gabi";
               if(k==="asistencia")return usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
               if(k==="finanzas")return usuario?.nombre==="Gabi";
               if(k==="stock")return usuario?.rol==="admin"||usuario?.nombre==="Vivi";
@@ -2229,6 +2233,98 @@ ${nombres}
                       </div>
                     );
                   })()}
+                </div>
+              );
+            })()}
+
+            {adminTab==="cantidad"&&(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(()=>{
+              const MESES_C=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+              const pedidosMesC=pedidos.filter(p=>{
+                if(!p.creado)return false;
+                const d=new Date(p.creado);
+                return d.getMonth()===mesCant&&d.getFullYear()===anioCant;
+              });
+              // Juntar todas las prendas de todos los pedidos del mes
+              const todasPrendas=[];
+              pedidosMesC.forEach(ped=>{
+                (ped.prendas?ped.prendas:[]).forEach(pr=>{
+                  if(!pr.tipoPrenda&&!pr.precioUnit)return;
+                  todasPrendas.push({...pr,pedidoId:ped.id,cliente:ped.cliente});
+                });
+              });
+              // Agrupar por tipo de prenda
+              const porTipo={};
+              todasPrendas.forEach(pr=>{
+                const tipo=pr.tipoPrenda==="Otro"?(pr.tipoPrendaOtro||"Otro"):pr.tipoPrenda||"Sin tipo";
+                if(!porTipo[tipo])porTipo[tipo]={prendas:[],totalUnidades:0};
+                porTipo[tipo].prendas.push(pr);
+                // Sumar unidades de talles
+                const unidades=Object.values(pr.talles?pr.talles:{}).reduce((s,v)=>s+(parseInt(v)||0),0);
+                porTipo[tipo].totalUnidades+=unidades||parseInt(pr.cantidad)||0;
+              });
+              const tiposOrdenados=Object.keys(porTipo).sort((a,b)=>porTipo[b].totalUnidades-porTipo[a].totalUnidades);
+              return(
+                <div style={{paddingBottom:40}}>
+                  {/* Navegador mes */}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,marginBottom:12,padding:"12px 0",borderBottom:"1px solid #e8e0d0"}}>
+                    <button onClick={()=>{if(mesCant===0){setMesCant(11);setAnioCant(a=>a-1);}else setMesCant(m=>m-1);setPrendaActiva(null);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#5a4a3a"}}>◀</button>
+                    <span style={{fontSize:15,fontWeight:700,color:"#1a1208",minWidth:160,textAlign:"center"}}>{MESES_C[mesCant]} {anioCant}</span>
+                    <button onClick={()=>{if(mesCant===11){setMesCant(0);setAnioCant(a=>a+1);}else setMesCant(m=>m+1);setPrendaActiva(null);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#5a4a3a"}}>▶</button>
+                  </div>
+                  <div style={{textAlign:"center",fontSize:11,color:"#8a7a6a",marginBottom:12}}>{pedidosMesC.length} pedidos · {todasPrendas.length} líneas de prenda</div>
+                  {/* Lista de tipos */}
+                  {tiposOrdenados.length===0&&<div style={{textAlign:"center",color:"#b0a898",fontSize:13,padding:40}}>Sin prendas este mes</div>}
+                  {tiposOrdenados.map(tipo=>{
+                    const activa=prendaActiva===tipo;
+                    const data=porTipo[tipo];
+                    return(
+                      <div key={tipo}>
+                        <div onClick={()=>setPrendaActiva(activa?null:tipo)}
+                          style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:activa?"#1a1208":"#fff",border:"1.5px solid "+(activa?"#1a1208":"#e8e0d0"),borderRadius:8,marginBottom:6,cursor:"pointer"}}>
+                          <span style={{fontSize:13,fontWeight:600,color:activa?"#f5f0e8":"#1a1208"}}>{tipo}</span>
+                          <span style={{fontSize:16,fontWeight:800,color:activa?"#f5f0e8":"#e85d26"}}>{data.totalUnidades} uds</span>
+                        </div>
+                        {activa&&(()=>{
+                          // Agrupar por color
+                          const porColor={};
+                          data.prendas.forEach(pr=>{
+                            const color=pr.color||"Sin color";
+                            if(!porColor[color])porColor[color]={talles:{},total:0};
+                            Object.entries(pr.talles?pr.talles:{}).forEach(([t,v])=>{
+                              const n=parseInt(v)||0;
+                              if(n>0){
+                                porColor[color].talles[t]=(porColor[color].talles[t]||0)+n;
+                                porColor[color].total+=n;
+                              }
+                            });
+                            // Si no tiene talles usar cantidad directa
+                            const sinTalles=Object.values(pr.talles?pr.talles:{}).reduce((s,v)=>s+(parseInt(v)||0),0)===0;
+                            if(sinTalles&&pr.cantidad){
+                              porColor[color].talles["Cant"]=(porColor[color].talles["Cant"]||0)+(parseInt(pr.cantidad)||0);
+                              porColor[color].total+=(parseInt(pr.cantidad)||0);
+                            }
+                          });
+                          return(
+                            <div style={{background:"#f5f0e8",border:"1.5px solid #e8e0d0",borderRadius:8,padding:12,marginBottom:8}}>
+                              {Object.entries(porColor).map(([color,cData])=>(
+                                <div key={color} style={{marginBottom:10}}>
+                                  <div style={{fontSize:11,fontWeight:700,color:"#5a4a3a",marginBottom:4}}>🎨 {color} — {cData.total} uds</div>
+                                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                                    {Object.entries(cData.talles).sort().map(([talle,cant])=>(
+                                      <div key={talle} style={{background:"#fff",border:"1px solid #c8bfaf",borderRadius:4,padding:"4px 8px",fontSize:11,textAlign:"center"}}>
+                                        <div style={{fontWeight:700,color:"#1a1208"}}>{talle}</div>
+                                        <div style={{color:"#e85d26",fontWeight:600}}>{cant}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })()}
