@@ -1002,6 +1002,9 @@ function PantallaMarcado({empleados}){
 
 // ── APP PRINCIPAL ─────────────────────────────────────────────
 export default function App(){
+  const [cargando,setCargando]=useState(true);
+  const [pagina,setPagina]=useState(1);
+  const ITEMS_POR_PAGINA=50;
   const [pedidos,setPedidos]=useState([]);
   const [usuarios,setUsuarios]=useState([]);
   const [usuario,setUsuario]=useState(null);
@@ -1092,8 +1095,10 @@ export default function App(){
   },[]);
 
   async function cargarDatos(){
+    setCargando(true);
     try{const[p,u,g,ie,st,emp,as]=await Promise.all([dbGet("pedidos"),dbGet("usuarios"),dbGet("gastos"),dbGet("ingresos_extra"),dbGet("stock_tejido"),dbGet("empleados","activo=eq.true&order=nombre.asc"),dbGet("asistencia","order=hora.desc&limit=500")]);setPedidos(Array.isArray(p)?p:[]);setUsuarios(Array.isArray(u)?u:[]);setGastos(Array.isArray(g)?g:[]);setIngresosExtra(Array.isArray(ie)?ie:[]);setStockTejido(Array.isArray(st)?st:[]);setEmpleados(Array.isArray(emp)?emp:[]);setAsistencia(Array.isArray(as)?as:[]);}
     catch(e){showToast("Error al cargar","#ef4444");}
+    finally{setCargando(false);}
   }
 
   function showToast(msg,color="#10b981"){setToast({msg,color});setTimeout(()=>setToast(null),2500);}
@@ -1647,7 +1652,7 @@ ${nombres}
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,background:"#fff",border:"1.5px solid #d8d0c0",padding:"10px 14px"}}>
                   <span style={{fontSize:16}}>🔍</span>
-                  <input type="text" placeholder="Buscar por cliente, número o responsable..." value={busqueda} onChange={e=>setBusqueda(e.target.value)} style={{flex:1,border:"none",background:"transparent",fontSize:13,outline:"none",padding:0}}/>
+                  <input type="text" placeholder="Buscar por cliente, número o responsable..." value={busqueda} onChange={e=>setBusqueda(e.target.value);setPagina(1)} style={{flex:1,border:"none",background:"transparent",fontSize:13,outline:"none",padding:0}}/>
                   {busqueda&&<button onClick={()=>setBusqueda("")} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>}
                 </div>
                 <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
@@ -1664,7 +1669,13 @@ ${nombres}
                   const enProc=pedidosFiltrados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100&&!p.entregado);
                   const term=pedidosFiltrados.filter(p=>pedidoProgreso(p)===100&&!p.entregado);
                   const entregados=pedidosFiltrados.filter(p=>p.entregado);
-                  const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevos},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProc},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:term},{titulo:"ENTREGADOS",icon:"🚀",color:"#64748b",items:entregados}];
+                  const totalPaginas=Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA);
+                  const pedidosPaginados=pedidosFiltrados.slice((pagina-1)*ITEMS_POR_PAGINA,pagina*ITEMS_POR_PAGINA);
+                  const nuevosP=pedidosPaginados.filter(p=>pedidoProgreso(p)===0&&!p.entregado);
+                  const enProcP=pedidosPaginados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100&&!p.entregado);
+                  const termP=pedidosPaginados.filter(p=>pedidoProgreso(p)===100&&!p.entregado);
+                  const entregadosP=pedidosPaginados.filter(p=>p.entregado);
+                  const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevosP},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProcP},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:termP},{titulo:"ENTREGADOS",icon:"🚀",color:"#64748b",items:entregadosP}];
                   return grupos.map(grupo=>(
                     <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} color={grupo.color} count={grupo.items.length}>
                       {grupo.items.map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
@@ -1682,7 +1693,13 @@ ${nombres}
                   </select>
                   {filtroMes&&<button onClick={()=>setFiltroMes("")} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>}
                 </div>
-                {!pedidosFiltrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>{busqueda||filtroMes?"Sin resultados":"No hay pedidos."}</div>}
+                {cargando&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>⏳ Cargando...</div>}
+                {!cargando&&!pedidosFiltrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>{busqueda||filtroMes?"Sin resultados":"No hay pedidos."}</div>}
+                {!cargando&&pedidosFiltrados.length>ITEMS_POR_PAGINA&&<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,padding:"16px 0",borderTop:"1px solid #e8e0d0"}}>
+                  <button className="btn" onClick={()=>setPagina(p=>Math.max(1,p-1))} disabled={pagina===1} style={{padding:"6px 14px",fontSize:12,background:pagina===1?"#f0ece4":"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===1?0.5:1}}>← Anterior</button>
+                  <span style={{fontSize:12,color:"#8a7a6a"}}>Página {pagina} de {Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA)}</span>
+                  <button className="btn" onClick={()=>setPagina(p=>Math.min(Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA),p+1))} disabled={pagina===Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA)} style={{padding:"6px 14px",fontSize:12,background:"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA)?0.5:1}}>Siguiente →</button>
+                </div>}
                 {puedeVerFinanciero(usuario)&&pedidos.length>0&&(()=>{
                   const tg=pedidos.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
                   const saldo=pedidos.reduce((s,p)=>{const t=calcTotalGral(p.prendas||[]);const ant=parseFloat(p.anticipo)||0;const pagado=(p.pagos||[]).reduce((sp,pg)=>sp+(parseFloat(pg.monto)||0),0);return s+(t-ant-pagado);},0);
