@@ -2110,7 +2110,7 @@ ${nombres}
                   {misGastos.length>0&&(
                     <div style={{padding:"12px 16px",background:"#1a1208",color:"#f5f0e8",marginBottom:12}}>
                       <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1}}>TOTAL MIS GASTOS</div>
-                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#e85d26"}}>${total.toLocaleString("es-AR")}</div>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#e85d26"}}>{"$"}{total.toLocaleString("es-AR")}</div>
                     </div>
                   )}
                   {misGastos.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>No registraste gastos todavía</div>}
@@ -2192,40 +2192,35 @@ ${nombres}
                           <div style={{fontSize:18,marginBottom:4}}>{tec.icon} <span style={{fontSize:13,fontWeight:700,color:activa?"#fff":tec.color}}>{tec.label}</span></div>
                           <div style={{fontSize:22,fontWeight:800,color:activa?"#fff":"#1a1208"}}>{items.length}</div>
                           <div style={{fontSize:10,color:activa?"#fff":"#8a7a6a"}}>pedidos</div>
-                          <div style={{fontSize:13,fontWeight:700,color:activa?"#fff":tec.color,marginTop:4}}>${total.toLocaleString("es-AR")}</div>
+                          <div style={{fontSize:13,fontWeight:700,color:activa?"#fff":tec.color,marginTop:4}}>{"$"}{total.toLocaleString("es-AR")}</div>
                         </div>
                       );
                     })}
                   </div>
                   {/* Detalle de pedidos */}
-                  {tecActiva&&(()=>{
-                    const items=getPedidosTec(tecActiva);
-                    const tec=TECNICAS_DEF.find(t=>t.key===tecActiva);
-                    return(
-                      <div style={{background:"#fff",border:"2px solid "+tec.color,borderRadius:10,padding:14}}>
-                        <div style={{fontSize:13,fontWeight:700,color:tec.color,marginBottom:10}}>{tec.icon} {tec.label} — {MESES[mesTec]} {anioTec}</div>
-                        {items.length===0&&<div style={{color:"#b0a898",fontSize:12,textAlign:"center",padding:20}}>Sin pedidos este mes</div>}
-                        {items.map(p=>{
-                          const total=calcTotalGral(p);
-                          const procs=(p.procesos_activos||[]).filter(k=>["serigrafia","dtf","sublimacion","bordado"].includes(k));
-                          return(
-                            <div key={p.id} style={{borderBottom:"1px solid #f0ece4",padding:"8px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                              <div>
-                                <div style={{fontSize:12,fontWeight:600,color:"#1a1208"}}>{p.cliente}</div>
-                                <div style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {p.cantidad} uds · {formatFecha(p.creado)}</div>
-                                {tecActiva==="mixto"&&<div style={{fontSize:10,color:tec.color}}>{procs.map(k=>PROCESOS.find(pr=>pr.key===k)?.label||k).join(" + ")}</div>}
-                              </div>
-                              <div style={{fontSize:13,fontWeight:700,color:tec.color}}>${total.toLocaleString("es-AR")}</div>
-                            </div>
-                          );
-                        })}
-                        <div style={{marginTop:10,paddingTop:8,borderTop:"2px solid "+tec.color,display:"flex",justifyContent:"space-between"}}>
-                          <span style={{fontSize:12,fontWeight:700,color:"#1a1208"}}>TOTAL</span>
-                          <span style={{fontSize:14,fontWeight:800,color:tec.color}}>${items.reduce((s,p)=>s+calcTotalGral(p),0).toLocaleString("es-AR")}</span>
+                  {tecActiva&&TECNICAS_DEF.find(t=>t.key===tecActiva)&&<div style={{background:"#fff",border:"2px solid "+TECNICAS_DEF.find(t=>t.key===tecActiva).color,borderRadius:10,padding:14}}>
+                    <div style={{fontSize:13,fontWeight:700,color:TECNICAS_DEF.find(t=>t.key===tecActiva).color,marginBottom:10}}>{TECNICAS_DEF.find(t=>t.key===tecActiva).icon} {TECNICAS_DEF.find(t=>t.key===tecActiva).label} — {MESES[mesTec]} {anioTec}</div>
+                    {getPedidosTec(tecActiva).length===0&&<div style={{color:"#b0a898",fontSize:12,textAlign:"center",padding:20}}>Sin pedidos este mes</div>}
+                    {getPedidosTec(tecActiva).map(p=>{
+                      const total=calcTotalGral(p.prendas||[]);
+                      const procs=(p.procesos_activos||[]).filter(k=>["serigrafia","dtf","sublimacion","bordado"].includes(k));
+                      const tecColor=TECNICAS_DEF.find(t=>t.key===tecActiva).color;
+                      return(
+                        <div key={p.id} style={{borderBottom:"1px solid #f0ece4",padding:"8px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <div>
+                            <div style={{fontSize:12,fontWeight:600,color:"#1a1208"}}>{p.cliente}</div>
+                            <div style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {p.cantidad} uds · {formatFecha(p.creado)}</div>
+                            {tecActiva==="mixto"&&<div style={{fontSize:10,color:tecColor}}>{procs.map(k=>PROCESOS.find(pr=>pr.key===k)?.label||k).join(" + ")}</div>}
+                          </div>
+                          <div style={{fontSize:13,fontWeight:700,color:tecColor}}>{"$"}{total.toLocaleString("es-AR")}</div>
                         </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })}
+                    <div style={{marginTop:10,paddingTop:8,borderTop:"2px solid "+TECNICAS_DEF.find(t=>t.key===tecActiva).color,display:"flex",justifyContent:"space-between"}}>
+                      <span style={{fontSize:12,fontWeight:700,color:"#1a1208"}}>TOTAL</span>
+                      <span style={{fontSize:14,fontWeight:800,color:TECNICAS_DEF.find(t=>t.key===tecActiva).color}}>{"$"}{getPedidosTec(tecActiva).reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0).toLocaleString("es-AR")}</span>
+                    </div>
+                  </div>
                 </div>
               );
             })()}
