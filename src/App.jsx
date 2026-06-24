@@ -1665,26 +1665,28 @@ ${nombres}
                 </div>
                 <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
                 {(()=>{
-                  const nuevos=pedidosFiltrados.filter(p=>pedidoProgreso(p)===0&&!p.entregado);
-                  const enProc=pedidosFiltrados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100&&!p.entregado);
-                  const term=pedidosFiltrados.filter(p=>pedidoProgreso(p)===100&&!p.entregado);
-                  const entregados=pedidosFiltrados.filter(p=>p.entregado);
-                  const pedidosActivos=pedidosFiltrados.filter(p=>!p.entregado);
-                  const pedidosEntregados=pedidosFiltrados.filter(p=>p.entregado);
-                  const totalItems=pedidosActivos.length+pedidosEntregados.length;
-                  const totalPaginas=Math.ceil(totalItems/ITEMS_POR_PAGINA);
                   const pedidosPaginados=pedidosFiltrados.slice((pagina-1)*ITEMS_POR_PAGINA,pagina*ITEMS_POR_PAGINA);
+                  const totalPaginas=Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA)||1;
                   const nuevosP=pedidosPaginados.filter(p=>pedidoProgreso(p)===0&&!p.entregado);
                   const enProcP=pedidosPaginados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100&&!p.entregado);
                   const termP=pedidosPaginados.filter(p=>pedidoProgreso(p)===100&&!p.entregado);
                   const entregadosP=pedidosPaginados.filter(p=>p.entregado);
                   const grupos=[{titulo:"PEDIDOS NUEVOS",icon:"📋",color:"#ef4444",items:nuevosP},{titulo:"EN PROCESO",icon:"⚙️",color:"#f59e0b",items:enProcP},{titulo:"TERMINADOS",icon:"✅",color:"#10b981",items:termP},{titulo:"ENTREGADOS",icon:"🚀",color:"#64748b",items:entregadosP}];
-                  return grupos.map(grupo=>(
-                    <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} color={grupo.color} count={grupo.items.length}>
-                      {grupo.items.map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
-                      {grupo.items.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
-                    </GrupoColapsable>
-                  ));
+                  return(<>
+                    {cargando&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>⏳ Cargando...</div>}
+                    {!cargando&&!pedidosFiltrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>{busqueda||filtroMes?"Sin resultados":"No hay pedidos."}</div>}
+                    {grupos.map(grupo=>(
+                      <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} color={grupo.color} count={grupo.items.length}>
+                        {grupo.items.map(p=><PedidoCard key={p.id} pedido={p} usuario={usuario} {...cardProps}/>)}
+                        {grupo.items.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
+                      </GrupoColapsable>
+                    ))}
+                    {pedidosFiltrados.length>ITEMS_POR_PAGINA&&<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,padding:"16px 0",borderTop:"1px solid #e8e0d0"}}>
+                      <button className="btn" onClick={()=>setPagina(p=>Math.max(1,p-1))} disabled={pagina===1} style={{padding:"6px 14px",fontSize:12,background:pagina===1?"#f0ece4":"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===1?0.5:1}}>← Anterior</button>
+                      <span style={{fontSize:12,color:"#8a7a6a"}}>Página {pagina} de {totalPaginas}</span>
+                      <button className="btn" onClick={()=>setPagina(p=>Math.min(totalPaginas,p+1))} disabled={pagina===totalPaginas} style={{padding:"6px 14px",fontSize:12,background:"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===totalPaginas?0.5:1}}>Siguiente →</button>
+                    </div>}
+                  </>);
                 })()}
                 {/* Filtro por mes */}
                 <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
@@ -1696,13 +1698,6 @@ ${nombres}
                   </select>
                   {filtroMes&&<button onClick={()=>setFiltroMes("")} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>}
                 </div>
-                {cargando&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>⏳ Cargando...</div>}
-                {!cargando&&!pedidosFiltrados.length&&<div style={{padding:40,textAlign:"center",color:"#b0a898",fontSize:13}}>{busqueda||filtroMes?"Sin resultados":"No hay pedidos."}</div>}
-                {!cargando&&pedidosFiltrados.length>ITEMS_POR_PAGINA&&<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,padding:"16px 0",borderTop:"1px solid #e8e0d0"}}>
-                  <button className="btn" onClick={()=>setPagina(p=>Math.max(1,p-1))} disabled={pagina===1} style={{padding:"6px 14px",fontSize:12,background:pagina===1?"#f0ece4":"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===1?0.5:1}}>← Anterior</button>
-                  <span style={{fontSize:12,color:"#8a7a6a"}}>Página {pagina} de {totalPaginas}</span>
-                  <button className="btn" onClick={()=>setPagina(p=>Math.min(totalPaginas,p+1))} disabled={pagina===totalPaginas} style={{padding:"6px 14px",fontSize:12,background:"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===totalPaginas?0.5:1}}>Siguiente →</button>
-                </div>}
                 {puedeVerFinanciero(usuario)&&pedidos.length>0&&(()=>{
                   const tg=pedidos.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
                   const saldo=pedidos.reduce((s,p)=>{const t=calcTotalGral(p.prendas||[]);const ant=parseFloat(p.anticipo)||0;const pagado=(p.pagos||[]).reduce((sp,pg)=>sp+(parseFloat(pg.monto)||0),0);return s+(t-ant-pagado);},0);
