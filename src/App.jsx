@@ -1004,6 +1004,9 @@ function PantallaMarcado({empleados}){
 export default function App(){
   const [cargando,setCargando]=useState(true);
   const [paginaNuevos,setPaginaNuevos]=useState(1);
+  const [mesTec,setMesTec]=useState(new Date().getMonth());
+  const [anioTec,setAnioTec]=useState(new Date().getFullYear());
+  const [tecActiva,setTecActiva]=useState(null);
   const [paginaEnProc,setPaginaEnProc]=useState(1);
   const [paginaTerm,setPaginaTerm]=useState(1);
   const [paginaEntregados,setPaginaEntregados]=useState(1);
@@ -1630,6 +1633,7 @@ ${nombres}
             {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"],["tecnicas","TÉCNICAS"]].filter(([k])=>{
               if(usuario?.rol==="admin")return true;
               if(k==="equipo")return false;
+              if(k==="tecnicas")return usuario?.nombre==="Gabi";
               if(k==="asistencia")return usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
               if(k==="finanzas")return usuario?.nombre==="Gabi";
               if(k==="stock")return usuario?.rol==="admin"||usuario?.nombre==="Vivi";
@@ -2140,7 +2144,7 @@ ${nombres}
               );
             })()}
 
-            {adminTab==="tecnicas"&&(()=>{
+            {adminTab==="tecnicas"&&(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(()=>{
               const TECNICAS_DEF=[
                 {key:"serigrafia",label:"Serigrafía",icon:"🖨️",color:"#e85d26"},
                 {key:"dtf",label:"DTF",icon:"🖼️",color:"#10b981"},
@@ -2148,11 +2152,7 @@ ${nombres}
                 {key:"bordado",label:"Bordado",icon:"🪡",color:"#a855f7"},
                 {key:"mixto",label:"Mixto",icon:"🔀",color:"#f59e0b"},
               ];
-              const ahora=new Date();
-              const [mesTec,setMesTec]=useState(ahora.getMonth());
-              const [anioTec,setAnioTec]=useState(ahora.getFullYear());
               const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-              const [tecActiva,setTecActiva]=useState(null);
               const pedidosMes=pedidos.filter(p=>{
                 if(!p.creado)return false;
                 const d=new Date(p.creado);
