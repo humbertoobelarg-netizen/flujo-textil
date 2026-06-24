@@ -1568,7 +1568,7 @@ ${nombres}
             </div>
             <div style={{flex:1,padding:16,overflowY:"auto"}}>
               <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
-                <div style={{fontSize:11,color:"#8a7a6a",padding:"4px 8px",background:"#f0ece4",marginBottom:8}}>DEBUG: pedidosFiltrados={pedidosFiltrados.length} | pagina={pagina} | ITEMS={ITEMS_POR_PAGINA}</div>
+                
               {(()=>{
                 const miProceso=usuario?.proceso;
                 if(!miProceso||miProceso==="orden")return null;
@@ -1665,10 +1665,14 @@ ${nombres}
                   ))}
                 </div>
                 <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
-                <div style={{fontSize:11,color:"#8a7a6a",padding:"4px 8px",background:"#f0ece4",marginBottom:8}}>DEBUG: pedidosFiltrados={pedidosFiltrados.length} | pagina={pagina} | ITEMS={ITEMS_POR_PAGINA}</div>
+                
                 {(()=>{
-                  const pedidosPaginados=pedidosFiltrados.slice((pagina-1)*ITEMS_POR_PAGINA,pagina*ITEMS_POR_PAGINA);
-                  const totalPaginas=Math.ceil(pedidosFiltrados.length/ITEMS_POR_PAGINA)||1;
+                  // Paginar por grupos: primero activos ordenados, luego entregados
+                  const activos=pedidosFiltrados.filter(p=>!p.entregado);
+                  const entregados=pedidosFiltrados.filter(p=>p.entregado);
+                  const todosOrdenados=[...activos,...entregados];
+                  const totalPaginas=Math.ceil(todosOrdenados.length/ITEMS_POR_PAGINA)||1;
+                  const pedidosPaginados=todosOrdenados.slice((pagina-1)*ITEMS_POR_PAGINA,pagina*ITEMS_POR_PAGINA);
                   const nuevosP=pedidosPaginados.filter(p=>pedidoProgreso(p)===0&&!p.entregado);
                   const enProcP=pedidosPaginados.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100&&!p.entregado);
                   const termP=pedidosPaginados.filter(p=>pedidoProgreso(p)===100&&!p.entregado);
@@ -1683,10 +1687,10 @@ ${nombres}
                         {grupo.items.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
                       </GrupoColapsable>
                     ))}
-                    {pedidosFiltrados.length>ITEMS_POR_PAGINA&&<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,padding:"16px 0",borderTop:"1px solid #e8e0d0"}}>
-                      <button className="btn" onClick={()=>setPagina(p=>Math.max(1,p-1))} disabled={pagina===1} style={{padding:"6px 14px",fontSize:12,background:pagina===1?"#f0ece4":"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===1?0.5:1}}>← Anterior</button>
-                      <span style={{fontSize:12,color:"#8a7a6a"}}>Página {pagina} de {totalPaginas}</span>
-                      <button className="btn" onClick={()=>setPagina(p=>Math.min(totalPaginas,p+1))} disabled={pagina===totalPaginas} style={{padding:"6px 14px",fontSize:12,background:"#f5f0e8",border:"1.5px solid #c8bfaf",opacity:pagina===totalPaginas?0.5:1}}>Siguiente →</button>
+                    {todosOrdenados.length>ITEMS_POR_PAGINA&&<div style={{position:"sticky",bottom:0,zIndex:100,background:"#f5f0e8",borderTop:"2px solid #c8bfaf",display:"flex",justifyContent:"center",alignItems:"center",gap:16,padding:"12px 16px",boxShadow:"0 -2px 8px rgba(0,0,0,0.08)"}}>
+                      <button className="btn" onClick={()=>{setPagina(p=>Math.max(1,p-1));window.scrollTo(0,0);}} disabled={pagina===1} style={{padding:"8px 18px",fontSize:13,background:pagina===1?"#e8e0d0":"#1a1208",color:pagina===1?"#b0a898":"#f5f0e8",border:"none",opacity:pagina===1?0.5:1,borderRadius:4}}>← Anterior</button>
+                      <span style={{fontSize:13,color:"#5a4a3a",fontWeight:600}}>Página {pagina} de {totalPaginas}</span>
+                      <button className="btn" onClick={()=>{setPagina(p=>Math.min(totalPaginas,p+1));window.scrollTo(0,0);}} disabled={pagina===totalPaginas} style={{padding:"8px 18px",fontSize:13,background:pagina===totalPaginas?"#e8e0d0":"#1a1208",color:pagina===totalPaginas?"#b0a898":"#f5f0e8",border:"none",opacity:pagina===totalPaginas?0.5:1,borderRadius:4}}>Siguiente →</button>
                     </div>}
                   </>);
                 })()}
