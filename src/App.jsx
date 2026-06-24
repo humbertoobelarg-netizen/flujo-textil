@@ -2184,7 +2184,7 @@ ${nombres}
                   <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:16}}>
                     {TECNICAS_DEF.map(tec=>{
                       const items=getPedidosTec(tec.key);
-                      const total=items.reduce((s,p)=>s+calcTotalGral(p),0);
+                      const total=items.reduce((s,p)=>s+calcTotalGral(p.prendas||[]),0);
                       const activa=tecActiva===tec.key;
                       return(
                         <div key={tec.key} onClick={()=>setTecActiva(activa?null:tec.key)}
