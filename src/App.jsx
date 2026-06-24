@@ -1627,7 +1627,7 @@ ${nombres}
             </div>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:12}}>
-            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"]].filter(([k])=>{
+            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"],["tecnicas","TÉCNICAS"]].filter(([k])=>{
               if(usuario?.rol==="admin")return true;
               if(k==="equipo")return false;
               if(k==="asistencia")return usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
@@ -2136,6 +2136,95 @@ ${nombres}
                       </GrupoColapsable>
                     );
                   })}
+                </div>
+              );
+            })()}
+
+            {adminTab==="tecnicas"&&(()=>{
+              const TECNICAS_DEF=[
+                {key:"serigrafia",label:"Serigrafía",icon:"🖨️",color:"#e85d26"},
+                {key:"dtf",label:"DTF",icon:"🖼️",color:"#10b981"},
+                {key:"sublimacion",label:"Sublimación",icon:"🌈",color:"#06b6d4"},
+                {key:"bordado",label:"Bordado",icon:"🪡",color:"#a855f7"},
+                {key:"mixto",label:"Mixto",icon:"🔀",color:"#f59e0b"},
+              ];
+              const ahora=new Date();
+              const [mesTec,setMesTec]=useState(ahora.getMonth());
+              const [anioTec,setAnioTec]=useState(ahora.getFullYear());
+              const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+              const [tecActiva,setTecActiva]=useState(null);
+              const pedidosMes=pedidos.filter(p=>{
+                if(!p.creado)return false;
+                const d=new Date(p.creado);
+                return d.getMonth()===mesTec&&d.getFullYear()===anioTec;
+              });
+              const TECS_DECO=["serigrafia","dtf","sublimacion","bordado"];
+              function getPedidosTec(key){
+                if(key==="mixto"){
+                  return pedidosMes.filter(p=>{
+                    const procs=(p.procesos_activos||[]).filter(k=>TECS_DECO.includes(k));
+                    return procs.length>1;
+                  });
+                }
+                return pedidosMes.filter(p=>{
+                  const procs=(p.procesos_activos||[]).filter(k=>TECS_DECO.includes(k));
+                  return procs.length===1&&procs[0]===key;
+                });
+              }
+              return(
+                <div style={{paddingBottom:40}}>
+                  {/* Navegador de mes */}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,marginBottom:20,padding:"12px 0",borderBottom:"1px solid #e8e0d0"}}>
+                    <button onClick={()=>{if(mesTec===0){setMesTec(11);setAnioTec(a=>a-1);}else setMesTec(m=>m-1);setTecActiva(null);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#5a4a3a"}}>◀</button>
+                    <span style={{fontSize:15,fontWeight:700,color:"#1a1208",minWidth:160,textAlign:"center"}}>{MESES[mesTec]} {anioTec}</span>
+                    <button onClick={()=>{if(mesTec===11){setMesTec(0);setAnioTec(a=>a+1);}else setMesTec(m=>m+1);setTecActiva(null);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#5a4a3a"}}>▶</button>
+                  </div>
+                  {/* Cards de técnicas */}
+                  <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:16}}>
+                    {TECNICAS_DEF.map(tec=>{
+                      const items=getPedidosTec(tec.key);
+                      const total=items.reduce((s,p)=>s+calcTotalGral(p),0);
+                      const activa=tecActiva===tec.key;
+                      return(
+                        <div key={tec.key} onClick={()=>setTecActiva(activa?null:tec.key)}
+                          style={{flex:"1 1 140px",background:activa?tec.color:"#fff",border:"2px solid "+tec.color,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"all 0.2s"}}>
+                          <div style={{fontSize:18,marginBottom:4}}>{tec.icon} <span style={{fontSize:13,fontWeight:700,color:activa?"#fff":tec.color}}>{tec.label}</span></div>
+                          <div style={{fontSize:22,fontWeight:800,color:activa?"#fff":"#1a1208"}}>{items.length}</div>
+                          <div style={{fontSize:10,color:activa?"#fff":"#8a7a6a"}}>pedidos</div>
+                          <div style={{fontSize:13,fontWeight:700,color:activa?"#fff":tec.color,marginTop:4}}>${total.toLocaleString("es-AR")}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Detalle de pedidos */}
+                  {tecActiva&&(()=>{
+                    const items=getPedidosTec(tecActiva);
+                    const tec=TECNICAS_DEF.find(t=>t.key===tecActiva);
+                    return(
+                      <div style={{background:"#fff",border:"2px solid "+tec.color,borderRadius:10,padding:14}}>
+                        <div style={{fontSize:13,fontWeight:700,color:tec.color,marginBottom:10}}>{tec.icon} {tec.label} — {MESES[mesTec]} {anioTec}</div>
+                        {items.length===0&&<div style={{color:"#b0a898",fontSize:12,textAlign:"center",padding:20}}>Sin pedidos este mes</div>}
+                        {items.map(p=>{
+                          const total=calcTotalGral(p);
+                          const procs=(p.procesos_activos||[]).filter(k=>["serigrafia","dtf","sublimacion","bordado"].includes(k));
+                          return(
+                            <div key={p.id} style={{borderBottom:"1px solid #f0ece4",padding:"8px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                              <div>
+                                <div style={{fontSize:12,fontWeight:600,color:"#1a1208"}}>{p.cliente}</div>
+                                <div style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {p.cantidad} uds · {formatFecha(p.creado)}</div>
+                                {tecActiva==="mixto"&&<div style={{fontSize:10,color:tec.color}}>{procs.map(k=>PROCESOS.find(pr=>pr.key===k)?.label||k).join(" + ")}</div>}
+                              </div>
+                              <div style={{fontSize:13,fontWeight:700,color:tec.color}}>${total.toLocaleString("es-AR")}</div>
+                            </div>
+                          );
+                        })}
+                        <div style={{marginTop:10,paddingTop:8,borderTop:"2px solid "+tec.color,display:"flex",justifyContent:"space-between"}}>
+                          <span style={{fontSize:12,fontWeight:700,color:"#1a1208"}}>TOTAL</span>
+                          <span style={{fontSize:14,fontWeight:800,color:tec.color}}>${items.reduce((s,p)=>s+calcTotalGral(p),0).toLocaleString("es-AR")}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
