@@ -186,15 +186,16 @@ async function enviarEmailPedido(pedido){
       const talles=p.talles?Object.entries(p.talles).filter(([k,v])=>parseInt(v)>0).map(([k,v])=>`${k}:${v}`).join(" "):"";
       return[`--- PRENDA ${i+1} ---`,p.tipoPrenda?`Tipo: ${p.tipoPrenda}`:"",p.tipoTejido?`Tejido: ${p.tipoTejido}`:"",p.molderia?`Moldería: ${p.molderia}`:"",p.cuerpo?`Cuerpo: ${p.cuerpo}`:"",p.manga?`Manga: ${p.manga}`:"",p.color?`Color manga: ${p.color}`:"",p.puno?`Puño: ${p.puno}`:"",p.cuello?`Cuello: ${p.cuello}`:"",p.colorCuello?`Color cuello: ${p.colorCuello}`:"",talles?`Talles: ${talles}`:"",p.cantidad?`Cantidad: ${p.cantidad} uds`:""].filter(Boolean).join("\n");
     }).join("\n\n");
-    // Resumen de precios (al final)
-    const preciosTexto=prendasData.map((p,i)=>{
+    // Resumen de precios para campo total_general
+    const preciosLineas=prendasData.map((p,i)=>{
       const precio=parseFloat(p.precioUnit)||0;
       const cant=parseFloat(p.cantidad)||0;
-      const subtotal=precio*cant;
-      return precio>0?`Prenda ${i+1} (${p.tipoPrenda||""}): $${precio.toLocaleString("es-AR")} x ${cant} = $${subtotal.toLocaleString("es-AR")}`:"";
+      return precio>0?`Prenda ${i+1} (${p.tipoPrenda||""}): $${precio.toLocaleString("es-AR")} x ${cant} uds = $${(precio*cant).toLocaleString("es-AR")}`:"";
     }).filter(Boolean).join("\n");
-    const resumenPrecios=prendasData.some(p=>parseFloat(p.precioUnit)>0)?`\n\n========= PRECIOS =========\n${preciosTexto}\nCantidad total: ${pedido.cantidad} uds\nTotal general: $${totalGral.toLocaleString("es-AR")}${anticipo>0?`\nAnticipo: $${anticipo.toLocaleString("es-AR")}\nSaldo: $${(totalGral-anticipo).toLocaleString("es-AR")}`:""}\n============================`:"";
-    await fetch("https://api.emailjs.com/api/v1.0/email/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service_id:EMAILJS_SERVICE,template_id:EMAILJS_TEMPLATE,user_id:EMAILJS_KEY,template_params:{pedido_id:pedido.id,cliente:pedido.cliente,cantidad:pedido.cantidad,prioridad:pedido.prioridad,fecha_entrega:formatFecha(pedido.fecha_entrega),creado_por:pedido.creado_por||"-",descripcion:pedido.descripcion||"-",procesos_activos:(pedido.procesos_activos||[]).join(", "),prendas:prendasTexto+resumenPrecios||"-",total_general:"-",anticipo:"-",saldo:"-"}})});
+    const totalTexto=preciosLineas?`${preciosLineas}\nTotal: $${totalGral.toLocaleString("es-AR")}`:"-";
+    const anticipoTexto=anticipo>0?`$${anticipo.toLocaleString("es-AR")}`:"-";
+    const saldoTexto=anticipo>0?`$${(totalGral-anticipo).toLocaleString("es-AR")}`:"-";
+    await fetch("https://api.emailjs.com/api/v1.0/email/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service_id:EMAILJS_SERVICE,template_id:EMAILJS_TEMPLATE,user_id:EMAILJS_KEY,template_params:{pedido_id:pedido.id,cliente:pedido.cliente,cantidad:pedido.cantidad,prioridad:pedido.prioridad,fecha_entrega:formatFecha(pedido.fecha_entrega),creado_por:pedido.creado_por||"-",descripcion:pedido.descripcion||"-",procesos_activos:(pedido.procesos_activos||[]).join(", "),prendas:prendasTexto||"-",total_general:totalTexto,anticipo:anticipoTexto,saldo:saldoTexto}})});
   }catch(e){console.error("Email error:",e);}
 }
 
