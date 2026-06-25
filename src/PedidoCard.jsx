@@ -4,7 +4,8 @@ import {
   calcCostoConfeccion, hoy, diasHasta, formatFecha,
   calcTalles, calcTotal, calcTotalGral, pedidoProgreso,
   calcTejidoRemera, isRemera, puedeVerPrecios, puedeVerTejido,
-  ResumenPrecios, PrendaDetalle, PrendaForm
+  ResumenPrecios, PrendaDetalle, PrendaForm,
+  dbGet, dbPatch, dbInsert, dbDelete
 } from "./utils.jsx";
 
 function GrupoColapsable({titulo,icon,color,count,children}){
