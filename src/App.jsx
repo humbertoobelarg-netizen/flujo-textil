@@ -454,7 +454,11 @@ function PantallaMarcado({empleados}){
   const [marcando,setMarcando]=useState(false);
   const [resultado,setResultado]=useState(null);
 
-  // Manejo del botón atrás
+  // Manejo del botón atrás - inicializar historial
+  useEffect(()=>{
+    window.history.replaceState({tab:"pedidos"},"");
+  },[]);
+
   useEffect(()=>{
     function handlePopState(e){
       // Si hay algún modal abierto, cerrarlo
