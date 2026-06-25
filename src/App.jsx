@@ -840,7 +840,7 @@ ${nombres}
                 if(!g.fecha)return false;
                 const fg=g.fecha.slice(0,7);
                 if(periodoFiltro==="mensual")return fg===mesActual;
-                if(periodoFiltro==="trimestral"){const m=new Date(g.fecha+"-01").getMonth();return new Date(g.fecha+"-01").getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
+                if(periodoFiltro==="trimestral"){const ym=g.fecha.slice(0,7);const m=new Date(ym+"-01").getMonth();return new Date(ym+"-01").getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
                 if(periodoFiltro==="anual")return g.fecha.startsWith(String(anoActual));
                 return true;
               });
@@ -867,7 +867,7 @@ ${nombres}
                 if(!i.fecha)return false;
                 const fi=i.fecha.slice(0,7);
                 if(periodoFiltro==="mensual")return fi===mesActual;
-                if(periodoFiltro==="trimestral"){const m=new Date(i.fecha+"-01").getMonth();return new Date(i.fecha+"-01").getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
+                if(periodoFiltro==="trimestral"){const ym=i.fecha.slice(0,7);const m=new Date(ym+"-01").getMonth();return new Date(ym+"-01").getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
                 if(periodoFiltro==="anual")return i.fecha.startsWith(String(anoActual));
                 return true;
               });
@@ -876,7 +876,7 @@ ${nombres}
                 if(!i.fecha)return false;
                 const fi=i.fecha.slice(0,7);
                 if(periodoFiltro==="mensual")return fi===mesActual;
-                if(periodoFiltro==="trimestral"){const m=new Date(i.fecha+"-01T12:00:00").getMonth();return new Date(i.fecha+"-01T12:00:00").getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
+                if(periodoFiltro==="trimestral"){const ym=i.fecha.slice(0,7);const m=new Date(ym+"-01T12:00:00").getMonth();return new Date(ym+"-01T12:00:00").getFullYear()===anoActual&&Math.floor(m/3)===trimestre;}
                 if(periodoFiltro==="anual")return i.fecha.startsWith(String(anoActual));
                 return true;
               });
