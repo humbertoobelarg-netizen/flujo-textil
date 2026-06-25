@@ -172,18 +172,18 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                 {Object.entries(costosVinc).map(([cat,monto])=>(
                   <div key={cat} style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
                     <span>{LABELS[cat]||cat}</span>
-                    <span>${monto.toLocaleString("es-AR")}</span>
+                    <span>{"$"}{monto.toLocaleString("es-AR")}</span>
                   </div>
                 ))}
                 {costoConfeccion>0&&(
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
                     <span>🪡 Confección (mano de obra)</span>
-                    <span>${costoConfeccion.toLocaleString("es-AR")}</span>
+                    <span>{"$"}{costoConfeccion.toLocaleString("es-AR")}</span>
                   </div>
                 )}
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:13,fontWeight:600,borderTop:"1px solid #3a3a3a",paddingTop:6,marginTop:4,color:"#e85d26"}}>
                   <span>TOTAL COSTOS</span>
-                  <span>${totalCostos.toLocaleString("es-AR")}</span>
+                  <span>{"$"}{totalCostos.toLocaleString("es-AR")}</span>
                 </div>
                 {(()=>{
                   const totalVenta=calcTotalGral(p.prendas?p.prendas:[]);
@@ -194,11 +194,11 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                     <>
                       <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginTop:6,color:"#8a7a6a"}}>
                         <span>Precio de venta</span>
-                        <span>${totalVenta.toLocaleString("es-AR")}</span>
+                        <span>{"$"}{totalVenta.toLocaleString("es-AR")}</span>
                       </div>
                       <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:600,marginTop:4,color:margen>=0?"#10b981":"#ef4444"}}>
                         <span>MARGEN ESTIMADO</span>
-                        <span>${margen.toLocaleString("es-AR")} ({pct}%)</span>
+                        <span>{"$"}{margen.toLocaleString("es-AR")} ({pct}%)</span>
                       </div>
                       <div style={{fontSize:9,color:"#8a7a6a",marginTop:2}}>* Solo incluye costos cargados (puede faltar mano de obra, etc.)</div>
                     </>
@@ -286,7 +286,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                 {pagos.length===0&&<div style={{fontSize:11,color:"#b0a898",marginBottom:6}}>Sin pagos</div>}
                 {pagos.map((pg,i)=>(
                   <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 8px",background:"#fff",border:"1px solid #d8d0c0",marginBottom:3,fontSize:11}}>
-                    <span style={{fontWeight:600}}>${parseFloat(pg.monto).toLocaleString("es-AR")}</span>
+                    <span style={{fontWeight:600}}>{"$"}{parseFloat(pg.monto).toLocaleString("es-AR")}</span>
                     <span style={{color:"#8a7a6a"}}>{pg.tipo} · {formatFecha(pg.fecha)}</span>
                     {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(
                       <button onClick={async()=>{
@@ -1344,8 +1344,8 @@ ${nombres}
                     <div style={{marginTop:20,padding:"16px",background:"#1a1208",color:"#f5f0e8"}}>
                       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:2,marginBottom:12}}>RESUMEN FINANCIERO</div>
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-                        <div style={{padding:"12px",background:"#2a2a2a"}}><div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>TOTAL GENERAL</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28}}>${tg.toLocaleString("es-AR")}</div></div>
-                        <div style={{padding:"12px",background:"#2a2a2a"}}><div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>SALDO A COBRAR</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#e85d26"}}>${saldo.toLocaleString("es-AR")}</div></div>
+                        <div style={{padding:"12px",background:"#2a2a2a"}}><div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>TOTAL GENERAL</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28}}>{"$"}{tg.toLocaleString("es-AR")}</div></div>
+                        <div style={{padding:"12px",background:"#2a2a2a"}}><div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:4}}>SALDO A COBRAR</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#e85d26"}}>{"$"}{saldo.toLocaleString("es-AR")}</div></div>
                       </div>
                       <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:8}}>POR MES (fecha de pedido)</div>
                       {Object.keys(porMes).sort().map(mes=>{const[y,m]=mes.split("-");return(
@@ -1355,10 +1355,10 @@ ${nombres}
                             <span style={{fontSize:10,color:"#8a7a6a"}}>{porMes[mes].pedidosCount} pedidos</span>
                           </div>
                           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                            <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>TOTAL</div><div style={{fontSize:13,fontWeight:600}}>${porMes[mes].total.toLocaleString("es-AR")}</div></div>
-                            <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>SALDO</div><div style={{fontSize:13,fontWeight:600,color:"#e85d26"}}>${porMes[mes].saldo.toLocaleString("es-AR")}</div></div>
+                            <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>TOTAL</div><div style={{fontSize:13,fontWeight:600}}>{"$"}{porMes[mes].total.toLocaleString("es-AR")}</div></div>
+                            <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>SALDO</div><div style={{fontSize:13,fontWeight:600,color:"#e85d26"}}>{"$"}{porMes[mes].saldo.toLocaleString("es-AR")}</div></div>
                             <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>PRENDAS</div><div style={{fontSize:13,fontWeight:600,color:"#06b6d4"}}>{porMes[mes].cantidad} uds</div></div>
-                            <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>PRECIO PROM.</div><div style={{fontSize:13,fontWeight:600,color:"#a855f7"}}>${porMes[mes].cantidad>0?Math.round(porMes[mes].total/porMes[mes].cantidad).toLocaleString("es-AR"):0}</div></div>
+                            <div style={{padding:"6px 8px",background:"#1a1208"}}><div style={{fontSize:9,color:"#8a7a6a",marginBottom:2}}>PRECIO PROM.</div><div style={{fontSize:13,fontWeight:600,color:"#a855f7"}}>{"$"}{porMes[mes].cantidad>0?Math.round(porMes[mes].total/porMes[mes].cantidad).toLocaleString("es-AR"):0}</div></div>
                           </div>
                         </div>
                       );})}
@@ -1513,12 +1513,12 @@ ${nombres}
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                       <div style={{padding:"10px",background:"#2a2a2a"}}>
                         <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>COBRADO</div>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#10b981"}}>${totalIngresos.toLocaleString("es-AR")}</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#10b981"}}>{"$"}{totalIngresos.toLocaleString("es-AR")}</div>
                         {totalIngresosExtra>0&&<div style={{fontSize:9,color:"#10b981",marginTop:2}}>💵 Extra: ${totalIngresosExtra.toLocaleString("es-AR")}</div>}
                       </div>
                       <div style={{padding:"10px",background:"#2a2a2a"}}>
                         <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>PAGADO</div>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#ef4444"}}>${totalGastosReal.toLocaleString("es-AR")}</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#ef4444"}}>{"$"}{totalGastosReal.toLocaleString("es-AR")}</div>
                       </div>
                     </div>
                     {(()=>{
@@ -1526,7 +1526,7 @@ ${nombres}
                       return(
                         <div style={{padding:"10px",background:cajaNeta>=0?"#10b98133":"#ef444433",border:`1px solid ${cajaNeta>=0?"#10b981":"#ef4444"}`}}>
                           <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>SALDO DE CAJA</div>
-                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:cajaNeta>=0?"#10b981":"#ef4444"}}>${cajaNeta.toLocaleString("es-AR")}</div>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:cajaNeta>=0?"#10b981":"#ef4444"}}>{"$"}{cajaNeta.toLocaleString("es-AR")}</div>
                           <div style={{fontSize:10,color:"#8a7a6a",marginTop:2}}>Dinero real disponible en el período</div>
                         </div>
                       );
@@ -1540,11 +1540,11 @@ ${nombres}
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                       <div style={{padding:"10px",background:"#1a1208"}}>
                         <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>INGRESOS PERÍODO</div>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#10b981"}}>${totalIngresos.toLocaleString("es-AR")}</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#10b981"}}>{"$"}{totalIngresos.toLocaleString("es-AR")}</div>
                       </div>
                       <div style={{padding:"10px",background:"#1a1208"}}>
                         <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>GASTOS TOTALES</div>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#ef4444"}}>${totalGastos.toLocaleString("es-AR")}</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#ef4444"}}>{"$"}{totalGastos.toLocaleString("es-AR")}</div>
                         {totalGastosPrevisto>0&&<div style={{fontSize:9,color:"#f59e0b",marginTop:2}}>🔮 ${totalGastosPrevisto.toLocaleString("es-AR")} previsto</div>}
                       </div>
                     </div>
@@ -1554,7 +1554,7 @@ ${nombres}
                       return(
                         <div style={{padding:"10px",background:resultado>=0?"#10b98133":"#ef444433",border:`1px solid ${resultado>=0?"#10b981":"#ef4444"}`}}>
                           <div style={{fontSize:9,color:"#8a7a6a",letterSpacing:1,marginBottom:2}}>RESULTADO / MARGEN</div>
-                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:resultado>=0?"#10b981":"#ef4444"}}>${resultado.toLocaleString("es-AR")}</div>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:resultado>=0?"#10b981":"#ef4444"}}>{"$"}{resultado.toLocaleString("es-AR")}</div>
                           <div style={{fontSize:10,color:"#8a7a6a",marginTop:2}}>{pct}% sobre ingresos · Rentabilidad del período</div>
                         </div>
                       );
@@ -1572,7 +1572,7 @@ ${nombres}
                           <div key={cat} style={{marginBottom:8}}>
                             <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
                               <span style={{fontSize:12}}>{catInfo?.icon} {catInfo?.label||cat}</span>
-                              <span style={{fontSize:12,fontWeight:600}}>${monto.toLocaleString("es-AR")} <span style={{color:"#8a7a6a",fontWeight:400}}>({pct}%)</span></span>
+                              <span style={{fontSize:12,fontWeight:600}}>{"$"}{monto.toLocaleString("es-AR")} <span style={{color:"#8a7a6a",fontWeight:400}}>({pct}%)</span></span>
                             </div>
                             <div style={{height:4,background:"#f5f0e8",overflow:"hidden"}}><div style={{height:"100%",background:"#e85d26",width:pct+"%"}}/></div>
                           </div>
@@ -1597,7 +1597,7 @@ ${nombres}
                             <div style={{fontSize:10,color:"#8a7a6a"}}>{i.origen==="pedido_viejo"?"Pedido anterior":i.origen==="otro"?"Otro ingreso":"Ingreso"} · {formatFecha(i.fecha)}</div>
                           </div>
                           <div style={{textAlign:"right"}}>
-                            <div style={{fontSize:14,fontWeight:600,color:"#10b981"}}>${parseFloat(i.monto).toLocaleString("es-AR")}</div>
+                            <div style={{fontSize:14,fontWeight:600,color:"#10b981"}}>{"$"}{parseFloat(i.monto).toLocaleString("es-AR")}</div>
                           </div>
                           {usuario?.rol==="admin"&&<button className="btn" onClick={()=>eliminarIngresoExtra(i.id)} style={{padding:"4px 8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
                         </div>
@@ -1623,7 +1623,7 @@ ${nombres}
                               </div>
                             </div>
                             <div style={{textAlign:"right"}}>
-                              <div style={{fontSize:14,fontWeight:600,color:"#ef4444"}}>${parseFloat(g.monto).toLocaleString("es-AR")}</div>
+                              <div style={{fontSize:14,fontWeight:600,color:"#ef4444"}}>{"$"}{parseFloat(g.monto).toLocaleString("es-AR")}</div>
                             </div>
                             {usuario?.rol==="admin"&&<button className="btn" onClick={()=>eliminarGasto(g.id)} style={{padding:"4px 8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
                           </div>
@@ -1664,10 +1664,10 @@ ${nombres}
                           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,marginBottom:4}}>{datos.totalKg.toFixed(1)} kg</div>
                           {(()=>{const pc={};items.forEach(s=>{const col=s.color||"-";if(!pc[col])pc[col]=0;pc[col]+=parseFloat(s.kilos)||0;});return Object.entries(pc).filter(([,kg])=>kg>0).map(([col,kg])=>(<div key={col} style={{display:"flex",justifyContent:"space-between",fontSize:9,padding:"2px 4px",background:"#f5f0e8",marginBottom:1}}><span>{col}</span><span style={{fontWeight:600}}>{kg.toFixed(1)}kg</span></div>));})()}
                           <div style={{fontSize:9,color:"#8a7a6a",marginTop:6,marginBottom:2}}>PPP</div>
-                          <div style={{fontSize:12,fontWeight:600,marginBottom:6}}>${Math.round(datos.ppp).toLocaleString("es-AR")}/kg</div>
+                          <div style={{fontSize:12,fontWeight:600,marginBottom:6}}>{"$"}{Math.round(datos.ppp).toLocaleString("es-AR")}/kg</div>
                           <div style={{padding:"6px",background:info.color+"15",border:`1px solid ${info.color}44`}}>
                             <div style={{fontSize:9,color:"#8a7a6a"}}>Costo/metro</div>
-                            <div style={{fontSize:14,fontWeight:600,color:info.color}}>${Math.round(costoMetro).toLocaleString("es-AR")}</div>
+                            <div style={{fontSize:14,fontWeight:600,color:info.color}}>{"$"}{Math.round(costoMetro).toLocaleString("es-AR")}</div>
                           </div>
                         </div>
                       );
@@ -1685,7 +1685,7 @@ ${nombres}
                           <div style={{fontSize:10,color:"#8a7a6a"}}>{s.kilos}kg{esAjuste&&s.motivo?` · ${s.motivo}`:""}{esAjuste&&s.descripcion?` · ${s.descripcion}`:""} · {formatFecha(s.fecha)}</div>
                         </div>
                         <div style={{textAlign:"right"}}>
-                          {!esAjuste&&<div style={{fontSize:14,fontWeight:600,color:"#06b6d4"}}>${parseFloat(s.total).toLocaleString("es-AR")}</div>}
+                          {!esAjuste&&<div style={{fontSize:14,fontWeight:600,color:"#06b6d4"}}>{"$"}{parseFloat(s.total).toLocaleString("es-AR")}</div>}
                           {esAjuste&&<div style={{fontSize:12,color:"#f59e0b"}}>{parseFloat(s.kilos)>0?"+":""}{s.kilos}kg</div>}
                         </div>
                         {(usuario?.rol==="admin"||usuario?.nombre==="Vivi")&&<button className="btn" onClick={()=>eliminarCompraTejido(s.id)} style={{padding:"4px 8px",fontSize:11,background:"transparent",border:"1.5px solid #c8bfaf",color:"#8a7a6a"}}>✕</button>}
@@ -1745,7 +1745,7 @@ ${nombres}
                                 </div>
                               )}
                             </div>
-                            <div style={{fontSize:14,fontWeight:600,color:"#ef4444"}}>${parseFloat(g.monto).toLocaleString("es-AR")}</div>
+                            <div style={{fontSize:14,fontWeight:600,color:"#ef4444"}}>{"$"}{parseFloat(g.monto).toLocaleString("es-AR")}</div>
                           </div>
                         ))}
                       </GrupoColapsable>
@@ -2516,7 +2516,7 @@ ${nombres}
                   return tg>0?(
                     <div style={{marginTop:6,fontSize:11}}>
                       <span style={{color:"#8a7a6a"}}>Saldo pendiente: </span>
-                      <span style={{fontWeight:600,color:"#e85d26"}}>${saldo.toLocaleString("es-AR")}</span>
+                      <span style={{fontWeight:600,color:"#e85d26"}}>{"$"}{saldo.toLocaleString("es-AR")}</span>
                     </div>
                   ):null;
                 })()}
@@ -2662,7 +2662,7 @@ ${nombres}
                         </div>
                         <div style={{textAlign:"center"}}>
                           <div style={{fontSize:9,color:"#8a7a6a"}}>COSTO EST.</div>
-                          <div style={{fontSize:14,fontWeight:600,color:op.color}}>${costo.toLocaleString("es-AR")}</div>
+                          <div style={{fontSize:14,fontWeight:600,color:op.color}}>{"$"}{costo.toLocaleString("es-AR")}</div>
                         </div>
                       </div>
                       {(()=>{
@@ -2756,7 +2756,7 @@ ${nombres}
                 return totalFactura>0?(
                   <div style={{padding:"10px",background:"#1a1208",color:"#f5f0e8",textAlign:"center"}}>
                     <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1}}>TOTAL DE LA FACTURA</div>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#06b6d4"}}>${totalFactura.toLocaleString("es-AR")}</div>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#06b6d4"}}>{"$"}{totalFactura.toLocaleString("es-AR")}</div>
                   </div>
                 ):null;
               })()}
@@ -2904,7 +2904,7 @@ ${nombres}
                           <div><label style={{fontSize:9,color:"#8a7a6a",display:"block",marginBottom:2}}>KILOS</label><input type="number" min="0" style={{width:"100%",fontSize:11}} placeholder="0" value={item.kilos} onChange={e=>{const its=[...items];its[idx]={...its[idx],kilos:e.target.value};const total=its.reduce((s,i)=>s+((parseFloat(i.kilos)||0)*(parseFloat(i.precioKg)||0)),0);setFormGasto({...formGasto,itemsTejido:its,monto:total>0?String(total):formGasto.monto});}}/></div>
                           <div><label style={{fontSize:9,color:"#8a7a6a",display:"block",marginBottom:2}}>PRECIO/KG</label><input type="number" min="0" style={{width:"100%",fontSize:11}} placeholder="0" value={item.precioKg} onChange={e=>{const its=[...items];its[idx]={...its[idx],precioKg:e.target.value};const total=its.reduce((s,i)=>s+((parseFloat(i.kilos)||0)*(parseFloat(i.precioKg)||0)),0);setFormGasto({...formGasto,itemsTejido:its,monto:total>0?String(total):formGasto.monto});}}/></div>
                         </div>
-                        {subtotal>0&&<div style={{fontSize:10,color:"#8a7a6a",marginTop:4,display:"flex",justifyContent:"space-between"}}><span>≈ {metros} mts</span><span style={{fontWeight:600}}>${subtotal.toLocaleString("es-AR")}</span></div>}
+                        {subtotal>0&&<div style={{fontSize:10,color:"#8a7a6a",marginTop:4,display:"flex",justifyContent:"space-between"}}><span>≈ {metros} mts</span><span style={{fontWeight:600}}>{"$"}{subtotal.toLocaleString("es-AR")}</span></div>}
                       </div>
                     );
                   })}
