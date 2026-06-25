@@ -160,7 +160,7 @@ function newId(pedidos){const nums=pedidos.map(p=>parseInt((p.id||"").replace("P
 function calcTalles(talles){return Object.values(talles||{}).reduce((s,v)=>s+(parseInt(v)||0),0);}
 function calcTotal(p){return(parseFloat(p?.precioUnit)||0)*(parseFloat(p?.cantidad)||0);}
 function calcTotalGral(prendas){return(prendas||[]).reduce((s,p)=>s+calcTotal(p),0);}
-function pedidoProgreso(p){const a=p.procesos_activos||[];if(!a.length)return 0;const l=a.filter(k=>(p.procesos||{})[k]==="listo").length;return Math.round((l/a.length)*100);}
+function pedidoProgreso(p){const a=(p.procesos_activos||[]).filter(k=>k!=="orden");if(!a.length)return 0;const l=a.filter(k=>(p.procesos||{})[k]==="listo").length;return Math.round((l/a.length)*100);}
 function calcTejidoRemera(talles){
   let a90=0,a120=0,rib=0;
   Object.entries(talles||{}).forEach(([t,cant])=>{
