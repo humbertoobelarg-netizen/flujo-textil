@@ -2299,11 +2299,14 @@ ${nombres}
               const porTipo={};
               todasPrendas.forEach(pr=>{
                 const tipo=pr.tipoPrenda==="Otro"?(pr.tipoPrendaOtro||"Otro"):pr.tipoPrenda||"Sin tipo";
-                if(!porTipo[tipo])porTipo[tipo]={prendas:[],totalUnidades:0};
+                if(!porTipo[tipo])porTipo[tipo]={prendas:[],totalUnidades:0,sumaPrecio:0,cantPrecios:0};
                 porTipo[tipo].prendas.push(pr);
                 // Sumar unidades de talles
                 const unidades=Object.values(pr.talles?pr.talles:{}).reduce((s,v)=>s+(parseInt(v)||0),0);
                 porTipo[tipo].totalUnidades+=unidades||parseInt(pr.cantidad)||0;
+                // Acumular precio para promedio
+                const precioU=parseFloat(pr.precioUnit)||0;
+                if(precioU>0){porTipo[tipo].sumaPrecio+=precioU;porTipo[tipo].cantPrecios+=1;}
               });
               const tiposOrdenados=Object.keys(porTipo).sort((a,b)=>porTipo[b].totalUnidades-porTipo[a].totalUnidades);
               return(
@@ -2326,6 +2329,7 @@ ${nombres}
                           style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:activa?"#1a1208":"#fff",border:"1.5px solid "+(activa?"#1a1208":"#e8e0d0"),borderRadius:8,marginBottom:6,cursor:"pointer"}}>
                           <span style={{fontSize:13,fontWeight:600,color:activa?"#f5f0e8":"#1a1208"}}>{tipo}</span>
                           <span style={{fontSize:16,fontWeight:800,color:activa?"#f5f0e8":"#e85d26"}}>{data.totalUnidades} uds</span>
+                          {data.cantPrecios>0&&<div style={{fontSize:11,color:activa?"#f5f0e8":"#8a7a6a",marginTop:2}}>Precio prom: {"$"}{Math.round(data.sumaPrecio/data.cantPrecios).toLocaleString("es-AR")}</div>}
                         </div>
                         {activa&&(()=>{
                           // Agrupar por color
