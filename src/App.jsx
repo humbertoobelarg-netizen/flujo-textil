@@ -832,7 +832,6 @@ ${nombres}
               const mesDate=new Date(mesActual+"-01T12:00:00");
               const trimestre=Math.floor(mesDate.getMonth()/3);
               const anoActual=mesDate.getFullYear();
-              console.log("DEBUG FINANZAS:",{mesActual,trimestre,anoActual,periodoFiltro,mesSeleccionado});
               const mesesNombres=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
               const nombreMes=mesesNombres[mesDate.getMonth()+1]+" "+anoActual;
 
