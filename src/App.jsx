@@ -454,7 +454,19 @@ function PantallaMarcado({empleados}){
   const [marcando,setMarcando]=useState(false);
   const [resultado,setResultado]=useState(null);
 
+  // Manejo del botón atrás
   useEffect(()=>{
+    function handlePopState(e){
+      const tab=e.state&&e.state.tab;
+      if(tab){
+        setAdminTab(tab);
+      }
+    }
+    window.addEventListener("popstate",handlePopState);
+    return()=>window.removeEventListener("popstate",handlePopState);
+  },[]);
+
+    useEffect(()=>{
     const codigo=hash.toUpperCase();
     const empLocal=empleados.find(e=>e.codigo===codigo);
     if(empLocal){setEmpData(empLocal);setEmpCargado(true);return;}
@@ -1220,7 +1232,7 @@ ${nombres}
               if(k==="mis_gastos")return usuario?.nombre==="Vivi";
               return true;
             }).map(([k,l])=>(
-              <div key={k} className={`tab${adminTab===k?" active":""}`} onClick={()=>setAdminTab(k)} style={{fontSize:11,letterSpacing:2}}>{l}</div>
+              <div key={k} className={`tab${adminTab===k?" active":""}`} onClick={()=>{window.history.pushState({tab:k},"");setAdminTab(k);}} style={{fontSize:11,letterSpacing:2}}>{l}</div>
             ))}
           </div>
           <div style={{flex:1,overflowY:"auto",padding:20}}>
