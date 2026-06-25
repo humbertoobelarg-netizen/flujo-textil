@@ -2329,6 +2329,7 @@ ${nombres}
                           style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:activa?"#1a1208":"#fff",border:"1.5px solid "+(activa?"#1a1208":"#e8e0d0"),borderRadius:8,marginBottom:6,cursor:"pointer"}}>
                           <span style={{fontSize:13,fontWeight:600,color:activa?"#f5f0e8":"#1a1208"}}>{tipo}</span>
                           <span style={{fontSize:16,fontWeight:800,color:activa?"#f5f0e8":"#e85d26"}}>{data.totalUnidades} uds</span>
+                          <div style={{fontSize:10,color:activa?"#f5f0e8":"#8a7a6a",marginTop:2}}>({data.cantPrecios} precios, suma: {data.sumaPrecio})</div>
                           {data.cantPrecios>0&&<div style={{fontSize:11,color:activa?"#f5f0e8":"#8a7a6a",marginTop:2}}>Precio prom: {"$"}{Math.round(data.sumaPrecio/data.cantPrecios).toLocaleString("es-AR")}</div>}
                         </div>
                         {activa&&(()=>{
