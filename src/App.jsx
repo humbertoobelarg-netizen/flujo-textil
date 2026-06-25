@@ -179,14 +179,22 @@ function puedeVerFinanciero(u){if(!u)return false;if(u.rol==="admin")return true
 async function enviarEmailPedido(pedido){
   try{
     const prendasData=(pedido.prendas||[]).filter(p=>p.tipoPrenda||p.precioUnit);
-    const totalGral=prendasData.reduce((s,p)=>s+(parseFloat(p?.precioUnit)||0)*(parseFloat(p?.cantidad)||0),0);
     const anticipo=parseFloat(pedido.anticipo)||0;
+    const totalGral=prendasData.reduce((s,p)=>s+(parseFloat(p?.precioUnit)||0)*(parseFloat(p?.cantidad)||0),0);
+    // Detalle de produccion (sin precios)
     const prendasTexto=prendasData.map((p,i)=>{
-      const total=(parseFloat(p.precioUnit)||0)*(parseFloat(p.cantidad)||0);
       const talles=p.talles?Object.entries(p.talles).filter(([k,v])=>parseInt(v)>0).map(([k,v])=>`${k}:${v}`).join(" "):"";
-      return[`--- PRENDA ${i+1} ---`,p.tipoPrenda?`Tipo: ${p.tipoPrenda}`:"",p.tipoTejido?`Tejido: ${p.tipoTejido}`:"",p.molderia?`Moldería: ${p.molderia}`:"",p.cuerpo?`Cuerpo: ${p.cuerpo}`:"",p.manga?`Manga: ${p.manga}`:"",p.color?`Color manga: ${p.color}`:"",p.puno?`Puño: ${p.puno}`:"",p.cuello?`Cuello: ${p.cuello}`:"",p.colorCuello?`Color cuello: ${p.colorCuello}`:"",talles?`Talles: ${talles}`:"",p.cantidad?`Cantidad: ${p.cantidad} uds`:"",p.precioUnit?`Precio unit: $${parseFloat(p.precioUnit).toLocaleString("es-AR")}`:"",total>0?`Total: $${total.toLocaleString("es-AR")}`:""].filter(Boolean).join("\n");
+      return[`--- PRENDA ${i+1} ---`,p.tipoPrenda?`Tipo: ${p.tipoPrenda}`:"",p.tipoTejido?`Tejido: ${p.tipoTejido}`:"",p.molderia?`Moldería: ${p.molderia}`:"",p.cuerpo?`Cuerpo: ${p.cuerpo}`:"",p.manga?`Manga: ${p.manga}`:"",p.color?`Color manga: ${p.color}`:"",p.puno?`Puño: ${p.puno}`:"",p.cuello?`Cuello: ${p.cuello}`:"",p.colorCuello?`Color cuello: ${p.colorCuello}`:"",talles?`Talles: ${talles}`:"",p.cantidad?`Cantidad: ${p.cantidad} uds`:""].filter(Boolean).join("\n");
     }).join("\n\n");
-    await fetch("https://api.emailjs.com/api/v1.0/email/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service_id:EMAILJS_SERVICE,template_id:EMAILJS_TEMPLATE,user_id:EMAILJS_KEY,template_params:{pedido_id:pedido.id,cliente:pedido.cliente,cantidad:pedido.cantidad,prioridad:pedido.prioridad,fecha_entrega:formatFecha(pedido.fecha_entrega),creado_por:pedido.creado_por||"-",descripcion:pedido.descripcion||"-",procesos_activos:(pedido.procesos_activos||[]).join(", "),prendas:prendasTexto||"-",total_general:`$${totalGral.toLocaleString("es-AR")}`,anticipo:anticipo>0?`$${anticipo.toLocaleString("es-AR")}`:"-",saldo:`$${(totalGral-anticipo).toLocaleString("es-AR")}`}})});
+    // Resumen de precios (al final)
+    const preciosTexto=prendasData.map((p,i)=>{
+      const precio=parseFloat(p.precioUnit)||0;
+      const cant=parseFloat(p.cantidad)||0;
+      const subtotal=precio*cant;
+      return precio>0?`Prenda ${i+1} (${p.tipoPrenda||""}): $${precio.toLocaleString("es-AR")} x ${cant} = $${subtotal.toLocaleString("es-AR")}`:"";
+    }).filter(Boolean).join("\n");
+    const resumenPrecios=prendasData.some(p=>parseFloat(p.precioUnit)>0)?`\n\n========= PRECIOS =========\n${preciosTexto}\nCantidad total: ${pedido.cantidad} uds\nTotal general: $${totalGral.toLocaleString("es-AR")}${anticipo>0?`\nAnticipo: $${anticipo.toLocaleString("es-AR")}\nSaldo: $${(totalGral-anticipo).toLocaleString("es-AR")}`:""}\n============================`:"";
+    await fetch("https://api.emailjs.com/api/v1.0/email/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service_id:EMAILJS_SERVICE,template_id:EMAILJS_TEMPLATE,user_id:EMAILJS_KEY,template_params:{pedido_id:pedido.id,cliente:pedido.cliente,cantidad:pedido.cantidad,prioridad:pedido.prioridad,fecha_entrega:formatFecha(pedido.fecha_entrega),creado_por:pedido.creado_por||"-",descripcion:pedido.descripcion||"-",procesos_activos:(pedido.procesos_activos||[]).join(", "),prendas:prendasTexto+resumenPrecios||"-",total_general:"-",anticipo:"-",saldo:"-"}})});
   }catch(e){console.error("Email error:",e);}
 }
 
