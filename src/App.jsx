@@ -125,7 +125,7 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
                   </span>
                 )}
                 {puedeRegistrarTerc&&(
-                  <button className="btn" onClick={()=>{setFormGasto({fecha:hoy(),categoria:"pago_terceros",descripcion:`Confección tercerizada - Pedido ${p.id}`,monto:"",tipo:"real",pedidosVinculados:[{id:p.id,monto:""}]});setShowNuevoGasto(true);}}
+                  <button className="btn" onClick={()=>{setFormGasto({fecha:hoy(),categoria:"pago_terceros",descripcion:`Confección tercerizada - Pedido ${p.id}`,monto:"",tipo:"real",pedidosVinculados:[{id:p.id,monto:""}]});window.history.pushState({modal:"setShowNuevoGasto"},"");setShowNuevoGasto(true);}}
                     style={{fontSize:10,padding:"4px 10px",background:"transparent",border:"1.5px solid #a855f7",color:"#a855f7",letterSpacing:0.5}}>
                     + REGISTRAR TERCERIZADO
                   </button>
@@ -457,10 +457,23 @@ function PantallaMarcado({empleados}){
   // Manejo del botón atrás
   useEffect(()=>{
     function handlePopState(e){
+      // Si hay algún modal abierto, cerrarlo
+      setShowNuevoPedido(false);
+      setShowNuevoGasto(false);
+      setShowNuevaCompra(false);
+      setShowNuevoAjuste(false);
+      setShowNuevoIngreso(false);
+      setShowNuevoEmpleado(false);
+      setShowNuevoUser(false);
+      setShowPagos(null);
+      setShowAgregado(null);
+      setShowAsignarTejido(null);
+      setShowModalCorte(null);
+      setShowEntregarModal(null);
+      setEditandoPedido(null);
+      // Si hay tab en el historial, navegar a esa tab
       const tab=e.state&&e.state.tab;
-      if(tab){
-        setAdminTab(tab);
-      }
+      if(tab) setAdminTab(tab);
     }
     window.addEventListener("popstate",handlePopState);
     return()=>window.removeEventListener("popstate",handlePopState);
@@ -1145,7 +1158,7 @@ ${nombres}
               </div>
               <div style={{display:"flex",gap:8}}>
                 <button className="btn" onClick={cargarDatos} style={{padding:"8px 12px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf"}}>↻</button>
-                {miProceso==="orden"&&<button className="btn" onClick={()=>setShowNuevoPedido(true)} style={{padding:"8px 14px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>+ PEDIDO</button>}
+                {miProceso==="orden"&&<button className="btn" onClick={()=>{window.history.pushState({modal:"setShowNuevoPedido"},"");setShowNuevoPedido(true);}} style={{padding:"8px 14px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>+ PEDIDO</button>}
                 <button className="btn" onClick={handleLogout} style={{padding:"8px 14px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf",letterSpacing:1}}>SALIR</button>
               </div>
             </div>
@@ -1215,8 +1228,8 @@ ${nombres}
             <div style={{display:"flex",alignItems:"center",gap:10}}><img src="https://raw.githubusercontent.com/humbertoobelarg-netizen/Flujo-textil/refs/heads/main/logo_tecnica.jpg" alt="Técnica Remeras" style={{height:36,objectFit:"contain"}}/><span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:2,color:"#8a7a6a"}}>{usuario?.rol==="admin"?"ADMIN":usuario?.nombre?.toUpperCase()}</span></div>
             <div style={{display:"flex",gap:8}}>
               <button className="btn" onClick={cargarDatos} style={{padding:"9px 12px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf"}}>↻</button>
-              {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&<button className="btn" onClick={()=>setShowNuevoPedido(true)} style={{padding:"9px 16px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>+ PEDIDO</button>}
-              {usuario?.nombre==="Vivi"&&<button className="btn" onClick={()=>setShowNuevoGasto(true)} style={{padding:"9px 16px",fontSize:11,background:"#1a1208",color:"#f5f0e8",letterSpacing:1}}>+ GASTO</button>}
+              {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&<button className="btn" onClick={()=>{window.history.pushState({modal:"setShowNuevoPedido"},"");setShowNuevoPedido(true);}} style={{padding:"9px 16px",fontSize:11,background:"#e85d26",color:"#fff",letterSpacing:1}}>+ PEDIDO</button>}
+              {usuario?.nombre==="Vivi"&&<button className="btn" onClick={()=>{window.history.pushState({modal:"setShowNuevoGasto"},"");setShowNuevoGasto(true);}} style={{padding:"9px 16px",fontSize:11,background:"#1a1208",color:"#f5f0e8",letterSpacing:1}}>+ GASTO</button>}
               <button className="btn" onClick={handleLogout} style={{padding:"9px 14px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf",letterSpacing:1}}>SALIR</button>
             </div>
           </div>
@@ -1563,10 +1576,10 @@ ${nombres}
                   )}
 
                   {/* Botón agregar gasto */}
-                  <button className="btn" onClick={()=>setShowNuevoGasto(true)} style={{width:"100%",padding:"12px",fontSize:12,background:"#e85d26",color:"#fff",letterSpacing:1,marginBottom:16}}>+ REGISTRAR GASTO</button>
+                  <button className="btn" onClick={()=>{window.history.pushState({modal:"setShowNuevoGasto"},"");setShowNuevoGasto(true);}} style={{width:"100%",padding:"12px",fontSize:12,background:"#e85d26",color:"#fff",letterSpacing:1,marginBottom:16}}>+ REGISTRAR GASTO</button>
 
                   {/* Ingresos extraordinarios */}
-                  <button className="btn" onClick={()=>setShowNuevoIngreso(true)} style={{width:"100%",padding:"12px",fontSize:12,background:"#10b981",color:"#fff",letterSpacing:1,marginBottom:8}}>+ INGRESO EXTRAORDINARIO</button>
+                  <button className="btn" onClick={()=>{window.history.pushState({modal:"setShowNuevoIngreso"},"");setShowNuevoIngreso(true);}} style={{width:"100%",padding:"12px",fontSize:12,background:"#10b981",color:"#fff",letterSpacing:1,marginBottom:8}}>+ INGRESO EXTRAORDINARIO</button>
                   {ingrExtraFiltrados.length>0&&(
                     <div style={{marginBottom:16}}>
                       <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1,marginBottom:8}}>INGRESOS EXTRAORDINARIOS</div>
@@ -1627,7 +1640,7 @@ ${nombres}
               return(
                 <div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr",gap:8,marginBottom:16}}>
-                    <button className="btn" onClick={()=>setShowNuevoAjuste(true)} style={{padding:"12px",fontSize:12,background:"#f59e0b",color:"#fff",letterSpacing:1}}>+ AJUSTE DE INVENTARIO (sin costo)</button>
+                    <button className="btn" onClick={()=>{window.history.pushState({modal:"setShowNuevoAjuste"},"");setShowNuevoAjuste(true);}} style={{padding:"12px",fontSize:12,background:"#f59e0b",color:"#fff",letterSpacing:1}}>+ AJUSTE DE INVENTARIO (sin costo)</button>
                   </div>
                   <div style={{padding:"10px 14px",background:"#f5f0e8",border:"1.5px solid #d8d0c0",marginBottom:16,fontSize:12,color:"#8a7a6a"}}>
                     💡 Para registrar compras con factura, usá <strong>FINANZAS → + GASTO → Tejido</strong>
@@ -1698,7 +1711,7 @@ ${nombres}
               const total=misGastos.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
               return(
                 <div>
-                  <button className="btn" onClick={()=>setShowNuevoGasto(true)} style={{width:"100%",padding:"12px",fontSize:12,background:"#e85d26",color:"#fff",letterSpacing:1,marginBottom:12}}>+ REGISTRAR GASTO</button>
+                  <button className="btn" onClick={()=>{window.history.pushState({modal:"setShowNuevoGasto"},"");setShowNuevoGasto(true);}} style={{width:"100%",padding:"12px",fontSize:12,background:"#e85d26",color:"#fff",letterSpacing:1,marginBottom:12}}>+ REGISTRAR GASTO</button>
                   {misGastos.length>0&&(
                     <div style={{padding:"12px 16px",background:"#1a1208",color:"#f5f0e8",marginBottom:12}}>
                       <div style={{fontSize:10,color:"#8a7a6a",letterSpacing:1}}>TOTAL MIS GASTOS</div>
@@ -1920,7 +1933,7 @@ ${nombres}
             {adminTab==="equipo"&&(
               <div>
                 <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
-                  <button className="btn" onClick={()=>setShowNuevoUser(true)} style={{padding:"9px 16px",fontSize:11,background:"#1a1208",color:"#f5f0e8",letterSpacing:1}}>+ USUARIO</button>
+                  <button className="btn" onClick={()=>{window.history.pushState({modal:"setShowNuevoUser"},"");setShowNuevoUser(true);}} style={{padding:"9px 16px",fontSize:11,background:"#1a1208",color:"#f5f0e8",letterSpacing:1}}>+ USUARIO</button>
                 </div>
                 {usuarios.map(u=>{
                   const proc=PROCESOS.find(p=>p.key===u.proceso);
@@ -1980,7 +1993,7 @@ ${nombres}
                     </div>
                     <div style={{display:"flex",gap:8}}>
                       <input type="date" value={asistenciaFecha} onChange={e=>setAsistenciaFecha(e.target.value)} style={{fontSize:12,padding:"7px 10px"}}/>
-                      {(usuario?.rol==="admin"||usuario?.nombre==="Vivi")&&<button className="btn" onClick={()=>setShowNuevoEmpleado(true)} style={{padding:"9px 14px",fontSize:11,background:"#1a1208",color:"#f5f0e8",letterSpacing:1}}>+ EMPLEADO</button>}
+                      {(usuario?.rol==="admin"||usuario?.nombre==="Vivi")&&<button className="btn" onClick={()=>{window.history.pushState({modal:"setShowNuevoEmpleado"},"");setShowNuevoEmpleado(true);}} style={{padding:"9px 14px",fontSize:11,background:"#1a1208",color:"#f5f0e8",letterSpacing:1}}>+ EMPLEADO</button>}
                     </div>
                   </div>
 
