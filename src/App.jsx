@@ -828,7 +828,7 @@ ${nombres}
                 }
                 return true;
               });
-              const mesActual=mesSeleccionado||new Date().toISOString().slice(0,7);
+              const mesActual=(mesSeleccionado||new Date().toISOString().slice(0,7)).slice(0,7);
               const mesDate=new Date(mesActual+"-01T12:00:00");
               const trimestre=Math.floor(mesDate.getMonth()/3);
               const anoActual=mesDate.getFullYear();
