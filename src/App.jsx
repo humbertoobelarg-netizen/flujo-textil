@@ -454,14 +454,13 @@ function PantallaMarcado({empleados}){
   const [marcando,setMarcando]=useState(false);
   const [resultado,setResultado]=useState(null);
 
-  // Manejo del botón atrás - inicializar historial
+  // Manejo del botón atrás
   useEffect(()=>{
-    window.history.replaceState({tab:"pedidos"},"");
-  },[]);
-
-  useEffect(()=>{
+    // Siempre mantener al menos 2 entradas en el historial
+    window.history.pushState({app:true},"");
+    window.history.pushState({app:true},"");
     function handlePopState(e){
-      // Si hay algún modal abierto, cerrarlo
+      // Cerrar cualquier modal abierto
       setShowNuevoPedido(false);
       setShowNuevoGasto(false);
       setShowNuevaCompra(false);
@@ -475,9 +474,10 @@ function PantallaMarcado({empleados}){
       setShowModalCorte(null);
       setShowEntregarModal(null);
       setEditandoPedido(null);
-      // Si hay tab en el historial, navegar a esa tab
-      const tab=e.state&&e.state.tab;
-      if(tab) setAdminTab(tab);
+      // Volver a tab pedidos
+      setAdminTab("pedidos");
+      // Volver a agregar entrada para el siguiente atrás
+      window.history.pushState({app:true},"");
     }
     window.addEventListener("popstate",handlePopState);
     return()=>window.removeEventListener("popstate",handlePopState);
