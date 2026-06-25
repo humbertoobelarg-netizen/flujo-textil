@@ -13,7 +13,7 @@ import {
   newId, calcTalles, calcTotal, calcTotalGral, pedidoProgreso,
   calcTejidoRemera, isRemera, puedeVerPrecios, puedeVerTejido, puedeVerFinanciero,
   enviarEmailPedido, ResumenPrecios, PrendaDetalle, PrendaForm, AlertasVencimiento
-} from "./utils.js";
+} from "./utils.jsx";
 
 function GrupoColapsable({titulo,icon,color,count,children}){
   const [abierto,setAbierto]=useState(false);
