@@ -1,4 +1,6 @@
 import { useState, useEffect, Fragment } from "react";
+import { GrupoColapsable, PedidoCard } from "./PedidoCard.jsx";
+import { PantallaMarcado } from "./PantallaMarcado.jsx";
 
 const EMAILJS_SERVICE = import.meta.env.VITE_EMAILJS_SERVICE;
 const EMAILJS_TEMPLATE = import.meta.env.VITE_EMAILJS_TEMPLATE;
