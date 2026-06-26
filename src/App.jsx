@@ -719,7 +719,77 @@ ${nombres}
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:2}}>PRESUPUESTOS</div>
                 {!presupuestoActivo&&<button className="btn" onClick={()=>{setFormPres({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});setFormPresPaso(1);setShowNuevoPresupuesto(true);window.history.pushState({modal:"presupuesto"},"");}} style={{background:"#e85d26",color:"#fff",border:"none",padding:"8px 14px",fontSize:11,letterSpacing:1}}>+ NUEVO</button>}
               </div>
-              {presupuestoActivo&&<button onClick={()=>setPresupuestoActivo(null)} style={{background:"none",border:"none",color:"#8a7a6a",cursor:"pointer",fontSize:12,marginBottom:8}}>← Volver</button>}
+              {presupuestoActivo&&(()=>{
+                const p=presupuestoActivo;
+                const vencido=new Date(p.vence)<new Date()&&p.estado==="pendiente";
+                return(<>
+                  <div ref={presRef} style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:10,padding:20,marginBottom:12}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                      <button onClick={()=>setPresupuestoActivo(null)} style={{background:"none",border:"none",color:"#8a7a6a",cursor:"pointer",fontSize:12}}>← Volver</button>
+                      <span style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {vencido?"VENCIDO":p.estado?.toUpperCase()}</span>
+                    </div>
+                    <div style={{textAlign:"center",marginBottom:16}}>
+                      <img src="https://raw.githubusercontent.com/humbertoobelarg-netizen/Flujo-textil/refs/heads/main/logo_tecnica.jpg" alt="Técnica Remeras" style={{height:50,objectFit:"contain"}}/>
+                    </div>
+                    <div style={{borderTop:"2px solid #1a1208",padding:"8px 0",marginBottom:12}}>
+                      <div style={{fontSize:14,fontWeight:700}}>PRESUPUESTO {p.id}</div>
+                      <div style={{fontSize:12,color:"#5a4a3a"}}>Cliente: {p.cliente}</div>
+                      <div style={{fontSize:11,color:"#8a7a6a"}}>Emitido: {formatFecha(p.creado)} · Válido hasta: {formatFecha(p.vence)}</div>
+                    </div>
+                    {(p.items||[]).map((item,i)=>{
+                      const tecGrupos={};
+                      (item.ubicaciones||[]).filter(u=>u.tecnica).forEach(u=>{
+                        const key=u.tecnica;
+                        const tecNombre=key.startsWith("seri")?"serigrafía":key.startsWith("dtf")?"DTF":key==="sublimacion"?"sublimación":key.startsWith("bord")?"bordado":"aplicación";
+                        if(!tecGrupos[tecNombre])tecGrupos[tecNombre]=[];
+                        tecGrupos[tecNombre].push(u.lugar.toLowerCase());
+                      });
+                      const tecDesc=Object.entries(tecGrupos).map(([tec,lugares])=>tec+" en "+lugares.join(" y ")).join(" y ");
+                      const desc=item.cantidad+" "+item.prenda+(tecDesc?" con "+tecDesc:"");
+                      return(
+                        <div key={i} style={{borderBottom:"1px solid #f0ece4",padding:"10px 0"}}>
+                          <div style={{fontSize:13,color:"#1a1208",marginBottom:4}}>{desc}</div>
+                          <div style={{display:"flex",justifyContent:"space-between"}}>
+                            <span style={{fontSize:11,color:"#8a7a6a"}}>{"Gs. "}{(item.precioUnit||0).toLocaleString("es-AR")} c/u · IVA incluido</span>
+                            <span style={{fontSize:13,fontWeight:700}}>{"Gs. "}{(item.subtotal||0).toLocaleString("es-AR")}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div style={{borderTop:"2px solid #1a1208",marginTop:12,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontSize:14,fontWeight:700}}>TOTAL</span>
+                      <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"Gs. "}{(p.total||0).toLocaleString("es-AR")}</span>
+                    </div>
+                    {p.notas&&<div style={{marginTop:10,fontSize:11,color:"#8a7a6a",fontStyle:"italic"}}>{p.notas}</div>}
+                    <div style={{marginTop:12,fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8,textAlign:"right"}}>Generado por: {p.creado_por}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>{
+                      const nl="\n";
+                      const tecGruposWA=(ubs)=>{const g={};(ubs||[]).filter(u=>u.tecnica).forEach(u=>{const k=u.tecnica;const n=k.startsWith("seri")?"serigrafía":k.startsWith("dtf")?"DTF":k==="sublimacion"?"sublimación":k.startsWith("bord")?"bordado":"aplicación";if(!g[n])g[n]=[];g[n].push(u.lugar.toLowerCase());});return Object.entries(g).map(([t,l])=>t+" en "+l.join(" y ")).join(" y ");};
+                      const items=(p.items||[]).map(item=>{const td=tecGruposWA(item.ubicaciones);return"• "+item.cantidad+" "+item.prenda+(td?" con "+td:"")+nl+"  Gs. "+(item.precioUnit||0).toLocaleString("es-AR")+" c/u = Gs. "+(item.subtotal||0).toLocaleString("es-AR");}).join(nl);
+                      const texto="*PRESUPUESTO "+p.id+" - TÉCNICA REMERAS*"+nl+nl+"Cliente: "+p.cliente+nl+"Fecha: "+formatFecha(p.creado)+nl+"Válido hasta: "+formatFecha(p.vence)+nl+nl+items+nl+nl+"*TOTAL: Gs. "+(p.total||0).toLocaleString("es-AR")+"*"+nl+"IVA incluido"+(p.notas?nl+nl+p.notas:"")+nl+nl+"Generado por "+p.creado_por;
+                      window.open("https://wa.me/?text="+encodeURIComponent(texto),"_blank");
+                    }} style={{flex:1,padding:"12px",background:"#25D366",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>📲 WhatsApp</button>
+                    <button onClick={async()=>{
+                      if(!presRef.current)return;
+                      setPresDescargando(true);
+                      try{
+                        const script=document.createElement("script");
+                        script.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+                        document.head.appendChild(script);
+                        await new Promise(r=>script.onload=r);
+                        const canvas=await window.html2canvas(presRef.current,{scale:2,backgroundColor:"#ffffff",useCORS:true});
+                        const link=document.createElement("a");
+                        link.download="presupuesto-"+p.id+".png";
+                        link.href=canvas.toDataURL("image/png");
+                        link.click();
+                      }catch(e){showToast("Error al generar imagen","#ef4444");}
+                      setPresDescargando(false);
+                    }} style={{flex:1,padding:"12px",background:"#1a1208",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>{presDescargando?"⏳ Generando...":"📥 Descargar imagen"}</button>
+                  </div>
+                </>);
+              })()}
               {!presupuestoActivo&&presupuestos.length===0&&<div style={{textAlign:"center",color:"#b0a898",fontSize:13,padding:30}}>No hay presupuestos aún</div>}
               {!presupuestoActivo&&presupuestos.map(p=>{
                 const vencido=new Date(p.vence)<new Date()&&p.estado==="pendiente";
