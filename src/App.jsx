@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import React, { useState, useEffect, Fragment, useRef } from "react";
 import {
   EMAILJS_SERVICE, EMAILJS_TEMPLATE, EMAILJS_KEY,
   SUPABASE_URL, SUPABASE_KEY, H,
@@ -92,6 +92,8 @@ export default function App(){
   const [formPresVistaPrevia,setFormPresVistaPrevia]=useState(false);
   const [formPresGuardando,setFormPresGuardando]=useState(false);
   const [formPresPaso,setFormPresPaso]=useState(1);
+  const [presDescargando,setPresDescargando]=useState(false);
+  const presRef=React.useRef(null);
   const [paginaNuevos,setPaginaNuevos]=useState(1);
   const [mesTec,setMesTec]=useState(new Date().getMonth());
   const [mesCant,setMesCant]=useState(new Date().getMonth());
@@ -728,7 +730,7 @@ ${nombres}
               if(k==="tecnicas")return usuario?.nombre==="Gabi";
               if(k==="cantidad")return usuario?.nombre==="Gabi";
               if(k==="precios")return usuario?.rol==="admin"||usuario?.nombre==="Gabi";
-              if(k==="presupuestos")return["admin","Gabi","Vivi","Romina"].includes(usuario?.rol==="admin"?"admin":usuario?.nombre);
+              if(k==="presupuestos")return usuario?.rol==="admin"||["Gabi","Vivi","Romina"].includes(usuario?.nombre);
               if(k==="asistencia")return usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
               if(k==="finanzas")return usuario?.nombre==="Gabi";
               if(k==="stock")return usuario?.rol==="admin"||usuario?.nombre==="Vivi";
@@ -1436,7 +1438,7 @@ ${nombres}
                     const vence=new Date(p.vence);
                     const vencido=vence<new Date()&&p.estado==="pendiente";
                     return(
-                      <div style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:10,padding:20}}>
+                      <div ref={presRef} style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:10,padding:20}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                           <button onClick={()=>setPresupuestoActivo(null)} style={{background:"none",border:"none",color:"#8a7a6a",cursor:"pointer",fontSize:12}}>← Volver</button>
                           <span style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {vencido?"VENCIDO":p.estado?.toUpperCase()}</span>
@@ -1471,14 +1473,34 @@ ${nombres}
                           {p.estado==="aceptado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"pendiente"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"pendiente"});showToast("Estado actualizado","#f59e0b");}} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,color:"#5a4a3a",fontSize:12,cursor:"pointer"}}>↩ VOLVER A PENDIENTE</button>}
                         </div>
                         {/* Botón compartir */}
-                        <button onClick={()=>{
-                          const nl="\n";
-                          const items=(p.items||[]).map(item=>"• "+item.cantidad+" "+item.prenda+(item.techLabels?" con "+item.techLabels:"")+nl+"  $"+(item.precioUnit||0).toLocaleString("es-AR")+" c/u = $"+(item.subtotal||0).toLocaleString("es-AR")).join(nl);
-                          const texto="*PRESUPUESTO "+p.id+" - TÉCNICA REMERAS*"+nl+nl+"Cliente: "+p.cliente+nl+"Fecha: "+formatFecha(p.creado)+nl+"Válido hasta: "+formatFecha(p.vence)+nl+nl+items+nl+nl+"*TOTAL: $"+(p.total||0).toLocaleString("es-AR")+"*"+nl+"IVA incluido"+(p.notas?nl+nl+p.notas:"")+nl+nl+"Generado por "+p.creado_por;
-                          window.open("https://wa.me/?text="+encodeURIComponent(texto),"_blank");
-                        }} style={{width:"100%",marginTop:8,padding:"12px",background:"#25D366",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",letterSpacing:1}}>
-                          📲 COMPARTIR POR WHATSAPP
-                        </button>
+                        <div style={{display:"flex",gap:8,marginTop:8}}>
+                          <button onClick={()=>{
+                            const nl="\n";
+                            const items=(p.items||[]).map(item=>"• "+item.cantidad+" "+item.prenda+(item.techLabels?" con "+item.techLabels:"")+nl+"  $"+(item.precioUnit||0).toLocaleString("es-AR")+" c/u = $"+(item.subtotal||0).toLocaleString("es-AR")).join(nl);
+                            const texto="*PRESUPUESTO "+p.id+" - TÉCNICA REMERAS*"+nl+nl+"Cliente: "+p.cliente+nl+"Fecha: "+formatFecha(p.creado)+nl+"Válido hasta: "+formatFecha(p.vence)+nl+nl+items+nl+nl+"*TOTAL: $"+(p.total||0).toLocaleString("es-AR")+"*"+nl+"IVA incluido"+(p.notas?nl+nl+p.notas:"")+nl+nl+"Generado por "+p.creado_por;
+                            window.open("https://wa.me/?text="+encodeURIComponent(texto),"_blank");
+                          }} style={{flex:1,padding:"12px",background:"#25D366",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+                            📲 WhatsApp
+                          </button>
+                          <button onClick={async()=>{
+                            if(!presRef.current)return;
+                            setPresDescargando(true);
+                            try{
+                              const script=document.createElement("script");
+                              script.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+                              document.head.appendChild(script);
+                              await new Promise(r=>script.onload=r);
+                              const canvas=await window.html2canvas(presRef.current,{scale:2,backgroundColor:"#ffffff",useCORS:true});
+                              const link=document.createElement("a");
+                              link.download="presupuesto-"+p.id+".png";
+                              link.href=canvas.toDataURL("image/png");
+                              link.click();
+                            }catch(e){showToast("Error al generar imagen","#ef4444");}
+                            setPresDescargando(false);
+                          }} style={{flex:1,padding:"12px",background:"#1a1208",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+                            {presDescargando?"⏳ Generando...":"📥 Descargar imagen"}
+                          </button>
+                        </div>
                       </div>
                     );
                   })()}
