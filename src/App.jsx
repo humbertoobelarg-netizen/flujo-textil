@@ -88,6 +88,10 @@ export default function App(){
   const [presupuestos,setPresupuestos]=useState([]);
   const [showNuevoPresupuesto,setShowNuevoPresupuesto]=useState(false);
   const [presupuestoActivo,setPresupuestoActivo]=useState(null);
+  const [formPres,setFormPres]=useState({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});
+  const [formPresVistaPrevia,setFormPresVistaPrevia]=useState(false);
+  const [formPresGuardando,setFormPresGuardando]=useState(false);
+  const [formPresPaso,setFormPresPaso]=useState(1);
   const [paginaNuevos,setPaginaNuevos]=useState(1);
   const [mesTec,setMesTec]=useState(new Date().getMonth());
   const [mesCant,setMesCant]=useState(new Date().getMonth());
@@ -1420,10 +1424,6 @@ ${nombres}
             })()}
 
             {adminTab==="presupuestos"&&(()=>{
-              const ITEM_INIT={prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0};
-              const [formPres,setFormPres]=useState({cliente:"",notas:"",items:[{...ITEM_INIT}]});
-              const [vistaPrevia,setVistaPrevia]=useState(false);
-              const [guardando,setGuardando]=useState(false);
 
               function actualizarItem(idx,campo,valor){
                 const items=[...formPres.items];
