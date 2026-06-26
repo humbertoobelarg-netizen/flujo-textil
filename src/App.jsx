@@ -722,11 +722,12 @@ ${nombres}
             </div>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:12}}>
-            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"],["tecnicas","TÉCNICAS"],["cantidad","CANTIDAD"],["presupuestos","PRESUPUESTOS"]].filter(([k])=>{
+            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"],["tecnicas","TÉCNICAS"],["cantidad","CANTIDAD"],["presupuestos","PRESUPUESTOS"],["precios","PRECIOS"]].filter(([k])=>{
               if(usuario?.rol==="admin")return true;
               if(k==="equipo")return false;
               if(k==="tecnicas")return usuario?.nombre==="Gabi";
               if(k==="cantidad")return usuario?.nombre==="Gabi";
+              if(k==="precios")return usuario?.rol==="admin"||usuario?.nombre==="Gabi";
               if(k==="presupuestos")return["admin","Gabi","Vivi","Romina"].includes(usuario?.rol==="admin"?"admin":usuario?.nombre);
               if(k==="asistencia")return usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
               if(k==="finanzas")return usuario?.nombre==="Gabi";
@@ -1483,6 +1484,38 @@ ${nombres}
                 </div>
               );
             })()}
+            {adminTab==="precios"&&(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(
+              <div style={{paddingBottom:40}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#1a1208",marginBottom:16}}>PRECIOS ACTUALES</div>
+                <div style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:8,padding:16,marginBottom:16}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:2,color:"#1a1208",marginBottom:10}}>PRENDAS</div>
+                  {PRENDAS_PRECIOS.map(p=>(
+                    <div key={p.key} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f0ece4"}}>
+                      <span style={{fontSize:12,color:"#1a1208"}}>{p.label}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:"#e85d26"}}>{"$"}{p.precio.toLocaleString("es-AR")}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:8,padding:16,marginBottom:16}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:2,color:"#1a1208",marginBottom:10}}>TÉCNICAS DE APLICACIÓN</div>
+                  {TECNICAS_LOGO.map(t=>(
+                    <div key={t.key} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f0ece4"}}>
+                      <span style={{fontSize:12,color:"#1a1208"}}>{t.label}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:"#e85d26"}}>{"$"}{t.precio.toLocaleString("es-AR")}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:8,padding:16}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:2,color:"#1a1208",marginBottom:10}}>DESCUENTOS POR CANTIDAD (SOBRE TÉCNICAS)</div>
+                  {DESCUENTOS_CANT.map(d=>(
+                    <div key={d.desde} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f0ece4"}}>
+                      <span style={{fontSize:12,color:"#1a1208"}}>{d.desde} a {d.hasta} unidades</span>
+                      <span style={{fontSize:12,fontWeight:700,color:d.pct>0?"#10b981":"#8a7a6a"}}>{d.pct===0?"Sin descuento":d.pct+"%"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {adminTab==="equipo"&&(
               <div>
                 <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
@@ -2627,13 +2660,13 @@ ${nombres}
                       </div>
                       <select value={item.prenda} onChange={e=>actualizarItem(itemIdx,"prenda",e.target.value)} style={{width:"100%",marginBottom:8,padding:"8px",fontSize:12,border:"1.5px solid #c8bfaf",borderRadius:6}}>
                         <option value="">-- Tipo de prenda --</option>
-                        {PRENDAS_PRECIOS.map(p=><option key={p.key} value={p.key}>{p.label} ({"$"}{p.precio.toLocaleString("es-AR")})</option>)}
+                        {PRENDAS_PRECIOS.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}
                       </select>
                       <div style={{display:"flex",gap:8,marginBottom:10}}>
                         <div style={{flex:1}}>
                           <label style={{fontSize:10,color:"#8a7a6a",display:"block",marginBottom:3}}>CANTIDAD</label>
                           <input type="number" min="10" value={item.cantidad} onChange={e=>actualizarItem(itemIdx,"cantidad",parseInt(e.target.value)||10)} style={{width:"100%",padding:"6px 8px",fontSize:13,border:"1.5px solid #c8bfaf",borderRadius:6}}/>
-                          {item.cantidad>=10&&<div style={{fontSize:9,color:"#e85d26",marginTop:2}}>Descuento técnicas: {calc.descPct}%</div>}
+                          
                         </div>
                         {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&<div style={{flex:1}}>
                           <label style={{fontSize:10,color:"#8a7a6a",display:"block",marginBottom:3}}>DESC. EXTRA %</label>
@@ -2657,22 +2690,17 @@ ${nombres}
                       {(item.ubicaciones||[]).map((ub,ubIdx)=>(
                         <div key={ubIdx} style={{marginBottom:6}}>
                           <label style={{fontSize:10,color:"#8a7a6a",display:"block",marginBottom:3}}>{ub.lugar.toUpperCase()}</label>
-                          <select value={ub.tecnica} onChange={e=>actualizarUbicacion(itemIdx,ubIdx,"tecnica",e.target.value)} style={{width:"100%",padding:"6px 8px",fontSize:11,border:"1.5px solid #c8bfaf",borderRadius:6}}>
-                            <option value="">-- Técnica --</option>
-                            {TECNICAS_LOGO.map(t=><option key={t.key} value={t.key}>{t.label} ({"$"}{t.precio.toLocaleString("es-AR")})</option>)}
-                          </select>
+                          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                            <select value={ub.tecnica} onChange={e=>actualizarUbicacion(itemIdx,ubIdx,"tecnica",e.target.value)} style={{flex:1,padding:"6px 8px",fontSize:11,border:"1.5px solid #c8bfaf",borderRadius:6}}>
+                              <option value="">-- Técnica --</option>
+                              {TECNICAS_LOGO.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}
+                            </select>
+                            <button onClick={()=>toggleUbicacion(itemIdx,ub.lugar)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:16,padding:"0 4px"}} title="Quitar ubicación">✕</button>
+                          </div>
                         </div>
                       ))}
                       {item.prenda&&item.cantidad>0&&<div style={{marginTop:10,padding:"8px 10px",background:"#f5f0e8",borderRadius:6,fontSize:12}}>
-                        <div style={{display:"flex",justifyContent:"space-between"}}>
-                          <span style={{color:"#8a7a6a"}}>Precio unitario</span>
-                          <span style={{fontWeight:600}}>{"$"}{calc.precioBase.toLocaleString("es-AR")}</span>
-                        </div>
-                        {calc.descPct>0&&<div style={{display:"flex",justifyContent:"space-between",color:"#10b981"}}>
-                          <span>Descuento técnicas {calc.descPct}%</span>
-                          <span>-{"$"}{calc.descMonto.toLocaleString("es-AR")}</span>
-                        </div>}
-                        <div style={{display:"flex",justifyContent:"space-between",fontWeight:700,borderTop:"1px solid #e8e0d0",marginTop:6,paddingTop:6}}>
+                        <div style={{display:"flex",justifyContent:"space-between",fontWeight:700}}>
                           <span>Subtotal ({item.cantidad} uds)</span>
                           <span style={{color:"#e85d26"}}>{"$"}{totalConDesc.toLocaleString("es-AR")}</span>
                         </div>
