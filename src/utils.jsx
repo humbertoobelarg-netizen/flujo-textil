@@ -161,6 +161,7 @@ function calcTalles(talles){return Object.values(talles||{}).reduce((s,v)=>s+(pa
 function calcTotal(p){return(parseFloat(p?.precioUnit)||0)*(parseFloat(p?.cantidad)||0);}
 function calcTotalGral(prendas){return(prendas||[]).reduce((s,p)=>s+calcTotal(p),0);}
 function pedidoProgreso(p){const a=(p.procesos_activos||[]).filter(k=>k!=="orden");if(!a.length)return 0;const l=a.filter(k=>(p.procesos||{})[k]==="listo").length;return Math.round((l/a.length)*100);}
+function pedidoIniciado(p){const a=(p.procesos_activos||[]).filter(k=>k!=="orden");return a.some(k=>(p.procesos||{})[k]==="en_proceso"||(p.procesos||{})[k]==="listo");}
 function calcTejidoRemera(talles){
   let a90=0,a120=0,rib=0;
   Object.entries(talles||{}).forEach(([t,cant])=>{
@@ -451,7 +452,7 @@ export {
   hoy, getMesInfo, getLunesDeSemana, addDias, esTarde, tieneHorario,
   getFingerprint, TALLER_LAT, TALLER_LNG, RADIO_METROS,
   calcDistancia, normalizarVinculados, diasHasta, formatFecha,
-  newId, calcTalles, calcTotal, calcTotalGral, pedidoProgreso,
+  newId, calcTalles, calcTotal, calcTotalGral, pedidoProgreso, pedidoIniciado,
   calcTejidoRemera, isRemera, puedeVerPrecios, puedeVerTejido, puedeVerFinanciero,
   enviarEmailPedido, ResumenPrecios, PrendaDetalle, PrendaForm, AlertasVencimiento
 };
