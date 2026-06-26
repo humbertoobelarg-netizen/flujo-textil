@@ -93,6 +93,7 @@ export default function App(){
   const [formPresGuardando,setFormPresGuardando]=useState(false);
   const [formPresPaso,setFormPresPaso]=useState(1);
   const [presDescargando,setPresDescargando]=useState(false);
+  const [tabOp,setTabOp]=useState("pedidos");
   const presRef=React.useRef(null);
   const [paginaNuevos,setPaginaNuevos]=useState(1);
   const [mesTec,setMesTec]=useState(new Date().getMonth());
@@ -610,7 +611,6 @@ ${nombres}
       {pantalla==="operario"&&usuario&&(()=>{
         const miProceso=usuario.proceso;
         const esVendedor=["Romina"].includes(usuario?.nombre);
-        const [tabOp,setTabOp]=useState("pedidos");
         const misPedidos=pedidos.filter(p=>{
           if(!(p.procesos_activos||[]).includes(miProceso))return false;
           if(miProceso==="orden")return p.creado_por===usuario.nombre;
