@@ -2543,9 +2543,10 @@ ${nombres}
       {/* MODAL NUEVO PRESUPUESTO */}
       {showNuevoPresupuesto&&(()=>{
         const ITEM_INIT={prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0};
-        const [formPres,setFormPres]=useState({cliente:"",notas:"",items:[{...ITEM_INIT,id:newId()}]});
-        const [guardando,setGuardando]=useState(false);
-        const [paso,setPaso]=useState(1); // 1=form, 2=vista previa
+        const guardando=formPresGuardando;
+        const setGuardando=setFormPresGuardando;
+        const paso=formPresPaso;
+        const setPaso=setFormPresPaso;
 
         function actualizarItem(idx,campo,valor){
           const items=[...formPres.items];
