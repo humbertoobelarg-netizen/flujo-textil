@@ -609,6 +609,8 @@ ${nombres}
       {/* OPERARIO */}
       {pantalla==="operario"&&usuario&&(()=>{
         const miProceso=usuario.proceso;
+        const esVendedor=["Romina"].includes(usuario?.nombre);
+        const [tabOp,setTabOp]=useState("pedidos");
         const misPedidos=pedidos.filter(p=>{
           if(!(p.procesos_activos||[]).includes(miProceso))return false;
           if(miProceso==="orden")return p.creado_por===usuario.nombre;
@@ -652,12 +654,17 @@ ${nombres}
                 <button className="btn" onClick={handleLogout} style={{padding:"8px 14px",fontSize:11,background:"#f5f0e8",border:"1.5px solid #c8bfaf",letterSpacing:1}}>SALIR</button>
               </div>
             </div>
-            <div style={{padding:"8px 16px",borderBottom:"1.5px solid #d8d0c0",background:"#fff",display:"flex",alignItems:"center",gap:8}}>
+            {esVendedor&&<div style={{display:"flex",borderBottom:"1.5px solid #d8d0c0",background:"#fff"}}>
+              {[["pedidos","PEDIDOS"],["presupuestos","PRESUPUESTOS"]].map(([k,l])=>(
+                <button key={k} onClick={()=>setTabOp(k)} style={{flex:1,padding:"10px",fontSize:11,letterSpacing:1,border:"none",borderBottom:tabOp===k?"2px solid #e85d26":"2px solid transparent",background:"transparent",color:tabOp===k?"#e85d26":"#8a7a6a",fontWeight:tabOp===k?700:400,cursor:"pointer"}}>{l}</button>
+              ))}
+            </div>}
+            {tabOp==="pedidos"&&<div style={{padding:"8px 16px",borderBottom:"1.5px solid #d8d0c0",background:"#fff",display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:16}}>🔍</span>
               <input type="text" placeholder="Buscar pedido..." value={busquedaOp} onChange={e=>setBusquedaOp(e.target.value)} style={{flex:1,border:"none",background:"transparent",fontSize:13,outline:"none",padding:0}}/>
               {busquedaOp&&<button onClick={()=>setBusquedaOp("")} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"#8a7a6a"}}>✕</button>}
-            </div>
-            <div style={{padding:"6px 16px",borderBottom:"1px solid #e8e0d0",background:"#fff",display:"flex",gap:6,alignItems:"center"}}>
+            </div>}
+            {tabOp==="pedidos"&&<div style={{padding:"6px 16px",borderBottom:"1px solid #e8e0d0",background:"#fff",display:"flex",gap:6,alignItems:"center"}}>
               <span style={{fontSize:10,color:"#8a7a6a"}}>Ordenar:</span>
               {[["entrega","📅 Entrega"],["pedido","📝 Pedido"]].map(([k,l])=>(
                 <button key={k} className="btn" onClick={()=>setOrdenPor(k)}
@@ -665,8 +672,8 @@ ${nombres}
                   {l}
                 </button>
               ))}
-            </div>
-            <div style={{flex:1,padding:16,overflowY:"auto"}}>
+            </div>}
+            {tabOp==="pedidos"&&<div style={{flex:1,padding:16,overflowY:"auto"}}>
               <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
                 
               {(()=>{
@@ -706,7 +713,29 @@ ${nombres}
                   {grupo.items.length===0&&<div style={{padding:20,textAlign:"center",color:"#b0a898",fontSize:12}}>Sin pedidos</div>}
                 </GrupoColapsable>
               ))}
-            </div>
+            </div>}
+            {tabOp==="presupuestos"&&<div style={{flex:1,padding:16,overflowY:"auto"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:2}}>PRESUPUESTOS</div>
+                {!presupuestoActivo&&<button className="btn" onClick={()=>{setFormPres({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});setFormPresPaso(1);setShowNuevoPresupuesto(true);window.history.pushState({modal:"presupuesto"},"");}} style={{background:"#e85d26",color:"#fff",border:"none",padding:"8px 14px",fontSize:11,letterSpacing:1}}>+ NUEVO</button>}
+              </div>
+              {presupuestoActivo&&<button onClick={()=>setPresupuestoActivo(null)} style={{background:"none",border:"none",color:"#8a7a6a",cursor:"pointer",fontSize:12,marginBottom:8}}>← Volver</button>}
+              {!presupuestoActivo&&presupuestos.length===0&&<div style={{textAlign:"center",color:"#b0a898",fontSize:13,padding:30}}>No hay presupuestos aún</div>}
+              {!presupuestoActivo&&presupuestos.map(p=>{
+                const vencido=new Date(p.vence)<new Date()&&p.estado==="pendiente";
+                return(
+                  <div key={p.id} onClick={()=>setPresupuestoActivo(p)} style={{background:"#fff",border:"1.5px solid "+(vencido?"#ef4444":p.estado==="aceptado"?"#10b981":"#e8e0d0"),borderRadius:8,padding:"12px 14px",marginBottom:8,cursor:"pointer"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:700}}>{p.id} — {p.cliente}</div>
+                        <div style={{fontSize:10,color:"#8a7a6a"}}>Vence {formatFecha(p.vence)} · {p.estado?.toUpperCase()}</div>
+                      </div>
+                      <div style={{fontSize:13,fontWeight:700,color:"#e85d26"}}>{"Gs. "}{(p.total||0).toLocaleString("es-AR")}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>}
           </div>
         );
       })()}
@@ -1435,10 +1464,9 @@ ${nombres}
                   </div>
                   {presupuestoActivo&&(()=>{
                     const p=presupuestoActivo;
-                    const vence=new Date(p.vence);
-                    const vencido=vence<new Date()&&p.estado==="pendiente";
-                    return(
-                      <div ref={presRef} style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:10,padding:20}}>
+                    const vencido=new Date(p.vence)<new Date()&&p.estado==="pendiente";
+                    return(<>
+                      <div ref={presRef} style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:10,padding:20,marginBottom:12}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                           <button onClick={()=>setPresupuestoActivo(null)} style={{background:"none",border:"none",color:"#8a7a6a",cursor:"pointer",fontSize:12}}>← Volver</button>
                           <span style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {vencido?"VENCIDO":p.estado?.toUpperCase()}</span>
@@ -1451,60 +1479,66 @@ ${nombres}
                           <div style={{fontSize:12,color:"#5a4a3a"}}>Cliente: {p.cliente}</div>
                           <div style={{fontSize:11,color:"#8a7a6a"}}>Emitido: {formatFecha(p.creado)} · Válido hasta: {formatFecha(p.vence)}</div>
                         </div>
-                        {(p.items||[]).map((item,i)=>(
-                          <div key={i} style={{borderBottom:"1px solid #f0ece4",padding:"10px 0"}}>
-                            <div style={{fontSize:13,color:"#1a1208",marginBottom:4}}>{item.cantidad} {item.prenda}{item.techLabels?" con "+item.techLabels:""}</div>
-                            <div style={{display:"flex",justifyContent:"space-between"}}>
-                              <span style={{fontSize:11,color:"#8a7a6a"}}>{"$"}{(item.precioUnit||0).toLocaleString("es-AR")} c/u · IVA incluido</span>
-                              <span style={{fontSize:13,fontWeight:700}}>{"$"}{(item.subtotal||0).toLocaleString("es-AR")}</span>
+                        {(p.items||[]).map((item,i)=>{
+                          const tecGrupos={};
+                          (item.ubicaciones||[]).filter(u=>u.tecnica).forEach(u=>{
+                            const key=u.tecnica;
+                            const tecNombre=key.startsWith("seri")?"serigrafía":key.startsWith("dtf")?"DTF":key==="sublimacion"?"sublimación":key.startsWith("bord")?"bordado":"aplicación";
+                            if(!tecGrupos[tecNombre])tecGrupos[tecNombre]=[];
+                            tecGrupos[tecNombre].push(u.lugar.toLowerCase());
+                          });
+                          const tecDesc=Object.entries(tecGrupos).map(([tec,lugares])=>tec+" en "+lugares.join(" y ")).join(" y ");
+                          const desc=item.cantidad+" "+item.prenda+(tecDesc?" con "+tecDesc:"");
+                          return(
+                            <div key={i} style={{borderBottom:"1px solid #f0ece4",padding:"10px 0"}}>
+                              <div style={{fontSize:13,color:"#1a1208",marginBottom:4}}>{desc}</div>
+                              <div style={{display:"flex",justifyContent:"space-between"}}>
+                                <span style={{fontSize:11,color:"#8a7a6a"}}>{"Gs. "}{(item.precioUnit||0).toLocaleString("es-AR")} c/u · IVA incluido</span>
+                                <span style={{fontSize:13,fontWeight:700}}>{"Gs. "}{(item.subtotal||0).toLocaleString("es-AR")}</span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         <div style={{borderTop:"2px solid #1a1208",marginTop:12,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                           <span style={{fontSize:14,fontWeight:700}}>TOTAL</span>
-                          <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"$"}{(p.total||0).toLocaleString("es-AR")}</span>
+                          <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"Gs. "}{(p.total||0).toLocaleString("es-AR")}</span>
                         </div>
                         {p.notas&&<div style={{marginTop:10,fontSize:11,color:"#8a7a6a",fontStyle:"italic"}}>{p.notas}</div>}
                         <div style={{marginTop:12,fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8,textAlign:"right"}}>Generado por: {p.creado_por}</div>
-                        {/* Botones de acción */}
-                        <div style={{marginTop:16,display:"flex",gap:8,flexWrap:"wrap"}}>
-                          {p.estado!=="aceptado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"aceptado"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"aceptado"});showToast("Presupuesto aceptado","#10b981");}} style={{flex:1,padding:"10px",background:"#10b981",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>✓ ACEPTADO</button>}
-                          {p.estado!=="rechazado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"rechazado"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"rechazado"});showToast("Presupuesto rechazado","#ef4444");}} style={{flex:1,padding:"10px",background:"#ef4444",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>✗ RECHAZADO</button>}
-                          {p.estado==="aceptado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"pendiente"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"pendiente"});showToast("Estado actualizado","#f59e0b");}} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,color:"#5a4a3a",fontSize:12,cursor:"pointer"}}>↩ VOLVER A PENDIENTE</button>}
-                        </div>
-                        {/* Botón compartir */}
-                        <div style={{display:"flex",gap:8,marginTop:8}}>
-                          <button onClick={()=>{
-                            const nl="\n";
-                            const items=(p.items||[]).map(item=>"• "+item.cantidad+" "+item.prenda+(item.techLabels?" con "+item.techLabels:"")+nl+"  $"+(item.precioUnit||0).toLocaleString("es-AR")+" c/u = $"+(item.subtotal||0).toLocaleString("es-AR")).join(nl);
-                            const texto="*PRESUPUESTO "+p.id+" - TÉCNICA REMERAS*"+nl+nl+"Cliente: "+p.cliente+nl+"Fecha: "+formatFecha(p.creado)+nl+"Válido hasta: "+formatFecha(p.vence)+nl+nl+items+nl+nl+"*TOTAL: $"+(p.total||0).toLocaleString("es-AR")+"*"+nl+"IVA incluido"+(p.notas?nl+nl+p.notas:"")+nl+nl+"Generado por "+p.creado_por;
-                            window.open("https://wa.me/?text="+encodeURIComponent(texto),"_blank");
-                          }} style={{flex:1,padding:"12px",background:"#25D366",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>
-                            📲 WhatsApp
-                          </button>
-                          <button onClick={async()=>{
-                            if(!presRef.current)return;
-                            setPresDescargando(true);
-                            try{
-                              const script=document.createElement("script");
-                              script.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-                              document.head.appendChild(script);
-                              await new Promise(r=>script.onload=r);
-                              const canvas=await window.html2canvas(presRef.current,{scale:2,backgroundColor:"#ffffff",useCORS:true});
-                              const link=document.createElement("a");
-                              link.download="presupuesto-"+p.id+".png";
-                              link.href=canvas.toDataURL("image/png");
-                              link.click();
-                            }catch(e){showToast("Error al generar imagen","#ef4444");}
-                            setPresDescargando(false);
-                          }} style={{flex:1,padding:"12px",background:"#1a1208",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>
-                            {presDescargando?"⏳ Generando...":"📥 Descargar imagen"}
-                          </button>
-                        </div>
                       </div>
-                    );
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                        {p.estado!=="aceptado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"aceptado"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"aceptado"});showToast("Presupuesto aceptado","#10b981");}} style={{flex:1,padding:"10px",background:"#10b981",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>✓ ACEPTADO</button>}
+                        {p.estado!=="rechazado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"rechazado"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"rechazado"});showToast("Presupuesto rechazado","#ef4444");}} style={{flex:1,padding:"10px",background:"#ef4444",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>✗ RECHAZADO</button>}
+                        {p.estado==="aceptado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"pendiente"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"pendiente"});showToast("Estado actualizado","#f59e0b");}} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,color:"#5a4a3a",fontSize:12,cursor:"pointer"}}>↩ PENDIENTE</button>}
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>{
+                          const nl="\n";
+                          const tecGruposWA=(ubs)=>{const g={};(ubs||[]).filter(u=>u.tecnica).forEach(u=>{const k=u.tecnica;const n=k.startsWith("seri")?"serigrafía":k.startsWith("dtf")?"DTF":k==="sublimacion"?"sublimación":k.startsWith("bord")?"bordado":"aplicación";if(!g[n])g[n]=[];g[n].push(u.lugar.toLowerCase());});return Object.entries(g).map(([t,l])=>t+" en "+l.join(" y ")).join(" y ");};
+                          const items=(p.items||[]).map(item=>{const td=tecGruposWA(item.ubicaciones);return"• "+item.cantidad+" "+item.prenda+(td?" con "+td:"")+nl+"  Gs. "+(item.precioUnit||0).toLocaleString("es-AR")+" c/u = Gs. "+(item.subtotal||0).toLocaleString("es-AR");}).join(nl);
+                          const texto="*PRESUPUESTO "+p.id+" - TÉCNICA REMERAS*"+nl+nl+"Cliente: "+p.cliente+nl+"Fecha: "+formatFecha(p.creado)+nl+"Válido hasta: "+formatFecha(p.vence)+nl+nl+items+nl+nl+"*TOTAL: Gs. "+(p.total||0).toLocaleString("es-AR")+"*"+nl+"IVA incluido"+(p.notas?nl+nl+p.notas:"")+nl+nl+"Generado por "+p.creado_por;
+                          window.open("https://wa.me/?text="+encodeURIComponent(texto),"_blank");
+                        }} style={{flex:1,padding:"12px",background:"#25D366",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>📲 WhatsApp</button>
+                        <button onClick={async()=>{
+                          if(!presRef.current)return;
+                          setPresDescargando(true);
+                          try{
+                            const script=document.createElement("script");
+                            script.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+                            document.head.appendChild(script);
+                            await new Promise(r=>script.onload=r);
+                            const canvas=await window.html2canvas(presRef.current,{scale:2,backgroundColor:"#ffffff",useCORS:true});
+                            const link=document.createElement("a");
+                            link.download="presupuesto-"+p.id+".png";
+                            link.href=canvas.toDataURL("image/png");
+                            link.click();
+                          }catch(e){showToast("Error al generar imagen","#ef4444");}
+                          setPresDescargando(false);
+                        }} style={{flex:1,padding:"12px",background:"#1a1208",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>{presDescargando?"⏳ Generando...":"📥 Descargar imagen"}</button>
+                      </div>
+                    </>);
                   })()}
-                  {!presupuestoActivo&&<>
+                                    {!presupuestoActivo&&<>
                     {presupuestos.length===0&&<div style={{textAlign:"center",color:"#b0a898",fontSize:13,padding:40}}>No hay presupuestos aún</div>}
                     {presupuestos.map(p=>{
                       const vence=new Date(p.vence);
