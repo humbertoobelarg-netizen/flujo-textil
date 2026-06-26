@@ -1464,6 +1464,21 @@ ${nombres}
                         </div>
                         {p.notas&&<div style={{marginTop:10,fontSize:11,color:"#8a7a6a",fontStyle:"italic"}}>{p.notas}</div>}
                         <div style={{marginTop:12,fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8,textAlign:"right"}}>Generado por: {p.creado_por}</div>
+                        {/* Botones de acción */}
+                        <div style={{marginTop:16,display:"flex",gap:8,flexWrap:"wrap"}}>
+                          {p.estado!=="aceptado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"aceptado"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"aceptado"});showToast("Presupuesto aceptado","#10b981");}} style={{flex:1,padding:"10px",background:"#10b981",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>✓ ACEPTADO</button>}
+                          {p.estado!=="rechazado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"rechazado"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"rechazado"});showToast("Presupuesto rechazado","#ef4444");}} style={{flex:1,padding:"10px",background:"#ef4444",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>✗ RECHAZADO</button>}
+                          {p.estado==="aceptado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"pendiente"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"pendiente"});showToast("Estado actualizado","#f59e0b");}} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,color:"#5a4a3a",fontSize:12,cursor:"pointer"}}>↩ VOLVER A PENDIENTE</button>}
+                        </div>
+                        {/* Botón compartir */}
+                        <button onClick={()=>{
+                          const nl="\n";
+                          const items=(p.items||[]).map(item=>"• "+item.cantidad+" "+item.prenda+(item.techLabels?" con "+item.techLabels:"")+nl+"  $"+(item.precioUnit||0).toLocaleString("es-AR")+" c/u = $"+(item.subtotal||0).toLocaleString("es-AR")).join(nl);
+                          const texto="*PRESUPUESTO "+p.id+" - TÉCNICA REMERAS*"+nl+nl+"Cliente: "+p.cliente+nl+"Fecha: "+formatFecha(p.creado)+nl+"Válido hasta: "+formatFecha(p.vence)+nl+nl+items+nl+nl+"*TOTAL: $"+(p.total||0).toLocaleString("es-AR")+"*"+nl+"IVA incluido"+(p.notas?nl+nl+p.notas:"")+nl+nl+"Generado por "+p.creado_por;
+                          window.open("https://wa.me/?text="+encodeURIComponent(texto),"_blank");
+                        }} style={{width:"100%",marginTop:8,padding:"12px",background:"#25D366",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",letterSpacing:1}}>
+                          📲 COMPARTIR POR WHATSAPP
+                        </button>
                       </div>
                     );
                   })()}
