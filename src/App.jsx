@@ -17,8 +17,77 @@ import {
 import { GrupoColapsable, PedidoCard } from "./PedidoCard.jsx";
 import { PantallaMarcado } from "./PantallaMarcado.jsx";
 
+
+// ── PRECIOS BASE PRESUPUESTOS ──────────────────────────────────────────
+const PRENDAS_PRECIOS=[
+  {key:"remera_redondo",label:"Remera cuello redondo",precio:30000},
+  {key:"remera_v",label:"Remera cuello V",precio:32000},
+  {key:"polo",label:"Remera polo",precio:65000},
+  {key:"camisilla",label:"Camisilla",precio:28000},
+  {key:"musculosa",label:"Musculosa",precio:29000},
+  {key:"canguro_polar",label:"Canguro polar",precio:90000},
+  {key:"canguro_terry",label:"Canguro terry",precio:120000},
+  {key:"canguro_frizado",label:"Canguro frizado",precio:145000},
+  {key:"sudadera_terry",label:"Sudadera terry",precio:115000},
+  {key:"sudadera_frizada",label:"Sudadera frizada",precio:140000},
+];
+const UBICACIONES_LOGO=["Frente centro","Frente abajo/otro","Espalda","Espalda abajo/otro","Manga derecha","Manga izquierda"];
+const TECNICAS_LOGO=[
+  {key:"seri_peq_2",label:"Serigrafía pequeña hasta 2 colores",precio:15000},
+  {key:"seri_med_2",label:"Serigrafía mediana hasta 2 colores",precio:17500},
+  {key:"seri_grd_2",label:"Serigrafía grande hasta 2 colores",precio:20000},
+  {key:"seri_peq_5",label:"Serigrafía pequeña 3-5 colores",precio:20000},
+  {key:"seri_med_5",label:"Serigrafía mediana 3-5 colores",precio:22500},
+  {key:"seri_grd_5",label:"Serigrafía grande 3-5 colores",precio:25000},
+  {key:"seri_peq_7",label:"Serigrafía pequeña 6-7 colores",precio:23500},
+  {key:"seri_med_7",label:"Serigrafía mediana 6-7 colores",precio:26000},
+  {key:"seri_grd_7",label:"Serigrafía grande 6-7 colores",precio:28500},
+  {key:"dtf_peq",label:"DTF pequeño",precio:20000},
+  {key:"dtf_med",label:"DTF mediano",precio:30000},
+  {key:"dtf_grd",label:"DTF grande",precio:40000},
+  {key:"sublimacion",label:"Sublimación (prenda completa)",precio:95000},
+  {key:"bord_peq",label:"Bordado pequeño",precio:20000},
+  {key:"bord_med",label:"Bordado mediano",precio:30000},
+  {key:"bord_grd",label:"Bordado grande",precio:40000},
+];
+const DESCUENTOS_CANT=[
+  {desde:10,hasta:29,pct:0},
+  {desde:30,hasta:49,pct:5},
+  {desde:50,hasta:99,pct:7.5},
+  {desde:100,hasta:299,pct:10},
+  {desde:300,hasta:499,pct:12.5},
+  {desde:500,hasta:1000,pct:15},
+];
+function getDescuento(cant){const d=DESCUENTOS_CANT.find(d=>cant>=d.desde&&cant<=d.hasta);return d?d.pct:0;}
+function calcPresupuestoItem(item){
+  const prenda=PRENDAS_PRECIOS.find(p=>p.key===item.prenda);
+  if(!prenda)return 0;
+  const precioPrenda=prenda.precio;
+  const tecTotal=(item.ubicaciones||[]).reduce((s,u)=>{
+    if(!u.tecnica)return s;
+    if(u.tecnica==="sublimacion")return s; // sublimacion reemplaza precio prenda
+    const tec=TECNICAS_LOGO.find(t=>t.key===u.tecnica);
+    return s+(tec?tec.precio:0);
+  },0);
+  const esSublimacion=(item.ubicaciones||[]).some(u=>u.tecnica==="sublimacion");
+  const precioPrendaFinal=esSublimacion?0:precioPrenda;
+  const sublTotal=esSublimacion?(TECNICAS_LOGO.find(t=>t.key==="sublimacion")?.precio||0):0;
+  const precioBase=precioPrendaFinal+tecTotal+sublTotal;
+  const descPct=getDescuento(item.cantidad||0);
+  const descMonto=Math.round((tecTotal+sublTotal)*descPct/100);
+  return{precioBase,descPct,descMonto,precioFinal:precioBase-descMonto,total:Math.round((precioBase-descMonto)*(item.cantidad||0))};
+}
+function newPresupuestoId(lista){
+  const nums=lista.map(p=>{const m=p.id?.match(/P26-(\d+)/);return m?parseInt(m[1]):0;});
+  const max=nums.length?Math.max(...nums):10000;
+  return"P26-"+(max+1).toString().padStart(5,"0");
+}
+
 export default function App(){
   const [cargando,setCargando]=useState(true);
+  const [presupuestos,setPresupuestos]=useState([]);
+  const [showNuevoPresupuesto,setShowNuevoPresupuesto]=useState(false);
+  const [presupuestoActivo,setPresupuestoActivo]=useState(null);
   const [paginaNuevos,setPaginaNuevos]=useState(1);
   const [mesTec,setMesTec]=useState(new Date().getMonth());
   const [mesCant,setMesCant]=useState(new Date().getMonth());
@@ -120,7 +189,8 @@ export default function App(){
 
   async function cargarDatos(){
     setCargando(true);
-    try{const[p,u,g,ie,st,emp,as]=await Promise.all([dbGet("pedidos"),dbGet("usuarios"),dbGet("gastos"),dbGet("ingresos_extra"),dbGet("stock_tejido"),dbGet("empleados","activo=eq.true&order=nombre.asc"),dbGet("asistencia","order=hora.desc&limit=500")]);setPedidos(Array.isArray(p)?p:[]);setUsuarios(Array.isArray(u)?u:[]);setGastos(Array.isArray(g)?g:[]);setIngresosExtra(Array.isArray(ie)?ie:[]);setStockTejido(Array.isArray(st)?st:[]);setEmpleados(Array.isArray(emp)?emp:[]);setAsistencia(Array.isArray(as)?as:[]);}
+    try{const[p,u,g,ie,st,emp,as]=await Promise.all([dbGet("pedidos"),dbGet("usuarios"),dbGet("gastos"),dbGet("ingresos_extra"),dbGet("stock_tejido"),dbGet("empleados","activo=eq.true&order=nombre.asc"),dbGet("asistencia","order=hora.desc&limit=500")]);setPedidos(Array.isArray(p)?p:[]);
+      const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setUsuarios(Array.isArray(u)?u:[]);setGastos(Array.isArray(g)?g:[]);setIngresosExtra(Array.isArray(ie)?ie:[]);setStockTejido(Array.isArray(st)?st:[]);setEmpleados(Array.isArray(emp)?emp:[]);setAsistencia(Array.isArray(as)?as:[]);}
     catch(e){showToast("Error al cargar","#ef4444");}
     finally{setCargando(false);}
   }
@@ -648,11 +718,12 @@ ${nombres}
             </div>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:12}}>
-            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"],["tecnicas","TÉCNICAS"],["cantidad","CANTIDAD"]].filter(([k])=>{
+            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"],["tecnicas","TÉCNICAS"],["cantidad","CANTIDAD"],["presupuestos","PRESUPUESTOS"]].filter(([k])=>{
               if(usuario?.rol==="admin")return true;
               if(k==="equipo")return false;
               if(k==="tecnicas")return usuario?.nombre==="Gabi";
               if(k==="cantidad")return usuario?.nombre==="Gabi";
+              if(k==="presupuestos")return["admin","Gabi","Vivi","Romina"].includes(usuario?.rol==="admin"?"admin":usuario?.nombre);
               if(k==="asistencia")return usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
               if(k==="finanzas")return usuario?.nombre==="Gabi";
               if(k==="stock")return usuario?.rol==="admin"||usuario?.nombre==="Vivi";
@@ -1348,6 +1419,70 @@ ${nombres}
               );
             })()}
 
+            {adminTab==="presupuestos"&&(()=>{
+              const ITEM_INIT={prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0};
+              const [formPres,setFormPres]=useState({cliente:"",notas:"",items:[{...ITEM_INIT}]});
+              const [vistaPrevia,setVistaPrevia]=useState(false);
+              const [guardando,setGuardando]=useState(false);
+
+              function actualizarItem(idx,campo,valor){
+                const items=[...formPres.items];
+                items[idx]={...items[idx],[campo]:valor};
+                setFormPres({...formPres,items});
+              }
+              function actualizarUbicacion(itemIdx,ubIdx,campo,valor){
+                const items=[...formPres.items];
+                const ubs=[...(items[itemIdx].ubicaciones||[])];
+                ubs[ubIdx]={...ubs[ubIdx],[campo]:valor};
+                items[itemIdx]={...items[itemIdx],ubicaciones:ubs};
+                setFormPres({...formPres,items});
+              }
+              function toggleUbicacion(itemIdx,ubLabel){
+                const items=[...formPres.items];
+                const ubs=[...(items[itemIdx].ubicaciones||[])];
+                const existe=ubs.findIndex(u=>u.lugar===ubLabel);
+                if(existe>=0) ubs.splice(existe,1);
+                else ubs.push({lugar:ubLabel,tecnica:""});
+                items[itemIdx]={...items[itemIdx],ubicaciones:ubs};
+                setFormPres({...formPres,items});
+              }
+
+              const totalPresupuesto=formPres.items.reduce((s,item)=>{
+                const calc=calcPresupuestoItem(item);
+                const descExtra=parseFloat(item.descuentoExtra)||0;
+                return s+Math.round(calc.total*(1-descExtra/100));
+              },0);
+
+              return(
+                <div style={{paddingBottom:40}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#1a1208"}}>PRESUPUESTOS</div>
+                    <button className="btn" onClick={()=>{setShowNuevoPresupuesto(true);window.history.pushState({modal:"presupuesto"},"");}} style={{background:"#e85d26",color:"#fff",border:"none",padding:"8px 16px",fontSize:12,letterSpacing:1}}>+ NUEVO</button>
+                  </div>
+                  {/* Lista de presupuestos */}
+                  {presupuestos.length===0&&<div style={{textAlign:"center",color:"#b0a898",fontSize:13,padding:40}}>No hay presupuestos aún</div>}
+                  {presupuestos.map(p=>{
+                    const vence=new Date(p.vence);
+                    const hoyDate=new Date();
+                    const vencido=vence<hoyDate&&p.estado==="pendiente";
+                    return(
+                      <div key={p.id} onClick={()=>setPresupuestoActivo(p)} style={{background:"#fff",border:"1.5px solid "+(vencido?"#ef4444":p.estado==="aceptado"?"#10b981":"#e8e0d0"),borderRadius:8,padding:"12px 14px",marginBottom:8,cursor:"pointer"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <div>
+                            <div style={{fontSize:13,fontWeight:700,color:"#1a1208"}}>{p.id} — {p.cliente}</div>
+                            <div style={{fontSize:10,color:"#8a7a6a"}}>Creado por {p.creado_por} · Vence {formatFecha(p.vence)}</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontSize:14,fontWeight:800,color:"#e85d26"}}>{"$"}{(p.total||0).toLocaleString("es-AR")}</div>
+                            <div style={{fontSize:10,fontWeight:600,color:vencido?"#ef4444":p.estado==="aceptado"?"#10b981":"#f59e0b"}}>{vencido?"VENCIDO":p.estado?.toUpperCase()}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
             {adminTab==="equipo"&&(
               <div>
                 <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
@@ -2405,6 +2540,218 @@ ${nombres}
           </div>
         </div>
       )}
+      {/* MODAL NUEVO PRESUPUESTO */}
+      {showNuevoPresupuesto&&(()=>{
+        const ITEM_INIT={prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0};
+        const [formPres,setFormPres]=useState({cliente:"",notas:"",items:[{...ITEM_INIT,id:newId()}]});
+        const [guardando,setGuardando]=useState(false);
+        const [paso,setPaso]=useState(1); // 1=form, 2=vista previa
+
+        function actualizarItem(idx,campo,valor){
+          const items=[...formPres.items];
+          items[idx]={...items[idx],[campo]:valor};
+          setFormPres(f=>({...f,items}));
+        }
+        function toggleUbicacion(itemIdx,ubLabel){
+          const items=[...formPres.items];
+          const ubs=[...(items[itemIdx].ubicaciones||[])];
+          const existe=ubs.findIndex(u=>u.lugar===ubLabel);
+          if(existe>=0) ubs.splice(existe,1);
+          else ubs.push({lugar:ubLabel,tecnica:""});
+          items[itemIdx]={...items[itemIdx],ubicaciones:ubs};
+          setFormPres(f=>({...f,items}));
+        }
+        function actualizarUbicacion(itemIdx,ubIdx,campo,valor){
+          const items=[...formPres.items];
+          const ubs=[...(items[itemIdx].ubicaciones||[])];
+          ubs[ubIdx]={...ubs[ubIdx],[campo]:valor};
+          items[itemIdx]={...items[itemIdx],ubicaciones:ubs};
+          setFormPres(f=>({...f,items}));
+        }
+
+        const itemsCalc=formPres.items.map(item=>{
+          const calc=calcPresupuestoItem(item);
+          const descExtra=parseFloat(item.descuentoExtra)||0;
+          const totalConDesc=Math.round(calc.total*(1-descExtra/100));
+          const prendaLabel=PRENDAS_PRECIOS.find(p=>p.key===item.prenda)?.label||item.prenda;
+          const techLabels=(item.ubicaciones||[]).filter(u=>u.tecnica).map(u=>{
+            const t=TECNICAS_LOGO.find(t=>t.key===u.tecnica);
+            return t?`${u.lugar}: ${t.label}`:"";
+          }).filter(Boolean).join(", ");
+          return{...item,calc,descExtra,totalConDesc,prendaLabel,techLabels};
+        });
+        const totalGeneral=itemsCalc.reduce((s,i)=>s+i.totalConDesc,0);
+
+        async function guardarPresupuesto(){
+          if(!formPres.cliente){showToast("Ingresá el nombre del cliente","#ef4444");return;}
+          if(formPres.items.some(i=>!i.prenda||!i.cantidad)){showToast("Completá todos los ítems","#ef4444");return;}
+          setGuardando(true);
+          const hoyStr=new Date().toISOString().slice(0,10);
+          const venceDate=new Date();venceDate.setDate(venceDate.getDate()+10);
+          const venceStr=venceDate.toISOString().slice(0,10);
+          const nuevoId=newPresupuestoId(presupuestos);
+          const nuevo={id:nuevoId,cliente:formPres.cliente,creado_por:usuario.nombre,creado:hoyStr,vence:venceStr,estado:"pendiente",items:itemsCalc.map(i=>({prenda:i.prendaLabel,cantidad:i.cantidad,ubicaciones:i.ubicaciones,precioUnit:i.calc.precioFinal,descuentoExtra:i.descExtra,subtotal:i.totalConDesc,techLabels:i.techLabels})),total:totalGeneral,notas:formPres.notas||""};
+          await dbInsert("presupuestos",nuevo);
+          const pres=await dbGet("presupuestos","order=creado.desc");
+          setPresupuestos(Array.isArray(pres)?pres:[]);
+          setShowNuevoPresupuesto(false);
+          setPresupuestoActivo(nuevo);
+          showToast("Presupuesto "+nuevoId+" creado","#10b981");
+          setGuardando(false);
+        }
+
+        return(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,overflowY:"auto"}}>
+            <div style={{background:"#f5f0e8",margin:"20px auto",maxWidth:600,borderRadius:12,padding:20,minHeight:"80vh"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2}}>{paso===1?"NUEVO PRESUPUESTO":"VISTA PREVIA"}</div>
+                <button onClick={()=>{setShowNuevoPresupuesto(false);}} style={{background:"none",border:"none",fontSize:22,cursor:"pointer"}}>✕</button>
+              </div>
+
+              {paso===1&&(<>
+                <div style={{marginBottom:12}}>
+                  <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>CLIENTE</label>
+                  <input value={formPres.cliente} onChange={e=>setFormPres(f=>({...f,cliente:e.target.value}))} placeholder="Nombre del cliente" style={{width:"100%",padding:"8px 10px",fontSize:13,border:"1.5px solid #c8bfaf",borderRadius:6,background:"#fff"}}/>
+                </div>
+
+                {formPres.items.map((item,itemIdx)=>{
+                  const calc=calcPresupuestoItem(item);
+                  const descExtra=parseFloat(item.descuentoExtra)||0;
+                  const totalConDesc=Math.round(calc.total*(1-descExtra/100));
+                  return(
+                    <div key={itemIdx} style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:8,padding:14,marginBottom:12}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                        <div style={{fontSize:12,fontWeight:700,color:"#1a1208"}}>ÍTEM {itemIdx+1}</div>
+                        {formPres.items.length>1&&<button onClick={()=>setFormPres(f=>({...f,items:f.items.filter((_,i)=>i!==itemIdx)}))} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:16}}>✕</button>}
+                      </div>
+                      <select value={item.prenda} onChange={e=>actualizarItem(itemIdx,"prenda",e.target.value)} style={{width:"100%",marginBottom:8,padding:"8px",fontSize:12,border:"1.5px solid #c8bfaf",borderRadius:6}}>
+                        <option value="">-- Tipo de prenda --</option>
+                        {PRENDAS_PRECIOS.map(p=><option key={p.key} value={p.key}>{p.label} ({"$"}{p.precio.toLocaleString("es-AR")})</option>)}
+                      </select>
+                      <div style={{display:"flex",gap:8,marginBottom:10}}>
+                        <div style={{flex:1}}>
+                          <label style={{fontSize:10,color:"#8a7a6a",display:"block",marginBottom:3}}>CANTIDAD</label>
+                          <input type="number" min="10" value={item.cantidad} onChange={e=>actualizarItem(itemIdx,"cantidad",parseInt(e.target.value)||10)} style={{width:"100%",padding:"6px 8px",fontSize:13,border:"1.5px solid #c8bfaf",borderRadius:6}}/>
+                          {item.cantidad>=10&&<div style={{fontSize:9,color:"#e85d26",marginTop:2}}>Descuento técnicas: {calc.descPct}%</div>}
+                        </div>
+                        {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&<div style={{flex:1}}>
+                          <label style={{fontSize:10,color:"#8a7a6a",display:"block",marginBottom:3}}>DESC. EXTRA %</label>
+                          <input type="number" min="0" max="50" value={item.descuentoExtra||""} onChange={e=>actualizarItem(itemIdx,"descuentoExtra",e.target.value)} placeholder="0" style={{width:"100%",padding:"6px 8px",fontSize:13,border:"1.5px solid #c8bfaf",borderRadius:6}}/>
+                        </div>}
+                      </div>
+                      <div style={{marginBottom:8}}>
+                        <label style={{fontSize:10,color:"#8a7a6a",display:"block",marginBottom:6}}>UBICACIONES DE LOGO</label>
+                        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                          {UBICACIONES_LOGO.map(ub=>{
+                            const seleccionada=(item.ubicaciones||[]).some(u=>u.lugar===ub);
+                            return(
+                              <button key={ub} onClick={()=>toggleUbicacion(itemIdx,ub)}
+                                style={{padding:"4px 10px",fontSize:10,border:"1.5px solid "+(seleccionada?"#e85d26":"#c8bfaf"),background:seleccionada?"#e85d26":"#f5f0e8",color:seleccionada?"#fff":"#5a4a3a",borderRadius:20,cursor:"pointer"}}>
+                                {ub}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {(item.ubicaciones||[]).map((ub,ubIdx)=>(
+                        <div key={ubIdx} style={{marginBottom:6}}>
+                          <label style={{fontSize:10,color:"#8a7a6a",display:"block",marginBottom:3}}>{ub.lugar.toUpperCase()}</label>
+                          <select value={ub.tecnica} onChange={e=>actualizarUbicacion(itemIdx,ubIdx,"tecnica",e.target.value)} style={{width:"100%",padding:"6px 8px",fontSize:11,border:"1.5px solid #c8bfaf",borderRadius:6}}>
+                            <option value="">-- Técnica --</option>
+                            {TECNICAS_LOGO.map(t=><option key={t.key} value={t.key}>{t.label} ({"$"}{t.precio.toLocaleString("es-AR")})</option>)}
+                          </select>
+                        </div>
+                      ))}
+                      {item.prenda&&item.cantidad>0&&<div style={{marginTop:10,padding:"8px 10px",background:"#f5f0e8",borderRadius:6,fontSize:12}}>
+                        <div style={{display:"flex",justifyContent:"space-between"}}>
+                          <span style={{color:"#8a7a6a"}}>Precio unitario</span>
+                          <span style={{fontWeight:600}}>{"$"}{calc.precioBase.toLocaleString("es-AR")}</span>
+                        </div>
+                        {calc.descPct>0&&<div style={{display:"flex",justifyContent:"space-between",color:"#10b981"}}>
+                          <span>Descuento técnicas {calc.descPct}%</span>
+                          <span>-{"$"}{calc.descMonto.toLocaleString("es-AR")}</span>
+                        </div>}
+                        <div style={{display:"flex",justifyContent:"space-between",fontWeight:700,borderTop:"1px solid #e8e0d0",marginTop:6,paddingTop:6}}>
+                          <span>Subtotal ({item.cantidad} uds)</span>
+                          <span style={{color:"#e85d26"}}>{"$"}{totalConDesc.toLocaleString("es-AR")}</span>
+                        </div>
+                      </div>}
+                    </div>
+                  );
+                })}
+
+                <button onClick={()=>setFormPres(f=>({...f,items:[...f.items,{...ITEM_INIT,id:newId()}]}))} style={{width:"100%",padding:"10px",background:"#f5f0e8",border:"1.5px dashed #c8bfaf",borderRadius:8,cursor:"pointer",fontSize:12,color:"#5a4a3a",marginBottom:12}}>+ AGREGAR OTRO TIPO DE PRENDA</button>
+
+                <div style={{marginBottom:12}}>
+                  <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>NOTAS (opcional)</label>
+                  <textarea value={formPres.notas} onChange={e=>setFormPres(f=>({...f,notas:e.target.value}))} rows={2} style={{width:"100%",padding:"8px 10px",fontSize:12,border:"1.5px solid #c8bfaf",borderRadius:6,resize:"none"}}/>
+                </div>
+
+                <div style={{background:"#1a1208",color:"#f5f0e8",borderRadius:8,padding:"12px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2}}>TOTAL PRESUPUESTO</span>
+                  <span style={{fontSize:20,fontWeight:800,color:"#e85d26"}}>{"$"}{itemsCalc.reduce((s,i)=>s+Math.round(calcPresupuestoItem(i).total*(1-((parseFloat(i.descuentoExtra)||0)/100))),0).toLocaleString("es-AR")}</span>
+                </div>
+
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setShowNuevoPresupuesto(false)} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,cursor:"pointer",fontSize:12}}>CANCELAR</button>
+                  <button onClick={()=>setPaso(2)} style={{flex:2,padding:"10px",background:"#e85d26",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,color:"#fff",fontWeight:700,letterSpacing:1}}>VER VISTA PREVIA →</button>
+                </div>
+              </>)}
+
+              {paso===2&&(<>
+                {/* Vista previa del presupuesto */}
+                <div style={{background:"#fff",border:"1px solid #e8e0d0",borderRadius:8,padding:20,marginBottom:16}}>
+                  <div style={{textAlign:"center",marginBottom:16}}>
+                    <img src="/logo_tecnica.jpg" alt="Técnica Remeras" style={{height:60,objectFit:"contain"}}/>
+                    <div style={{fontSize:10,color:"#8a7a6a",marginTop:4}}>tecnicaremeraspy.com</div>
+                  </div>
+                  <div style={{borderTop:"2px solid #1a1208",borderBottom:"2px solid #1a1208",padding:"8px 0",marginBottom:16}}>
+                    <div style={{fontSize:13,fontWeight:700}}>PRESUPUESTO</div>
+                    <div style={{fontSize:11,color:"#8a7a6a"}}>Cliente: {formPres.cliente}</div>
+                    <div style={{fontSize:11,color:"#8a7a6a"}}>Fecha: {new Date().toLocaleDateString("es-PY")}</div>
+                    <div style={{fontSize:11,color:"#ef4444"}}>Válido por 10 días</div>
+                  </div>
+                  {formPres.items.map((item,i)=>{
+                    const calc=calcPresupuestoItem(item);
+                    const descExtra=parseFloat(item.descuentoExtra)||0;
+                    const precioFinalConDesc=Math.round(calc.precioFinal*(1-descExtra/100));
+                    const totalItem=precioFinalConDesc*(item.cantidad||0);
+                    const prenda=PRENDAS_PRECIOS.find(p=>p.key===item.prenda);
+                    const tecLabels=(item.ubicaciones||[]).filter(u=>u.tecnica).map(u=>{
+                      const t=TECNICAS_LOGO.find(t=>t.key===u.tecnica);
+                      return t?t.label.toLowerCase():"";
+                    }).filter(Boolean);
+                    const descripcion=prenda?`${item.cantidad} ${prenda.label.toLowerCase()}${tecLabels.length?" con "+tecLabels.join(" + "):""}`:"-";
+                    return(
+                      <div key={i} style={{borderBottom:"1px solid #f0ece4",padding:"10px 0"}}>
+                        <div style={{fontSize:12}}>{descripcion}</div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+                          <span style={{fontSize:11,color:"#8a7a6a"}}>{"$"}{precioFinalConDesc.toLocaleString("es-AR")} c/u · IVA incluido</span>
+                          <span style={{fontSize:13,fontWeight:700,color:"#1a1208"}}>{"$"}{totalItem.toLocaleString("es-AR")}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{borderTop:"2px solid #1a1208",marginTop:12,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:14,fontWeight:700}}>TOTAL</span>
+                    <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"$"}{itemsCalc.reduce((s,i)=>{const c=calcPresupuestoItem(i);const d=parseFloat(i.descuentoExtra)||0;return s+Math.round(c.precioFinal*(1-d/100))*(i.cantidad||0);},0).toLocaleString("es-AR")}</span>
+                  </div>
+                  {formPres.notas&&<div style={{marginTop:12,fontSize:11,color:"#8a7a6a",fontStyle:"italic"}}>{formPres.notas}</div>}
+                  <div style={{marginTop:16,textAlign:"right",fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8}}>
+                    <div>Presupuesto generado por: {usuario?.nombre}</div>
+                    <div style={{fontWeight:700}}>{usuario?.nombre}</div>
+                  </div>
+                </div>
+
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setPaso(1)} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,cursor:"pointer",fontSize:12}}>← EDITAR</button>
+                  <button onClick={guardarPresupuesto} disabled={guardando} style={{flex:2,padding:"10px",background:"#1a1208",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,color:"#fff",fontWeight:700,letterSpacing:1}}>{guardando?"GUARDANDO...":"✓ CONFIRMAR Y GUARDAR"}</button>
+                </div>
+              </>)}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
