@@ -1458,7 +1458,7 @@ ${nombres}
                 <div style={{paddingBottom:40}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
                     <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#1a1208"}}>PRESUPUESTOS</div>
-                    <button className="btn" onClick={()=>{setShowNuevoPresupuesto(true);window.history.pushState({modal:"presupuesto"},"");}} style={{background:"#e85d26",color:"#fff",border:"none",padding:"8px 16px",fontSize:12,letterSpacing:1}}>+ NUEVO</button>
+                    <button className="btn" onClick={()=>{setFormPres({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});setFormPresPaso(1);setShowNuevoPresupuesto(true);window.history.pushState({modal:"presupuesto"},"");}} style={{background:"#e85d26",color:"#fff",border:"none",padding:"8px 16px",fontSize:12,letterSpacing:1}}>+ NUEVO</button>
                   </div>
                   {/* Lista de presupuestos */}
                   {presupuestos.length===0&&<div style={{textAlign:"center",color:"#b0a898",fontSize:13,padding:40}}>No hay presupuestos aún</div>}
@@ -2628,6 +2628,8 @@ ${nombres}
           await dbInsert("presupuestos",nuevo);
           const pres=await dbGet("presupuestos","order=creado.desc");
           setPresupuestos(Array.isArray(pres)?pres:[]);
+          setFormPres({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});
+          setFormPresPaso(1);
           setShowNuevoPresupuesto(false);
           setPresupuestoActivo(nuevo);
           showToast("Presupuesto "+nuevoId+" creado","#10b981");
@@ -2665,7 +2667,7 @@ ${nombres}
                       <div style={{display:"flex",gap:8,marginBottom:10}}>
                         <div style={{flex:1}}>
                           <label style={{fontSize:10,color:"#8a7a6a",display:"block",marginBottom:3}}>CANTIDAD</label>
-                          <input type="number" min="10" value={item.cantidad} onChange={e=>actualizarItem(itemIdx,"cantidad",parseInt(e.target.value)||10)} style={{width:"100%",padding:"6px 8px",fontSize:13,border:"1.5px solid #c8bfaf",borderRadius:6}}/>
+                          <input type="text" value={item.cantidad} onChange={e=>{const v=e.target.value;actualizarItem(itemIdx,"cantidad",v===""?"":parseInt(v)||"");}} onBlur={e=>{if(!e.target.value||parseInt(e.target.value)<1)actualizarItem(itemIdx,"cantidad",10);}} style={{width:"100%",padding:"6px 8px",fontSize:13,border:"1.5px solid #c8bfaf",borderRadius:6}}/>
                           
                         </div>
                         {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&<div style={{flex:1}}>
@@ -2699,10 +2701,14 @@ ${nombres}
                           </div>
                         </div>
                       ))}
-                      {item.prenda&&item.cantidad>0&&<div style={{marginTop:10,padding:"8px 10px",background:"#f5f0e8",borderRadius:6,fontSize:12}}>
-                        <div style={{display:"flex",justifyContent:"space-between",fontWeight:700}}>
-                          <span>Subtotal ({item.cantidad} uds)</span>
-                          <span style={{color:"#e85d26"}}>{"$"}{totalConDesc.toLocaleString("es-AR")}</span>
+                      {item.prenda&&parseInt(item.cantidad)>0&&<div style={{marginTop:10,padding:"10px 12px",background:"#1a1208",borderRadius:6,color:"#f5f0e8"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                          <span style={{fontSize:11,color:"#b0a898"}}>Precio unitario</span>
+                          <span style={{fontSize:13,fontWeight:700}}>{"$"}{calc.precioFinal.toLocaleString("es-AR")}</span>
+                        </div>
+                        <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #3a2a18",paddingTop:6}}>
+                          <span style={{fontSize:11,color:"#b0a898"}}>Total ({item.cantidad} uds)</span>
+                          <span style={{fontSize:15,fontWeight:800,color:"#e85d26"}}>{"$"}{totalConDesc.toLocaleString("es-AR")}</span>
                         </div>
                       </div>}
                     </div>
