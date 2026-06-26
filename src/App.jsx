@@ -31,7 +31,7 @@ const PRENDAS_PRECIOS=[
   {key:"sudadera_terry",label:"Sudadera terry",precio:115000},
   {key:"sudadera_frizada",label:"Sudadera frizada",precio:140000},
 ];
-const UBICACIONES_LOGO=["Frente centro","Frente abajo/otro","Espalda","Espalda abajo/otro","Manga derecha","Manga izquierda"];
+const UBICACIONES_LOGO=["Pecho","Pecho bajo o costado","Espalda","Espalda baja o costado","Manga derecha","Manga izquierda"];
 const TECNICAS_LOGO=[
   {key:"seri_peq_2",label:"Serigrafía pequeña hasta 2 colores",precio:15000},
   {key:"seri_med_2",label:"Serigrafía mediana hasta 2 colores",precio:17500},
@@ -1425,62 +1425,69 @@ ${nombres}
             })()}
 
             {adminTab==="presupuestos"&&(()=>{
-
-              function actualizarItem(idx,campo,valor){
-                const items=[...formPres.items];
-                items[idx]={...items[idx],[campo]:valor};
-                setFormPres({...formPres,items});
-              }
-              function actualizarUbicacion(itemIdx,ubIdx,campo,valor){
-                const items=[...formPres.items];
-                const ubs=[...(items[itemIdx].ubicaciones||[])];
-                ubs[ubIdx]={...ubs[ubIdx],[campo]:valor};
-                items[itemIdx]={...items[itemIdx],ubicaciones:ubs};
-                setFormPres({...formPres,items});
-              }
-              function toggleUbicacion(itemIdx,ubLabel){
-                const items=[...formPres.items];
-                const ubs=[...(items[itemIdx].ubicaciones||[])];
-                const existe=ubs.findIndex(u=>u.lugar===ubLabel);
-                if(existe>=0) ubs.splice(existe,1);
-                else ubs.push({lugar:ubLabel,tecnica:""});
-                items[itemIdx]={...items[itemIdx],ubicaciones:ubs};
-                setFormPres({...formPres,items});
-              }
-
-              const totalPresupuesto=formPres.items.reduce((s,item)=>{
-                const calc=calcPresupuestoItem(item);
-                const descExtra=parseFloat(item.descuentoExtra)||0;
-                return s+Math.round(calc.total*(1-descExtra/100));
-              },0);
-
               return(
                 <div style={{paddingBottom:40}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
                     <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#1a1208"}}>PRESUPUESTOS</div>
-                    <button className="btn" onClick={()=>{setFormPres({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});setFormPresPaso(1);setShowNuevoPresupuesto(true);window.history.pushState({modal:"presupuesto"},"");}} style={{background:"#e85d26",color:"#fff",border:"none",padding:"8px 16px",fontSize:12,letterSpacing:1}}>+ NUEVO</button>
+                    {!presupuestoActivo&&<button className="btn" onClick={()=>{setFormPres({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});setFormPresPaso(1);setShowNuevoPresupuesto(true);window.history.pushState({modal:"presupuesto"},"");}} style={{background:"#e85d26",color:"#fff",border:"none",padding:"8px 16px",fontSize:12,letterSpacing:1}}>+ NUEVO</button>}
                   </div>
-                  {/* Lista de presupuestos */}
-                  {presupuestos.length===0&&<div style={{textAlign:"center",color:"#b0a898",fontSize:13,padding:40}}>No hay presupuestos aún</div>}
-                  {presupuestos.map(p=>{
+                  {presupuestoActivo&&(()=>{
+                    const p=presupuestoActivo;
                     const vence=new Date(p.vence);
-                    const hoyDate=new Date();
-                    const vencido=vence<hoyDate&&p.estado==="pendiente";
+                    const vencido=vence<new Date()&&p.estado==="pendiente";
                     return(
-                      <div key={p.id} onClick={()=>setPresupuestoActivo(p)} style={{background:"#fff",border:"1.5px solid "+(vencido?"#ef4444":p.estado==="aceptado"?"#10b981":"#e8e0d0"),borderRadius:8,padding:"12px 14px",marginBottom:8,cursor:"pointer"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                          <div>
-                            <div style={{fontSize:13,fontWeight:700,color:"#1a1208"}}>{p.id} — {p.cliente}</div>
-                            <div style={{fontSize:10,color:"#8a7a6a"}}>Creado por {p.creado_por} · Vence {formatFecha(p.vence)}</div>
-                          </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontSize:14,fontWeight:800,color:"#e85d26"}}>{"$"}{(p.total||0).toLocaleString("es-AR")}</div>
-                            <div style={{fontSize:10,fontWeight:600,color:vencido?"#ef4444":p.estado==="aceptado"?"#10b981":"#f59e0b"}}>{vencido?"VENCIDO":p.estado?.toUpperCase()}</div>
-                          </div>
+                      <div style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:10,padding:20}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                          <button onClick={()=>setPresupuestoActivo(null)} style={{background:"none",border:"none",color:"#8a7a6a",cursor:"pointer",fontSize:12}}>← Volver</button>
+                          <span style={{fontSize:10,color:"#8a7a6a"}}>{p.id} · {vencido?"VENCIDO":p.estado?.toUpperCase()}</span>
                         </div>
+                        <div style={{textAlign:"center",marginBottom:16}}>
+                          <img src="https://raw.githubusercontent.com/humbertoobelarg-netizen/Flujo-textil/refs/heads/main/logo_tecnica.jpg" alt="Técnica Remeras" style={{height:50,objectFit:"contain"}}/>
+                        </div>
+                        <div style={{borderTop:"2px solid #1a1208",padding:"8px 0",marginBottom:12}}>
+                          <div style={{fontSize:14,fontWeight:700}}>PRESUPUESTO {p.id}</div>
+                          <div style={{fontSize:12,color:"#5a4a3a"}}>Cliente: {p.cliente}</div>
+                          <div style={{fontSize:11,color:"#8a7a6a"}}>Emitido: {formatFecha(p.creado)} · Válido hasta: {formatFecha(p.vence)}</div>
+                        </div>
+                        {(p.items||[]).map((item,i)=>(
+                          <div key={i} style={{borderBottom:"1px solid #f0ece4",padding:"10px 0"}}>
+                            <div style={{fontSize:13,color:"#1a1208",marginBottom:4}}>{item.cantidad} {item.prenda}{item.techLabels?" con "+item.techLabels:""}</div>
+                            <div style={{display:"flex",justifyContent:"space-between"}}>
+                              <span style={{fontSize:11,color:"#8a7a6a"}}>{"$"}{(item.precioUnit||0).toLocaleString("es-AR")} c/u · IVA incluido</span>
+                              <span style={{fontSize:13,fontWeight:700}}>{"$"}{(item.subtotal||0).toLocaleString("es-AR")}</span>
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{borderTop:"2px solid #1a1208",marginTop:12,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <span style={{fontSize:14,fontWeight:700}}>TOTAL</span>
+                          <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"$"}{(p.total||0).toLocaleString("es-AR")}</span>
+                        </div>
+                        {p.notas&&<div style={{marginTop:10,fontSize:11,color:"#8a7a6a",fontStyle:"italic"}}>{p.notas}</div>}
+                        <div style={{marginTop:12,fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8,textAlign:"right"}}>Generado por: {p.creado_por}</div>
                       </div>
                     );
-                  })}
+                  })()}
+                  {!presupuestoActivo&&<>
+                    {presupuestos.length===0&&<div style={{textAlign:"center",color:"#b0a898",fontSize:13,padding:40}}>No hay presupuestos aún</div>}
+                    {presupuestos.map(p=>{
+                      const vence=new Date(p.vence);
+                      const vencido=vence<new Date()&&p.estado==="pendiente";
+                      return(
+                        <div key={p.id} onClick={()=>setPresupuestoActivo(p)} style={{background:"#fff",border:"1.5px solid "+(vencido?"#ef4444":p.estado==="aceptado"?"#10b981":"#e8e0d0"),borderRadius:8,padding:"12px 14px",marginBottom:8,cursor:"pointer"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <div>
+                              <div style={{fontSize:13,fontWeight:700,color:"#1a1208"}}>{p.id} — {p.cliente}</div>
+                              <div style={{fontSize:10,color:"#8a7a6a"}}>Creado por {p.creado_por} · Vence {formatFecha(p.vence)}</div>
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{fontSize:14,fontWeight:800,color:"#e85d26"}}>{"$"}{(p.total||0).toLocaleString("es-AR")}</div>
+                              <div style={{fontSize:10,fontWeight:600,color:vencido?"#ef4444":p.estado==="aceptado"?"#10b981":"#f59e0b"}}>{vencido?"VENCIDO":p.estado?.toUpperCase()}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>}
                 </div>
               );
             })()}
@@ -2737,7 +2744,7 @@ ${nombres}
                 {/* Vista previa del presupuesto */}
                 <div style={{background:"#fff",border:"1px solid #e8e0d0",borderRadius:8,padding:20,marginBottom:16}}>
                   <div style={{textAlign:"center",marginBottom:16}}>
-                    <img src="/logo_tecnica.jpg" alt="Técnica Remeras" style={{height:60,objectFit:"contain"}}/>
+                    <img src="https://raw.githubusercontent.com/humbertoobelarg-netizen/Flujo-textil/refs/heads/main/logo_tecnica.jpg" alt="Técnica Remeras" style={{height:60,objectFit:"contain"}}/>
                     <div style={{fontSize:10,color:"#8a7a6a",marginTop:4}}>tecnicaremeraspy.com</div>
                   </div>
                   <div style={{borderTop:"2px solid #1a1208",borderBottom:"2px solid #1a1208",padding:"8px 0",marginBottom:16}}>
@@ -2752,11 +2759,17 @@ ${nombres}
                     const precioFinalConDesc=Math.round(calc.precioFinal*(1-descExtra/100));
                     const totalItem=precioFinalConDesc*(item.cantidad||0);
                     const prenda=PRENDAS_PRECIOS.find(p=>p.key===item.prenda);
-                    const tecLabels=(item.ubicaciones||[]).filter(u=>u.tecnica).map(u=>{
+                    // Agrupar por técnica y listar lugares
+                    const tecGrupos={};
+                    (item.ubicaciones||[]).filter(u=>u.tecnica).forEach(u=>{
                       const t=TECNICAS_LOGO.find(t=>t.key===u.tecnica);
-                      return t?t.label.toLowerCase():"";
-                    }).filter(Boolean);
-                    const descripcion=prenda?`${item.cantidad} ${prenda.label.toLowerCase()}${tecLabels.length?" con "+tecLabels.join(" + "):""}`:"-";
+                      if(!t)return;
+                      const tecNombre=u.tecnica.startsWith("seri")?"serigrafía":u.tecnica.startsWith("dtf")?"DTF":u.tecnica==="sublimacion"?"sublimación":u.tecnica.startsWith("bord")?"bordado":"aplicación";
+                      if(!tecGrupos[tecNombre])tecGrupos[tecNombre]=[];
+                      tecGrupos[tecNombre].push(u.lugar.toLowerCase());
+                    });
+                    const tecDesc=Object.entries(tecGrupos).map(([tec,lugares])=>`${tec} en ${lugares.join(" y ")}`).join(" y ");
+                    const descripcion=prenda?`${item.cantidad} ${prenda.label}${tecDesc?" con "+tecDesc:""}`:"-";
                     return(
                       <div key={i} style={{borderBottom:"1px solid #f0ece4",padding:"10px 0"}}>
                         <div style={{fontSize:12}}>{descripcion}</div>
