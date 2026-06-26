@@ -10,7 +10,7 @@ import {
   hoy, getMesInfo, getLunesDeSemana, addDias, esTarde, tieneHorario,
   getFingerprint, TALLER_LAT, TALLER_LNG, RADIO_METROS,
   calcDistancia, normalizarVinculados, diasHasta, formatFecha,
-  newId, calcTalles, calcTotal, calcTotalGral, pedidoProgreso,
+  newId, calcTalles, calcTotal, calcTotalGral, pedidoProgreso, pedidoIniciado,
   calcTejidoRemera, isRemera, puedeVerPrecios, puedeVerTejido, puedeVerFinanciero,
   enviarEmailPedido, ResumenPrecios, PrendaDetalle, PrendaForm, AlertasVencimiento
 } from "./utils.jsx";
@@ -695,8 +695,8 @@ ${nombres}
                 {(()=>{
                   const activos=pedidosFiltrados.filter(p=>!p.entregado);
                   const entregados=pedidosFiltrados.filter(p=>p.entregado);
-                  const allNuevos=activos.filter(p=>pedidoProgreso(p)===0);
-                  const allEnProc=activos.filter(p=>pedidoProgreso(p)>0&&pedidoProgreso(p)<100);
+                  const allNuevos=activos.filter(p=>!pedidoIniciado(p));
+                  const allEnProc=activos.filter(p=>pedidoIniciado(p)&&pedidoProgreso(p)<100);
                   const allTerm=activos.filter(p=>pedidoProgreso(p)===100);
                   const allEntregados=entregados;
                   function Paginador({items,pagina,setPagina}){
