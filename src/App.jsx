@@ -26,8 +26,8 @@ const PRENDAS_PRECIOS=[
   {key:"camisilla",label:"Camisilla",precio:28000},
   {key:"musculosa",label:"Musculosa",precio:29000},
   {key:"canguro_polar",label:"Canguro polar",precio:90000},
-  {key:"canguro_terry",label:"Canguro terry",precio:120000},
-  {key:"canguro_frizado",label:"Canguro frizado",precio:145000},
+  {key:"canguro_terry",label:"Canguro terry",precio:130000},
+  {key:"canguro_frizado",label:"Canguro frizado",precio:155000},
   {key:"sudadera_terry",label:"Sudadera terry",precio:115000},
   {key:"sudadera_frizada",label:"Sudadera frizada",precio:140000},
 ];
@@ -45,19 +45,20 @@ const TECNICAS_LOGO=[
   {key:"dtf_peq",label:"DTF pequeño",precio:20000},
   {key:"dtf_med",label:"DTF mediano",precio:30000},
   {key:"dtf_grd",label:"DTF grande",precio:40000},
-  {key:"sublimacion",label:"Sublimación (prenda completa)",precio:95000},
+  {key:"sublimacion",label:"Sublimación (prenda completa)",precio:65000},
   {key:"bord_peq",label:"Bordado pequeño",precio:17500},
   {key:"bord_med",label:"Bordado mediano",precio:27500},
   {key:"bord_grd",label:"Bordado grande",precio:37500},
 ];
 const DESCUENTOS_CANT=[
-  {desde:10,hasta:19,pct:5.5},
-  {desde:20,hasta:29,pct:10},
-  {desde:30,hasta:49,pct:17.5},
-  {desde:50,hasta:99,pct:25},
-  {desde:100,hasta:299,pct:32.5},
-  {desde:300,hasta:499,pct:37.5},
-  {desde:500,hasta:1000,pct:42.5},
+  {desde:10,hasta:19,pct:0},
+  {desde:20,hasta:29,pct:6},
+  {desde:30,hasta:49,pct:10},
+  {desde:50,hasta:99,pct:13},
+  {desde:100,hasta:299,pct:16},
+  {desde:300,hasta:499,pct:19},
+  {desde:500,hasta:749,pct:22},
+  {desde:750,hasta:1000,pct:24},
 ];
 function getDescuento(cant){const d=DESCUENTOS_CANT.find(d=>cant>=d.desde&&cant<=d.hasta);return d?d.pct:0;}
 function getDescuentoLugares(nLugares){
@@ -77,20 +78,19 @@ function calcPresupuestoItem(item){
     const tec=TECNICAS_LOGO.find(t=>t.key===u.tecnica);
     return s+(tec?tec.precio:0);
   },0);
-  const precioPrendaFinal=esSublimacion?0:precioPrenda;
+  const precioPrendaFinal=precioPrenda;
   const sublTotal=esSublimacion?(TECNICAS_LOGO.find(t=>t.key==="sublimacion")?.precio||0):0;
-  // Descuento por cantidad (sobre técnicas)
-  const descPct=getDescuento(item.cantidad||0);
-  const descMonto=Math.round((tecTotal+sublTotal)*descPct/100);
-  const tecConDesc=tecTotal+sublTotal-descMonto;
-  // Descuento por cantidad de lugares (sobre técnicas ya descontadas)
+  // Precio base sin descuentos (prenda + técnicas con descuento de lugares)
   const nLugares=ubicacionesConTec.length+(esSublimacion?1:0);
   const descLugaresPct=getDescuentoLugares(nLugares);
-  const descLugaresMonto=Math.round(tecConDesc*descLugaresPct/100);
-  const tecFinal=tecConDesc-descLugaresMonto;
+  const tecConLugares=Math.round((tecTotal+sublTotal)*(1-descLugaresPct/100));
   const precioBase=precioPrendaFinal+tecTotal+sublTotal;
-  const precioFinal=precioPrendaFinal+tecFinal;
-  return{precioBase,descPct,descMonto,descLugaresPct,descLugaresMonto,nLugares,precioFinal,total:Math.round(precioFinal*(item.cantidad||0))};
+  const precioBaseConLugares=precioPrendaFinal+tecConLugares;
+  // Descuento por cantidad sobre el total (prenda + técnica con desc lugares)
+  const descPct=getDescuento(item.cantidad||0);
+  const descMonto=Math.round(precioBaseConLugares*descPct/100);
+  const precioFinal=precioBaseConLugares-descMonto;
+  return{precioBase,descPct,descMonto,descLugaresPct,descLugaresMonto:Math.round((tecTotal+sublTotal)*descLugaresPct/100),nLugares,precioFinal,total:Math.round(precioFinal*(item.cantidad||0))};
 }
 const FIRMAS_PRESUPUESTO={
   "admin":"Humberto Obelar",
@@ -1680,7 +1680,7 @@ ${nombres}
                   {DESCUENTOS_CANT.map(d=>(
                     <div key={d.desde} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f0ece4"}}>
                       <span style={{fontSize:12,color:"#1a1208"}}>{d.desde} a {d.hasta} unidades</span>
-                      <span style={{fontSize:12,fontWeight:700,color:"#10b981"}}>{d.pct}%</span>
+                      <span style={{fontSize:12,fontWeight:700,color:d.pct===0?"#8a7a6a":"#10b981"}}>{d.pct===0?"Sin descuento":d.pct+"%"}</span>
                     </div>
                   ))}
                   <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid #e8e0d0"}}>
