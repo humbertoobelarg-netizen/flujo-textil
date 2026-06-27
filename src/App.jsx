@@ -33,49 +33,64 @@ const PRENDAS_PRECIOS=[
 ];
 const UBICACIONES_LOGO=["Pecho","Pecho bajo o costado","Espalda","Espalda baja o costado","Manga derecha","Manga izquierda"];
 const TECNICAS_LOGO=[
-  {key:"seri_peq_2",label:"Serigrafía pequeña hasta 2 colores",precio:15000},
-  {key:"seri_med_2",label:"Serigrafía mediana hasta 2 colores",precio:17500},
-  {key:"seri_grd_2",label:"Serigrafía grande hasta 2 colores",precio:20000},
-  {key:"seri_peq_5",label:"Serigrafía pequeña 3-5 colores",precio:20000},
-  {key:"seri_med_5",label:"Serigrafía mediana 3-5 colores",precio:22500},
-  {key:"seri_grd_5",label:"Serigrafía grande 3-5 colores",precio:25000},
-  {key:"seri_peq_7",label:"Serigrafía pequeña 6-7 colores",precio:23500},
-  {key:"seri_med_7",label:"Serigrafía mediana 6-7 colores",precio:26000},
-  {key:"seri_grd_7",label:"Serigrafía grande 6-7 colores",precio:28500},
+  {key:"seri_peq_2",label:"Serigrafía pequeña hasta 2 colores",precio:12500},
+  {key:"seri_med_2",label:"Serigrafía mediana hasta 2 colores",precio:15000},
+  {key:"seri_grd_2",label:"Serigrafía grande hasta 2 colores",precio:17500},
+  {key:"seri_peq_5",label:"Serigrafía pequeña 3-5 colores",precio:17500},
+  {key:"seri_med_5",label:"Serigrafía mediana 3-5 colores",precio:20000},
+  {key:"seri_grd_5",label:"Serigrafía grande 3-5 colores",precio:22500},
+  {key:"seri_peq_7",label:"Serigrafía pequeña 6-7 colores",precio:21000},
+  {key:"seri_med_7",label:"Serigrafía mediana 6-7 colores",precio:23500},
+  {key:"seri_grd_7",label:"Serigrafía grande 6-7 colores",precio:26000},
   {key:"dtf_peq",label:"DTF pequeño",precio:20000},
   {key:"dtf_med",label:"DTF mediano",precio:30000},
   {key:"dtf_grd",label:"DTF grande",precio:40000},
   {key:"sublimacion",label:"Sublimación (prenda completa)",precio:95000},
-  {key:"bord_peq",label:"Bordado pequeño",precio:20000},
-  {key:"bord_med",label:"Bordado mediano",precio:30000},
-  {key:"bord_grd",label:"Bordado grande",precio:40000},
+  {key:"bord_peq",label:"Bordado pequeño",precio:17500},
+  {key:"bord_med",label:"Bordado mediano",precio:27500},
+  {key:"bord_grd",label:"Bordado grande",precio:37500},
 ];
 const DESCUENTOS_CANT=[
-  {desde:10,hasta:29,pct:0},
-  {desde:30,hasta:49,pct:5},
-  {desde:50,hasta:99,pct:7.5},
-  {desde:100,hasta:299,pct:10},
-  {desde:300,hasta:499,pct:12.5},
-  {desde:500,hasta:1000,pct:15},
+  {desde:10,hasta:19,pct:5.5},
+  {desde:20,hasta:29,pct:10},
+  {desde:30,hasta:49,pct:17.5},
+  {desde:50,hasta:99,pct:25},
+  {desde:100,hasta:299,pct:32.5},
+  {desde:300,hasta:499,pct:37.5},
+  {desde:500,hasta:1000,pct:42.5},
 ];
 function getDescuento(cant){const d=DESCUENTOS_CANT.find(d=>cant>=d.desde&&cant<=d.hasta);return d?d.pct:0;}
+function getDescuentoLugares(nLugares){
+  if(nLugares<=1)return 0;
+  if(nLugares===2)return 20;
+  if(nLugares===3)return 25;
+  if(nLugares===4)return 30;
+  return 35; // 5 o mas lugares
+}
 function calcPresupuestoItem(item){
   const prenda=PRENDAS_PRECIOS.find(p=>p.key===item.prenda);
-  if(!prenda)return 0;
+  if(!prenda)return{precioBase:0,descPct:0,descMonto:0,descLugaresPct:0,descLugaresMonto:0,precioFinal:0,total:0};
   const precioPrenda=prenda.precio;
-  const tecTotal=(item.ubicaciones||[]).reduce((s,u)=>{
-    if(!u.tecnica)return s;
-    if(u.tecnica==="sublimacion")return s; // sublimacion reemplaza precio prenda
+  const ubicacionesConTec=(item.ubicaciones||[]).filter(u=>u.tecnica&&u.tecnica!=="sublimacion");
+  const esSublimacion=(item.ubicaciones||[]).some(u=>u.tecnica==="sublimacion");
+  const tecTotal=ubicacionesConTec.reduce((s,u)=>{
     const tec=TECNICAS_LOGO.find(t=>t.key===u.tecnica);
     return s+(tec?tec.precio:0);
   },0);
-  const esSublimacion=(item.ubicaciones||[]).some(u=>u.tecnica==="sublimacion");
   const precioPrendaFinal=esSublimacion?0:precioPrenda;
   const sublTotal=esSublimacion?(TECNICAS_LOGO.find(t=>t.key==="sublimacion")?.precio||0):0;
-  const precioBase=precioPrendaFinal+tecTotal+sublTotal;
+  // Descuento por cantidad (sobre técnicas)
   const descPct=getDescuento(item.cantidad||0);
   const descMonto=Math.round((tecTotal+sublTotal)*descPct/100);
-  return{precioBase,descPct,descMonto,precioFinal:precioBase-descMonto,total:Math.round((precioBase-descMonto)*(item.cantidad||0))};
+  const tecConDesc=tecTotal+sublTotal-descMonto;
+  // Descuento por cantidad de lugares (sobre técnicas ya descontadas)
+  const nLugares=ubicacionesConTec.length+(esSublimacion?1:0);
+  const descLugaresPct=getDescuentoLugares(nLugares);
+  const descLugaresMonto=Math.round(tecConDesc*descLugaresPct/100);
+  const tecFinal=tecConDesc-descLugaresMonto;
+  const precioBase=precioPrendaFinal+tecTotal+sublTotal;
+  const precioFinal=precioPrendaFinal+tecFinal;
+  return{precioBase,descPct,descMonto,descLugaresPct,descLugaresMonto,nLugares,precioFinal,total:Math.round(precioFinal*(item.cantidad||0))};
 }
 const FIRMAS_PRESUPUESTO={
   "admin":"Humberto Obelar",
@@ -1665,9 +1680,18 @@ ${nombres}
                   {DESCUENTOS_CANT.map(d=>(
                     <div key={d.desde} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f0ece4"}}>
                       <span style={{fontSize:12,color:"#1a1208"}}>{d.desde} a {d.hasta} unidades</span>
-                      <span style={{fontSize:12,fontWeight:700,color:d.pct>0?"#10b981":"#8a7a6a"}}>{d.pct===0?"Sin descuento":d.pct+"%"}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:"#10b981"}}>{d.pct}%</span>
                     </div>
                   ))}
+                  <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid #e8e0d0"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#1a1208",marginBottom:6,letterSpacing:1}}>DESCUENTO POR CANT. DE LUGARES</div>
+                    {[[1,"Sin descuento"],[2,"20%"],[3,"25%"],[4,"30%"],[5,"35%"]].map(([n,pct])=>(
+                      <div key={n} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #f0ece4"}}>
+                        <span style={{fontSize:11,color:"#1a1208"}}>{n===1?"1 lugar":n+" lugares"}</span>
+                        <span style={{fontSize:11,fontWeight:700,color:n===1?"#8a7a6a":"#10b981"}}>{pct}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
