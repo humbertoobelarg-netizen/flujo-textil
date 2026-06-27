@@ -77,6 +77,13 @@ function calcPresupuestoItem(item){
   const descMonto=Math.round((tecTotal+sublTotal)*descPct/100);
   return{precioBase,descPct,descMonto,precioFinal:precioBase-descMonto,total:Math.round((precioBase-descMonto)*(item.cantidad||0))};
 }
+const FIRMAS_PRESUPUESTO={
+  "admin":"Humberto Obelar",
+  "Gabi":"Gabriela Codas",
+  "Romina":"Romina Villalba",
+  "Vivi":"Viviana Sanabria",
+};
+function getFirma(nombre){return FIRMAS_PRESUPUESTO[nombre]||nombre;}
 function newPresupuestoId(lista){
   const nums=lista.map(p=>{const m=p.id?.match(/P26-(\d+)/);return m?parseInt(m[1]):0;});
   const max=nums.length?Math.max(...nums):10000;
@@ -761,14 +768,14 @@ ${nombres}
                       <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"Gs. "}{(p.total||0).toLocaleString("es-AR")}</span>
                     </div>
                     {p.notas&&<div style={{marginTop:10,fontSize:11,color:"#8a7a6a",fontStyle:"italic"}}>{p.notas}</div>}
-                    <div style={{marginTop:12,fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8,textAlign:"right"}}>Generado por: {p.creado_por}</div>
+                    <div style={{marginTop:12,fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8,textAlign:"right"}}>Generado por: {getFirma(p.creado_por)}</div>
                   </div>
                   <div style={{display:"flex",gap:8}}>
                     <button onClick={()=>{
                       const nl="\n";
                       const tecGruposWA=(ubs)=>{const g={};(ubs||[]).filter(u=>u.tecnica).forEach(u=>{const k=u.tecnica;const n=k.startsWith("seri")?"serigrafía":k.startsWith("dtf")?"DTF":k==="sublimacion"?"sublimación":k.startsWith("bord")?"bordado":"aplicación";if(!g[n])g[n]=[];g[n].push(u.lugar.toLowerCase());});return Object.entries(g).map(([t,l])=>t+" en "+l.join(" y ")).join(" y ");};
                       const items=(p.items||[]).map(item=>{const td=tecGruposWA(item.ubicaciones);return"• "+item.cantidad+" "+item.prenda+(td?" con "+td:"")+nl+"  Gs. "+(item.precioUnit||0).toLocaleString("es-AR")+" c/u = Gs. "+(item.subtotal||0).toLocaleString("es-AR");}).join(nl);
-                      const texto="*PRESUPUESTO "+p.id+" - TÉCNICA REMERAS*"+nl+nl+"Cliente: "+p.cliente+nl+"Fecha: "+formatFecha(p.creado)+nl+"Válido hasta: "+formatFecha(p.vence)+nl+nl+items+nl+nl+"*TOTAL: Gs. "+(p.total||0).toLocaleString("es-AR")+"*"+nl+"IVA incluido"+(p.notas?nl+nl+p.notas:"")+nl+nl+"Generado por "+p.creado_por;
+                      const texto="*PRESUPUESTO "+p.id+" - TÉCNICA REMERAS*"+nl+nl+"Cliente: "+p.cliente+nl+"Fecha: "+formatFecha(p.creado)+nl+"Válido hasta: "+formatFecha(p.vence)+nl+nl+items+nl+nl+"*TOTAL: Gs. "+(p.total||0).toLocaleString("es-AR")+"*"+nl+"IVA incluido"+(p.notas?nl+nl+p.notas:"")+nl+nl+"Generado por "+getFirma(p.creado_por);
                       window.open("https://wa.me/?text="+encodeURIComponent(texto),"_blank");
                     }} style={{flex:1,padding:"12px",background:"#25D366",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>📲 WhatsApp</button>
                     <button onClick={async()=>{
@@ -1574,7 +1581,7 @@ ${nombres}
                           <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"Gs. "}{(p.total||0).toLocaleString("es-AR")}</span>
                         </div>
                         {p.notas&&<div style={{marginTop:10,fontSize:11,color:"#8a7a6a",fontStyle:"italic"}}>{p.notas}</div>}
-                        <div style={{marginTop:12,fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8,textAlign:"right"}}>Generado por: {p.creado_por}</div>
+                        <div style={{marginTop:12,fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8,textAlign:"right"}}>Generado por: {getFirma(p.creado_por)}</div>
                       </div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
                         {p.estado!=="aceptado"&&<button onClick={async()=>{await dbPatch("presupuestos",p.id,{estado:"aceptado"});const pres=await dbGet("presupuestos","order=creado.desc");setPresupuestos(Array.isArray(pres)?pres:[]);setPresupuestoActivo({...p,estado:"aceptado"});showToast("Presupuesto aceptado","#10b981");}} style={{flex:1,padding:"10px",background:"#10b981",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>✓ ACEPTADO</button>}
@@ -1586,7 +1593,7 @@ ${nombres}
                           const nl="\n";
                           const tecGruposWA=(ubs)=>{const g={};(ubs||[]).filter(u=>u.tecnica).forEach(u=>{const k=u.tecnica;const n=k.startsWith("seri")?"serigrafía":k.startsWith("dtf")?"DTF":k==="sublimacion"?"sublimación":k.startsWith("bord")?"bordado":"aplicación";if(!g[n])g[n]=[];g[n].push(u.lugar.toLowerCase());});return Object.entries(g).map(([t,l])=>t+" en "+l.join(" y ")).join(" y ");};
                           const items=(p.items||[]).map(item=>{const td=tecGruposWA(item.ubicaciones);return"• "+item.cantidad+" "+item.prenda+(td?" con "+td:"")+nl+"  Gs. "+(item.precioUnit||0).toLocaleString("es-AR")+" c/u = Gs. "+(item.subtotal||0).toLocaleString("es-AR");}).join(nl);
-                          const texto="*PRESUPUESTO "+p.id+" - TÉCNICA REMERAS*"+nl+nl+"Cliente: "+p.cliente+nl+"Fecha: "+formatFecha(p.creado)+nl+"Válido hasta: "+formatFecha(p.vence)+nl+nl+items+nl+nl+"*TOTAL: Gs. "+(p.total||0).toLocaleString("es-AR")+"*"+nl+"IVA incluido"+(p.notas?nl+nl+p.notas:"")+nl+nl+"Generado por "+p.creado_por;
+                          const texto="*PRESUPUESTO "+p.id+" - TÉCNICA REMERAS*"+nl+nl+"Cliente: "+p.cliente+nl+"Fecha: "+formatFecha(p.creado)+nl+"Válido hasta: "+formatFecha(p.vence)+nl+nl+items+nl+nl+"*TOTAL: Gs. "+(p.total||0).toLocaleString("es-AR")+"*"+nl+"IVA incluido"+(p.notas?nl+nl+p.notas:"")+nl+nl+"Generado por "+getFirma(p.creado_por);
                           window.open("https://wa.me/?text="+encodeURIComponent(texto),"_blank");
                         }} style={{flex:1,padding:"12px",background:"#25D366",border:"none",borderRadius:6,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>📲 WhatsApp</button>
                         <button onClick={async()=>{
@@ -2772,7 +2779,7 @@ ${nombres}
           const venceDate=new Date();venceDate.setDate(venceDate.getDate()+10);
           const venceStr=venceDate.toISOString().slice(0,10);
           const nuevoId=newPresupuestoId(presupuestos);
-          const nuevo={id:nuevoId,cliente:formPres.cliente,creado_por:usuario.nombre,creado:hoyStr,vence:venceStr,estado:"pendiente",items:itemsCalc.map(i=>({prenda:i.prendaLabel,cantidad:i.cantidad,ubicaciones:i.ubicaciones,precioUnit:i.calc.precioFinal,descuentoExtra:i.descExtra,subtotal:i.totalConDesc,techLabels:i.techLabels})),total:totalGeneral,notas:formPres.notas||""};
+          const nuevo={id:nuevoId,cliente:formPres.cliente,creado_por:usuario.rol==="admin"?"admin":usuario.nombre,creado:hoyStr,vence:venceStr,estado:"pendiente",items:itemsCalc.map(i=>({prenda:i.prendaLabel,cantidad:i.cantidad,ubicaciones:i.ubicaciones,precioUnit:i.calc.precioFinal,descuentoExtra:i.descExtra,subtotal:i.totalConDesc,techLabels:i.techLabels})),total:totalGeneral,notas:formPres.notas||""};
           await dbInsert("presupuestos",nuevo);
           const pres=await dbGet("presupuestos","order=creado.desc");
           setPresupuestos(Array.isArray(pres)?pres:[]);
