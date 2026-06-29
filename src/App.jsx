@@ -867,18 +867,21 @@ ${nombres}
             </div>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:12}}>
-            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["mis_gastos","MIS GASTOS"],["tecnicas","TÉCNICAS"],["cantidad","CANTIDAD"],["presupuestos","PRESUPUESTOS"],["precios","PRECIOS"]].filter(([k])=>{
-              if(usuario?.rol==="admin")return true;
-              if(k==="equipo")return false;
-              if(k==="tecnicas")return usuario?.nombre==="Gabi";
-              if(k==="cantidad")return usuario?.nombre==="Gabi";
-              if(k==="precios")return usuario?.rol==="admin"||usuario?.nombre==="Gabi";
-              if(k==="presupuestos")return usuario?.rol==="admin"||["Gabi","Vivi","Romina"].includes(usuario?.nombre);
-              if(k==="asistencia")return usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
-              if(k==="finanzas")return usuario?.nombre==="Gabi";
-              if(k==="stock")return usuario?.rol==="admin"||usuario?.nombre==="Vivi";
-              if(k==="mis_gastos")return usuario?.nombre==="Vivi";
-              return true;
+            {[
+              ["pedidos","PEDIDOS","siempre"],
+              ["stock","STOCK","editar_stock"],
+              ["tablero","TABLERO","siempre"],
+              ["equipo","EQUIPO","ver_equipo"],
+              ["asistencia","ASISTENCIA","ver_equipo"],
+              ["finanzas","FINANZAS","ver_finanzas"],
+              ["mis_gastos","MIS GASTOS","siempre"],
+              ["tecnicas","TÉCNICAS","ver_precios"],
+              ["cantidad","CANTIDAD","ver_precios"],
+              ["presupuestos","PRESUPUESTOS","ver_precios"],
+              ["precios","PRECIOS","ver_precios"]
+            ].filter(([key,label,permiso])=>{
+              if(permiso==="siempre")return true;
+              return tienePermiso(usuario,permiso);
             }).map(([k,l])=>(
               <div key={k} className={`tab${adminTab===k?" active":""}`} onClick={()=>{window.history.pushState({tab:k},"");setAdminTab(k);}} style={{fontSize:11,letterSpacing:2}}>{l}</div>
             ))}
