@@ -3,12 +3,12 @@
   "name": "Técnica Remeras - Flujo Textil",
   "icons": [
     {
-      "src": "logo tecnica.jpg",
+      "src": "logo_tecnica.jpg",
       "sizes": "192x192",
       "type": "image/jpeg"
     },
     {
-      "src": "logo tecnica.jpg",
+      "src": "logo_tecnica.jpg",
       "sizes": "512x512",
       "type": "image/jpeg"
     }
