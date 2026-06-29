@@ -2860,7 +2860,7 @@ ${nombres}
 
                 <div style={{background:"#1a1208",color:"#f5f0e8",borderRadius:8,padding:"12px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2}}>TOTAL PRESUPUESTO</span>
-                  <span style={{fontSize:20,fontWeight:800,color:"#e85d26"}}>{"$"}{itemsCalc.reduce((s,i)=>s+Math.round(calcPresupuestoItem(i).total*(1-((parseFloat(i.descuentoExtra)||0)/100))),0).toLocaleString("es-AR")}</span>
+                  <span style={{fontSize:20,fontWeight:800,color:"#e85d26"}}>{"Gs. "}{formPres.items.reduce((s,i)=>s+Math.round(calcPresupuestoItem(i).total*(1-((parseFloat(i.descuentoExtra)||0)/100))),0).toLocaleString("es-AR")}</span>
                 </div>
 
                 <div style={{display:"flex",gap:8}}>
@@ -2911,7 +2911,7 @@ ${nombres}
                   })}
                   <div style={{borderTop:"2px solid #1a1208",marginTop:12,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:14,fontWeight:700}}>TOTAL</span>
-                    <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"$"}{itemsCalc.reduce((s,i)=>{const c=calcPresupuestoItem(i);const d=parseFloat(i.descuentoExtra)||0;return s+Math.round(c.precioFinal*(1-d/100))*(i.cantidad||0);},0).toLocaleString("es-AR")}</span>
+                    <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"Gs. "}{formPres.items.reduce((s,i)=>{const c=calcPresupuestoItem(i);const d=parseFloat(i.descuentoExtra)||0;return s+Math.round(c.precioFinal*(1-d/100))*(i.cantidad||0);},0).toLocaleString("es-AR")}</span>
                   </div>
                   {formPres.notas&&<div style={{marginTop:12,fontSize:11,color:"#8a7a6a",fontStyle:"italic"}}>{formPres.notas}</div>}
                   <div style={{marginTop:16,textAlign:"right",fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8}}>
