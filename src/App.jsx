@@ -884,6 +884,9 @@ ${nombres}
           </div>
           <div style={{flex:1,overflowY:"auto",padding:20}}>
 
+  {/* DASHBOARD EJECUTIVO */}
+  {(adminTab==="pedidos")&&<Dashboard pedidos={pedidos} usuario={usuario}/>}
+
             {adminTab==="pedidos"&&(
               <div>
                 <div style={{display:"flex",gap:8,marginBottom:8}}>
