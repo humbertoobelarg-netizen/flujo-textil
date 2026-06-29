@@ -1568,8 +1568,7 @@ ${nombres}
               );
             })()}
 
-            {adminTab==="presupuestos"&&(()=>{
-              return(
+            {adminTab==="presupuestos"&&(
                 <div style={{paddingBottom:40}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
                     <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#1a1208"}}>PRESUPUESTOS</div>
@@ -1673,8 +1672,7 @@ ${nombres}
                     })}
                   </>}
                 </div>
-              );
-            })()}
+            )}
             {adminTab==="precios"&&(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(
               <div style={{paddingBottom:40}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#1a1208",marginBottom:16}}>PRECIOS ACTUALES</div>
@@ -1697,7 +1695,7 @@ ${nombres}
                   ))}
                 </div>
                 <div style={{background:"#fff",border:"1.5px solid #e8e0d0",borderRadius:8,padding:16}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:2,color:"#1a1208",marginBottom:10}}>DESCUENTOS POR CANTIDAD (SOBRE TÉCNICAS)</div>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:2,color:"#1a1208",marginBottom:10}}>DESCUENTOS POR CANTIDAD (SOBRE TOTAL)</div>
                   {DESCUENTOS_CANT.map(d=>(
                     <div key={d.desde} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f0ece4"}}>
                       <span style={{fontSize:12,color:"#1a1208"}}>{d.desde} a {d.hasta} unidades</span>
