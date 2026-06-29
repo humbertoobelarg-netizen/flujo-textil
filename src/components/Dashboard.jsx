@@ -1,45 +1,71 @@
 import React from 'react';
-import { PROCESOS, calcTotalGral, formatFecha, hoy } from '../utils.jsx';
+import { PROCESOS, calcTotalGral, diasHasta } from '../utils.jsx';
 
-const Dashboard = ({ pedidos }) => {
-  // 1. Cálculos de Dinero
-  const pedidosActivos = pedidos.filter(p => !p.entregado);
-  const totalVentas = pedidosActivos.reduce((acc, p) => acc + calcTotalGral(p.prendas), 0);
-  const totalCobrado = pedidosActivos.reduce((acc, p) => acc + (parseFloat(p.anticipo) || 0), 0);
-  const saldoPendiente = totalVentas - totalCobrado;
+const Dashboard = ({ pedidos, usuario }) => {
+  const activos = (pedidos || []).filter(p => !p.entregado && p.id);
 
-  // 2. Conteo por Procesos
-  const estadisticasProcesos = PROCESOS.map(proc => {
-    const cant = pedidosActivos.filter(p => (p.procesos || {})[proc.key] === 'en_proceso').length;
-    return { ...proc, cant };
-  });
+  const totalVentas = activos.reduce((acc, p) => acc + (calcTotalGral(p.prendas) || 0), 0);
+  const totalCobrado = activos.reduce((acc, p) => {
+    const ant = parseFloat(p.anticipo) || 0;
+    const pagos = (p.pagos || []).reduce((s, pg) => s + (parseFloat(pg.monto) || 0), 0);
+    return acc + ant + pagos;
+  }, 0);
+  const saldo = totalVentas - totalCobrado;
+
+  const criticos = activos.filter(p => p.fecha_entrega && diasHasta(p.fecha_entrega) <= 0);
+  const proximos = activos.filter(p => p.fecha_entrega && diasHasta(p.fecha_entrega) > 0 && diasHasta(p.fecha_entrega) <= 3);
+
+  const statsProcesos = PROCESOS.map(proc => ({
+    ...proc,
+    enCurso: activos.filter(p => (p.procesos || {})[proc.key] === 'en_proceso').length
+  })).filter(s => s.enCurso > 0);
 
   return (
-    <div style={{ padding: '20px', background: '#f8f9fa', borderRadius: '12px', marginBottom: '20px' }}>
-      <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '28px', color: '#1a1208', marginBottom: '20px' }}>
-        ESTADO DEL NEGOCIO 📊
-      </h2>
-      
-      {/* Tarjetas de Dinero */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', marginBottom: '20px' }}>
-        <div style={{ background: '#fff', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '5px solid #10b981' }}>
-          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>VENTAS ACTIVAS</div>
-          <div style={{ fontSize: '18px', fontWeight: 'bold' }}>${totalVentas.toLocaleString('es-PY')}</div>
-        </div>
-        <div style={{ background: '#fff', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '5px solid #e85d26' }}>
-          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>SALDO POR COBRAR</div>
-          <div style={{ fontSize: '18px', fontWeight: 'bold' }}>${saldoPendiente.toLocaleString('es-PY')}</div>
-        </div>
-      </div>
+    <div style={{background:'#fff',border:'1.5px solid #d8d0c0',borderRadius:8,padding:16,marginBottom:16}}>
 
-      {/* Mini-Gráfico de Procesos */}
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '10px' }}>
-        {estadisticasProcesos.filter(s => s.cant > 0).map(s => (
-          <div key={s.key} style={{ background: s.color + '15', color: s.color, padding: '8px 12px', borderRadius: '20px', fontSize: '12px', border: `1px solid ${s.color}`, whiteSpace: 'nowrap' }}>
-            {s.icon} {s.label}: <strong>{s.cant}</strong>
+      {/* ALERTAS */}
+      {(criticos.length > 0 || proximos.length > 0) && (
+        <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+          {criticos.length > 0 && (
+            <div style={{background:'#fee2e2',color:'#991b1b',padding:'6px 12px',borderRadius:6,fontSize:12,border:'1px solid #ef4444'}}>
+              🚨 <strong>{criticos.length} vencidos/hoy</strong>
+            </div>
+          )}
+          {proximos.length > 0 && (
+            <div style={{background:'#fef3c7',color:'#92400e',padding:'6px 12px',borderRadius:6,fontSize:12,border:'1px solid #f59e0b'}}>
+              ⏳ <strong>{proximos.length} vencen pronto</strong>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* FINANZAS - solo admin/Gabi */}
+      {(usuario?.rol === 'admin' || usuario?.nombre === 'Gabi') && (
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+          <div style={{background:'#f0fdf4',padding:12,borderRadius:8,border:'1.5px solid #10b981'}}>
+            <div style={{fontSize:10,color:'#64748b',fontWeight:800,letterSpacing:0.5}}>CAPITAL EN CALLE</div>
+            <div style={{fontSize:18,fontWeight:'bold',color:'#065f46'}}>₲ {totalVentas.toLocaleString('es-PY')}</div>
           </div>
-        ))}
-      </div>
+          <div style={{background:'#fff7ed',padding:12,borderRadius:8,border:'1.5px solid #e85d26'}}>
+            <div style={{fontSize:10,color:'#64748b',fontWeight:800,letterSpacing:0.5}}>SALDO PENDIENTE</div>
+            <div style={{fontSize:18,fontWeight:'bold',color:'#9a3412'}}>₲ {saldo.toLocaleString('es-PY')}</div>
+          </div>
+        </div>
+      )}
+
+      {/* PROCESOS EN CURSO */}
+      {statsProcesos.length > 0 && (
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          {statsProcesos.map(s => (
+            <div key={s.key} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',background:'#f5f0e8',borderRadius:6,border:'1px solid #e8e0d0',fontSize:12}}>
+              <span>{s.icon}</span>
+              <span style={{color:s.color,fontWeight:700}}>{s.enCurso}</span>
+              <span style={{color:'#8a7a6a'}}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 };
