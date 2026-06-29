@@ -2776,7 +2776,7 @@ ${nombres}
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,overflowY:"auto"}}>
             <div style={{background:"#f5f0e8",margin:"20px auto",maxWidth:600,borderRadius:12,padding:20,minHeight:"80vh"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2}}>{paso===1?"NUEVO PRESUPUESTO":"VISTA PREVIA"}</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2}}>{formPresPaso===1?"NUEVO PRESUPUESTO":"VISTA PREVIA"}</div>
                 <button onClick={()=>{setShowNuevoPresupuesto(false);}} style={{background:"none",border:"none",fontSize:22,cursor:"pointer"}}>✕</button>
               </div>
 
