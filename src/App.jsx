@@ -16,6 +16,7 @@ import {
 } from "./utils.jsx";
 import { GrupoColapsable, PedidoCard } from "./components/PedidoCard.jsx";
 import { PantallaMarcado } from "./components/PantallaMarcado.jsx";
+import Dashboard from "./components/Dashboard.jsx";
 
 
 // ── PRECIOS BASE PRESUPUESTOS ──────────────────────────────────────────
