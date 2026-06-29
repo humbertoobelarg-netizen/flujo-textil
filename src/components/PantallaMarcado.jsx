@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   SUPABASE_URL, SUPABASE_KEY, dbGet, dbPatch,
   getFingerprint, TALLER_LAT, TALLER_LNG, RADIO_METROS, calcDistancia
-} from "./utils.jsx";
+} from "../utils.jsx";
 
 function PantallaMarcado({empleados}){
   const hash=window.location.hash.replace("#asistencia/","");
