@@ -7,7 +7,7 @@ import {
   calcTotalGral, pedidoProgreso,
   isRemera, puedeVerPrecios, puedeVerTejido,
   ResumenPrecios, PrendaDetalle
-} from "./utils.jsx";
+} from "../utils.jsx";
 
 function GrupoColapsable({titulo,icon,color,count,children}){
   const [abierto,setAbierto]=useState(false);
