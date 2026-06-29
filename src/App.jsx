@@ -2780,7 +2780,7 @@ ${nombres}
                 <button onClick={()=>{setShowNuevoPresupuesto(false);}} style={{background:"none",border:"none",fontSize:22,cursor:"pointer"}}>✕</button>
               </div>
 
-              {paso===1&&(<>
+              {formPresPaso===1&&(<>
                 <div style={{marginBottom:12}}>
                   <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>CLIENTE</label>
                   <input value={formPres.cliente} onChange={e=>setFormPres(f=>({...f,cliente:e.target.value}))} placeholder="Nombre del cliente" style={{width:"100%",padding:"8px 10px",fontSize:13,border:"1.5px solid #c8bfaf",borderRadius:6,background:"#fff"}}/>
@@ -2865,11 +2865,11 @@ ${nombres}
 
                 <div style={{display:"flex",gap:8}}>
                   <button onClick={()=>setShowNuevoPresupuesto(false)} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,cursor:"pointer",fontSize:12}}>CANCELAR</button>
-                  <button onClick={()=>setPaso(2)} style={{flex:2,padding:"10px",background:"#e85d26",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,color:"#fff",fontWeight:700,letterSpacing:1}}>VER VISTA PREVIA →</button>
+                  <button onClick={()=>setFormPresPaso(2)} style={{flex:2,padding:"10px",background:"#e85d26",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,color:"#fff",fontWeight:700,letterSpacing:1}}>VER VISTA PREVIA →</button>
                 </div>
               </>)}
 
-              {paso===2&&(<>
+              {formPresPaso===2&&(<>
                 {/* Vista previa del presupuesto */}
                 <div style={{background:"#fff",border:"1px solid #e8e0d0",borderRadius:8,padding:20,marginBottom:16}}>
                   <div style={{textAlign:"center",marginBottom:16}}>
@@ -2921,7 +2921,7 @@ ${nombres}
                 </div>
 
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>setPaso(1)} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,cursor:"pointer",fontSize:12}}>← EDITAR</button>
+                  <button onClick={()=>setFormPresPaso(1)} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,cursor:"pointer",fontSize:12}}>← EDITAR</button>
                   <button onClick={guardarPresupuesto} disabled={guardando} style={{flex:2,padding:"10px",background:"#1a1208",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,color:"#fff",fontWeight:700,letterSpacing:1}}>{guardando?"GUARDANDO...":"✓ CONFIRMAR Y GUARDAR"}</button>
                 </div>
               </>)}
