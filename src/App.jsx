@@ -14,9 +14,9 @@ import {
   calcTejidoRemera, isRemera, puedeVerPrecios, puedeVerTejido, puedeVerFinanciero,
   enviarEmailPedido, ResumenPrecios, PrendaDetalle, PrendaForm, AlertasVencimiento
 } from "./utils.jsx";
-import { GrupoColapsable, PedidoCard } from "./components/PedidoCard.jsx";
+import { PedidoCard, GrupoColapsable } from "./components/PedidoCard.jsx";
 import { PantallaMarcado } from "./components/PantallaMarcado.jsx";
-import Dashboard from "./components/Dashboard.jsx";
+import Dashboard from "./components/Dashboard.jsx"; // SIN LLAVES aquí
 
 
 // ── PRECIOS BASE PRESUPUESTOS ──────────────────────────────────────────
