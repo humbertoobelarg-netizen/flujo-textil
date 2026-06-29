@@ -45,10 +45,10 @@ const TECNICAS_LOGO=[
   {key:"dtf_peq",label:"DTF pequeño",precio:20000},
   {key:"dtf_med",label:"DTF mediano",precio:30000},
   {key:"dtf_grd",label:"DTF grande",precio:40000},
-  {key:"sublimacion",label:"Sublimación (prenda completa)",precio:65000},
-  {key:"bord_peq",label:"Bordado pequeño",precio:17500},
-  {key:"bord_med",label:"Bordado mediano",precio:27500},
-  {key:"bord_grd",label:"Bordado grande",precio:37500},
+  {key:"sublimacion",label:"Sublimación (prenda completa)",precio:60000},
+  {key:"bord_peq",label:"Bordado pequeño",precio:22500},
+  {key:"bord_med",label:"Bordado mediano",precio:30000},
+  {key:"bord_grd",label:"Bordado grande",precio:40000},
 ];
 const DESCUENTOS_CANT=[
   {desde:10,hasta:19,pct:0},
