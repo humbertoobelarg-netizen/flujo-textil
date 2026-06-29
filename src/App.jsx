@@ -2774,49 +2774,7 @@ ${nombres}
         </div>
       )}
       {/* MODAL NUEVO PRESUPUESTO */}
-      {showNuevoPresupuesto&&(()=>{
-        const ITEM_INIT={prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0};
-        const guardando=formPresGuardando;
-        const setGuardando=setFormPresGuardando;
-        const paso=formPresPaso;
-        const setPaso=setFormPresPaso;
-
-
-
-        const itemsCalc=formPres.items.map(item=>{
-          const calc=calcPresupuestoItem(item);
-          const descExtra=parseFloat(item.descuentoExtra)||0;
-          const totalConDesc=Math.round(calc.total*(1-descExtra/100));
-          const prendaLabel=PRENDAS_PRECIOS.find(p=>p.key===item.prenda)?.label||item.prenda;
-          const techLabels=(item.ubicaciones||[]).filter(u=>u.tecnica).map(u=>{
-            const t=TECNICAS_LOGO.find(t=>t.key===u.tecnica);
-            return t?`${u.lugar}: ${t.label}`:"";
-          }).filter(Boolean).join(", ");
-          return{...item,calc,descExtra,totalConDesc,prendaLabel,techLabels};
-        });
-        const totalGeneral=itemsCalc.reduce((s,i)=>s+i.totalConDesc,0);
-
-        async function guardarPresupuesto(){
-          if(!formPres.cliente){showToast("Ingresá el nombre del cliente","#ef4444");return;}
-          if(formPres.items.some(i=>!i.prenda||!i.cantidad)){showToast("Completá todos los ítems","#ef4444");return;}
-          setGuardando(true);
-          const hoyStr=new Date().toISOString().slice(0,10);
-          const venceDate=new Date();venceDate.setDate(venceDate.getDate()+10);
-          const venceStr=venceDate.toISOString().slice(0,10);
-          const nuevoId=newPresupuestoId(presupuestos);
-          const nuevo={id:nuevoId,cliente:formPres.cliente,creado_por:usuario.rol==="admin"?"admin":usuario.nombre,creado:hoyStr,vence:venceStr,estado:"pendiente",items:itemsCalc.map(i=>({prenda:i.prendaLabel,cantidad:i.cantidad,ubicaciones:i.ubicaciones,precioUnit:i.calc.precioFinal,descuentoExtra:i.descExtra,subtotal:i.totalConDesc,techLabels:i.techLabels})),total:totalGeneral,notas:formPres.notas||""};
-          await dbInsert("presupuestos",nuevo);
-          const pres=await dbGet("presupuestos","order=creado.desc");
-          setPresupuestos(Array.isArray(pres)?pres:[]);
-          setFormPres({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});
-          setFormPresPaso(1);
-          setShowNuevoPresupuesto(false);
-          setPresupuestoActivo(nuevo);
-          showToast("Presupuesto "+nuevoId+" creado","#10b981");
-          setGuardando(false);
-        }
-
-        return(
+      {showNuevoPresupuesto&&(
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,overflowY:"auto"}}>
             <div style={{background:"#f5f0e8",margin:"20px auto",maxWidth:600,borderRadius:12,padding:20,minHeight:"80vh"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -2971,8 +2929,7 @@ ${nombres}
               </>)}
             </div>
           </div>
-        );
-      })()}
+      )}
     </div>
   );
 }
