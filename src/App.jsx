@@ -12,7 +12,7 @@ import {
   calcDistancia, normalizarVinculados, diasHasta, formatFecha,
   newId, calcTalles, calcTotal, calcTotalGral, pedidoProgreso, pedidoIniciado,
   calcTejidoRemera, isRemera, puedeVerPrecios, puedeVerTejido, puedeVerFinanciero,
-  enviarEmailPedido, ResumenPrecios, PrendaDetalle, PrendaForm, AlertasVencimiento
+ enviarEmailPedido, ResumenPrecios, PrendaDetalle, PrendaForm, AlertasVencimiento, tienePermiso
 } from "./utils.jsx";
 import { PedidoCard, GrupoColapsable } from "./components/PedidoCard.jsx";
 import { PantallaMarcado } from "./components/PantallaMarcado.jsx";
