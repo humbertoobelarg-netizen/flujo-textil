@@ -183,6 +183,27 @@ export default function App(){
   const [mesOffset,setMesOffset]=useState(0);
   const [vistaAsistencia,setVistaAsistencia]=useState("semana"); // semana | dia
 
+  function actualizarItem(idx,campo,valor){
+    const items=[...formPres.items];
+    items[idx]={...items[idx],[campo]:valor};
+    setFormPres(f=>({...f,items}));
+  }
+  function toggleUbicacion(itemIdx,ubLabel){
+    const items=[...formPres.items];
+    const ubs=[...(items[itemIdx].ubicaciones||[])];
+    const existe=ubs.findIndex(u=>u.lugar===ubLabel);
+    if(existe>=0) ubs.splice(existe,1);
+    else ubs.push({lugar:ubLabel,tecnica:""});
+    items[itemIdx]={...items[itemIdx],ubicaciones:ubs};
+    setFormPres(f=>({...f,items}));
+  }
+  function actualizarUbicacion(itemIdx,ubIdx,campo,valor){
+    const items=[...formPres.items];
+    const ubs=[...(items[itemIdx].ubicaciones||[])];
+    ubs[ubIdx]={...ubs[ubIdx],[campo]:valor};
+    items[itemIdx]={...items[itemIdx],ubicaciones:ubs};
+    setFormPres(f=>({...f,items}));
+  }
   useEffect(()=>{
     cargarDatos();
     // Detectar pantalla de marcado via hash
@@ -2760,27 +2781,7 @@ ${nombres}
         const paso=formPresPaso;
         const setPaso=setFormPresPaso;
 
-        function actualizarItem(idx,campo,valor){
-          const items=[...formPres.items];
-          items[idx]={...items[idx],[campo]:valor};
-          setFormPres(f=>({...f,items}));
-        }
-        function toggleUbicacion(itemIdx,ubLabel){
-          const items=[...formPres.items];
-          const ubs=[...(items[itemIdx].ubicaciones||[])];
-          const existe=ubs.findIndex(u=>u.lugar===ubLabel);
-          if(existe>=0) ubs.splice(existe,1);
-          else ubs.push({lugar:ubLabel,tecnica:""});
-          items[itemIdx]={...items[itemIdx],ubicaciones:ubs};
-          setFormPres(f=>({...f,items}));
-        }
-        function actualizarUbicacion(itemIdx,ubIdx,campo,valor){
-          const items=[...formPres.items];
-          const ubs=[...(items[itemIdx].ubicaciones||[])];
-          ubs[ubIdx]={...ubs[ubIdx],[campo]:valor};
-          items[itemIdx]={...items[itemIdx],ubicaciones:ubs};
-          setFormPres(f=>({...f,items}));
-        }
+
 
         const itemsCalc=formPres.items.map(item=>{
           const calc=calcPresupuestoItem(item);
