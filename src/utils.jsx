@@ -455,4 +455,24 @@ export {
   newId, calcTalles, calcTotal, calcTotalGral, pedidoProgreso, pedidoIniciado,
   calcTejidoRemera, isRemera, puedeVerPrecios, puedeVerTejido, puedeVerFinanciero,
   enviarEmailPedido, ResumenPrecios, PrendaDetalle, PrendaForm, AlertasVencimiento
+};// --- SISTEMA DE PERMISOS POR ROL ---
+export const tienePermiso = (usuario, accion) => {
+  if (!usuario) return false;
+  const rol = usuario.rol?.toLowerCase() || 'operario';
+  const nombre = usuario.nombre; 
+
+  // El Admin y Gabi siempre tienen acceso total
+  if (rol === 'admin' || nombre === 'Gabi' || nombre === 'humberto') return true;
+
+  const permisos = {
+    ver_finanzas: ['admin'], 
+    ver_precios: ['admin', 'gestion'],
+    crear_pedido: ['admin', 'gestion'],
+    editar_stock: ['admin', 'gestion'],
+    marcar_proceso: ['admin', 'gestion', 'operario'],
+    ver_equipo: ['admin']
+  };
+
+  return permisos[accion]?.includes(rol) || false;
 };
+
