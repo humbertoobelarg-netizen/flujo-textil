@@ -20,7 +20,7 @@ import { PantallaMarcado } from "./PantallaMarcado.jsx";
 import PanelAlertasIA from "./componente_alertas_ia.jsx";
 import DashboardFinanciero from "./componente_dashboard_financiero.jsx";
 import ModalAplicarDescuento from "./componente_aplicar_descuento.jsx";
-import ConsolidadorTejidos from "./ConsolidadorTejidos";
+import ConsolidadorTejidos from "./ConsolidadorTejidos.jsx";
 
 // ── PRECIOS BASE PRESUPUESTOS ──────────────────────────────────────────
 const PRENDAS_PRECIOS=[
@@ -191,7 +191,6 @@ export default function App(){
   const [busqueda,setBusqueda]=useState("");
   const [busquedaOp,setBusquedaOp]=useState("");
   const [showNuevoPedido,setShowNuevoPedido]=useState(false);
-  const [mostrarConsolidador, setMostrarConsolidador] = useState(false);
   const [showNuevoUser,setShowNuevoUser]=useState(false);
   const [showPagos,setShowPagos]=useState(null);
   const [nuevoPago,setNuevoPago]=useState({monto:"",tipo:"efectivo",fecha:hoy()});
