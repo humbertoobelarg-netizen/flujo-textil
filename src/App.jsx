@@ -2964,7 +2964,8 @@ ${nombres}
       )}
 
       {/* ── BOTÓN FLOTANTE CONSOLIDADOR ── */}
-      <div style={{position:'fixed', bottom:'20px', right:'20px', zIndex:99999}}>
+{pantalla==="admin" && adminTab==="pedidos" && (
+  <div style={{position:'fixed', bottom:'20px', right:'20px', zIndex:99999}}>
         <button
           type="button"
           onClick={()=>setMostrarConsolidador(true)}
@@ -2972,9 +2973,10 @@ ${nombres}
         >
           🧶 Consolidar Tejidos
         </button>
-      </div>
+  </div>
+)}
 
-      {/* ── MODAL CONSOLIDADOR ── */}
+{/* ── MODAL CONSOLIDADOR ── */}
       {mostrarConsolidador && (
         <ConsolidadorTejidos
           pedidos={pedidos}
