@@ -3104,3 +3104,23 @@ ${nombres}
 
       {/* ── BOTÓN FLOTANTE CONSOLIDADOR ── */}
       <div style={{position:'fixed', bottom:'20px', right:'20px', zIndex:99999}}>
+        <button
+          type="button"
+          onClick={() => setMostrarConsolidador(true)}
+          style={{background:'#4f46e5', color:'white', border:'none', padding:'12px 20px', borderRadius:'50px', fontWeight:'bold', cursor:'pointer', boxShadow:'0 4px 12px rgba(0,0,0,0.3)'}}
+        >
+          🧶 Consolidar Tejidos
+        </button>
+      </div>
+
+      {/* ── MODAL CONSOLIDADOR ── */}
+      {mostrarConsolidador && (
+        <ConsolidadorTejidos
+          pedidos={pedidos}
+          onClose={() => setMostrarConsolidador(false)}
+        />
+      )}
+
+    </div>
+  );
+}
