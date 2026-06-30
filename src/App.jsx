@@ -2866,7 +2866,7 @@ ${nombres}
                   );
                 })}
 
-                <button onClick={()=>setFormPres(f=>({...f,items:[...f.items,{...ITEM_INIT,id:newId()}]}))} style={{width:"100%",padding:"10px",background:"#f5f0e8",border:"1.5px dashed #c8bfaf",borderRadius:8,cursor:"pointer",fontSize:12,color:"#5a4a3a",marginBottom:12}}>+ AGREGAR OTRO TIPO DE PRENDA</button>
+                <button onClick={()=>setFormPres(f=>({...f,items:[...f.items,{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]}))} style={{width:"100%",padding:"10px",background:"#f5f0e8",border:"1.5px dashed #c8bfaf",borderRadius:8,cursor:"pointer",fontSize:12,color:"#5a4a3a",marginBottom:12}}>+ AGREGAR OTRO TIPO DE PRENDA</button>
 
                 <div style={{marginBottom:12}}>
                   <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>NOTAS (opcional)</label>
