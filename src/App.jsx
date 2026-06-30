@@ -22,6 +22,7 @@ import DashboardFinanciero from "./componente_dashboard_financiero.jsx";
 import ModalAplicarDescuento from "./componente_aplicar_descuento.jsx";
 import ConsolidadorTejidos from "./ConsolidadorTejidos.jsx";
 
+
 // ── PRECIOS BASE PRESUPUESTOS ──────────────────────────────────────────
 const PRENDAS_PRECIOS=[
   {key:"remera_redondo",label:"Remera cuello redondo",precio:30000},
@@ -54,20 +55,7 @@ const TECNICAS_LOGO=[
   {key:"bord_med",label:"Bordado mediano",precio:30000},
   {key:"bord_grd",label:"Bordado grande",precio:40000},
 ];
-// ── ESCALAS DE DESCUENTO SEPARADAS ──
-// Descuento SUAVE para PRENDAS (protege margen en prendas caras como canguros)
-const DESCUENTOS_PRENDA=[
-  {desde:10,hasta:19,pct:0},
-  {desde:20,hasta:29,pct:1},
-  {desde:30,hasta:49,pct:2},
-  {desde:50,hasta:99,pct:3},
-  {desde:100,hasta:299,pct:5},
-  {desde:300,hasta:499,pct:6},
-  {desde:500,hasta:749,pct:7},
-  {desde:750,hasta:10000,pct:8},
-];
-// Descuento FUERTE para IMPRESIONES/TÉCNICAS (donde el setup se amortiza con volumen)
-const DESCUENTOS_IMPRESION=[
+const DESCUENTOS_CANT=[
   {desde:10,hasta:19,pct:0},
   {desde:20,hasta:29,pct:6},
   {desde:30,hasta:49,pct:10},
@@ -75,10 +63,9 @@ const DESCUENTOS_IMPRESION=[
   {desde:100,hasta:299,pct:16},
   {desde:300,hasta:499,pct:19},
   {desde:500,hasta:749,pct:22},
-  {desde:750,hasta:10000,pct:24},
+  {desde:750,hasta:1000,pct:24},
 ];
-function getDescuentoPrenda(cant){const d=DESCUENTOS_PRENDA.find(d=>cant>=d.desde&&cant<=d.hasta);return d?d.pct:0;}
-function getDescuentoImpresion(cant){const d=DESCUENTOS_IMPRESION.find(d=>cant>=d.desde&&cant<=d.hasta);return d?d.pct:0;}
+function getDescuento(cant){const d=DESCUENTOS_CANT.find(d=>cant>=d.desde&&cant<=d.hasta);return d?d.pct:0;}
 function getDescuentoLugares(nLugares){
   if(nLugares<=1)return 0;
   if(nLugares===2)return 20;
@@ -88,58 +75,27 @@ function getDescuentoLugares(nLugares){
 }
 function calcPresupuestoItem(item){
   const prenda=PRENDAS_PRECIOS.find(p=>p.key===item.prenda);
-  if(!prenda)return{precioBase:0,descPrendaPct:0,descPrendaMonto:0,descImpresionPct:0,descImpresionMonto:0,descLugaresPct:0,descLugaresMonto:0,precioFinal:0,total:0};
-  
-  const cant=item.cantidad||0;
+  if(!prenda)return{precioBase:0,descPct:0,descMonto:0,descLugaresPct:0,descLugaresMonto:0,precioFinal:0,total:0};
   const precioPrenda=prenda.precio;
-  
-  // ── 1. PRENDA: aplicar descuento SUAVE por cantidad ──
-  const descPrendaPct=getDescuentoPrenda(cant);
-  const descPrendaMonto=Math.round(precioPrenda*descPrendaPct/100);
-  const precioPrendaFinal=precioPrenda-descPrendaMonto;
-  
-  // ── 2. IMPRESIONES: costo base de técnicas ──
   const ubicacionesConTec=(item.ubicaciones||[]).filter(u=>u.tecnica&&u.tecnica!=="sublimacion");
   const esSublimacion=(item.ubicaciones||[]).some(u=>u.tecnica==="sublimacion");
   const tecTotal=ubicacionesConTec.reduce((s,u)=>{
     const tec=TECNICAS_LOGO.find(t=>t.key===u.tecnica);
     return s+(tec?tec.precio:0);
   },0);
+  const precioPrendaFinal=precioPrenda;
   const sublTotal=esSublimacion?(TECNICAS_LOGO.find(t=>t.key==="sublimacion")?.precio||0):0;
-  const costoImpresionBase=tecTotal+sublTotal;
-  
-  // ── 3. IMPRESIONES: descuento por múltiples lugares ──
+  // Precio base sin descuentos (prenda + técnicas con descuento de lugares)
   const nLugares=ubicacionesConTec.length+(esSublimacion?1:0);
   const descLugaresPct=getDescuentoLugares(nLugares);
-  const descLugaresMonto=Math.round(costoImpresionBase*descLugaresPct/100);
-  const impresionConLugares=costoImpresionBase-descLugaresMonto;
-  
-  // ── 4. IMPRESIONES: descuento FUERTE por cantidad ──
-  const descImpresionPct=getDescuentoImpresion(cant);
-  const descImpresionMonto=Math.round(impresionConLugares*descImpresionPct/100);
-  const impresionFinal=impresionConLugares-descImpresionMonto;
-  
-  // ── 5. TOTALES ──
-  const precioBase=precioPrenda+costoImpresionBase;
-  const precioFinal=precioPrendaFinal+impresionFinal;
-  const total=Math.round(precioFinal*cant);
-  
-  return{
-    precioBase,
-    precioPrenda,
-    costoImpresionBase,
-    descPrendaPct,
-    descPrendaMonto,
-    precioPrendaFinal,
-    descLugaresPct,
-    descLugaresMonto,
-    descImpresionPct,
-    descImpresionMonto,
-    impresionFinal,
-    nLugares,
-    precioFinal,
-    total
-  };
+  const tecConLugares=Math.round((tecTotal+sublTotal)*(1-descLugaresPct/100));
+  const precioBase=precioPrendaFinal+tecTotal+sublTotal;
+  const precioBaseConLugares=precioPrendaFinal+tecConLugares;
+  // Descuento por cantidad sobre el total (prenda + técnica con desc lugares)
+  const descPct=getDescuento(item.cantidad||0);
+  const descMonto=Math.round(precioBaseConLugares*descPct/100);
+  const precioFinal=precioBaseConLugares-descMonto;
+  return{precioBase,descPct,descMonto,descLugaresPct,descLugaresMonto:Math.round((tecTotal+sublTotal)*descLugaresPct/100),nLugares,precioFinal,total:Math.round(precioFinal*(item.cantidad||0))};
 }
 const FIRMAS_PRESUPUESTO={
   "admin":"Humberto Obelar",
@@ -178,7 +134,7 @@ export default function App(){
   const [paginaEntregados,setPaginaEntregados]=useState(1);
   const ITEMS_POR_PAGINA=30;
   const [pedidos,setPedidos]=useState([]);
-  const [mostrarConsolidador, setMostrarConsolidador] = useState(false);
+  const [mostrarConsolidador,setMostrarConsolidador]=useState(false);
   const [usuarios,setUsuarios]=useState([]);
   const [usuario,setUsuario]=useState(null);
   const [pantalla,setPantalla]=useState("login");
@@ -297,58 +253,6 @@ export default function App(){
   }
 
   function showToast(msg,color="#10b981"){setToast({msg,color});setTimeout(()=>setToast(null),2500);}
-
-  async function guardarPresupuesto(){
-    const itemsValidos=formPres.items.filter(i=>i.prenda);
-    if(!formPres.cliente.trim()){showToast("Ingresá el nombre del cliente","#ef4444");setFormPresPaso(1);return;}
-    if(itemsValidos.length===0){showToast("Agregá al menos una prenda","#ef4444");setFormPresPaso(1);return;}
-    setFormPresGuardando(true);
-    try{
-      const items=itemsValidos.map(item=>{
-        const calc=calcPresupuestoItem(item);
-        const descExtra=parseFloat(item.descuentoExtra)||0;
-        const precioUnit=Math.round(calc.precioFinal*(1-descExtra/100));
-        const prendaInfo=PRENDAS_PRECIOS.find(p=>p.key===item.prenda);
-        return{
-          cantidad:item.cantidad||0,
-          prenda:prendaInfo?prendaInfo.label:item.prenda,
-          ubicaciones:item.ubicaciones||[],
-          precioUnit,
-          subtotal:precioUnit*(item.cantidad||0),
-        };
-      });
-      const total=items.reduce((s,i)=>s+i.subtotal,0);
-      const creado=hoy();
-      const nuevo={
-        id:newPresupuestoId(presupuestos),
-        cliente:formPres.cliente,
-        creado,
-        vence:addDias(creado,10),
-        items,
-        total,
-        notas:formPres.notas||"",
-        creado_por:usuario?.nombre||"admin",
-        estado:"pendiente",
-      };
-      const res=await dbInsert("presupuestos",nuevo);
-      // Verificar si hubo error (Supabase retorna objeto con 'code' y 'message' en caso de error)
-      if(res&&res.code){
-        throw new Error(res.message||"Error al guardar en la base de datos");
-      }
-      // Recargar desde la DB para confirmar que se guardó
-      const pres=await dbGet("presupuestos","order=creado.desc");
-      setPresupuestos(Array.isArray(pres)?pres:[]);
-      setShowNuevoPresupuesto(false);
-      setFormPresPaso(1);
-      setFormPres({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});
-      showToast("✓ Presupuesto guardado","#10b981");
-    }catch(e){
-      console.error("Error al guardar presupuesto:",e);
-      showToast("Error al guardar: "+(e?.message||e),"#ef4444");
-    }finally{
-      setFormPresGuardando(false);
-    }
-  }
 
   async function handleLogin(){
     const u=usuarios.find(u=>u.pin===pinInput);
@@ -2950,63 +2854,21 @@ ${nombres}
                           </div>
                         </div>
                       ))}
-                      {item.prenda&&parseInt(item.cantidad)>0&&<div style={{marginTop:10,padding:"12px",background:"#1a1208",borderRadius:6,color:"#f5f0e8"}}>
-                        <div style={{fontSize:10,color:"#e85d26",fontWeight:700,letterSpacing:1,marginBottom:8}}>📊 DESGLOSE</div>
-                        {/* PRENDA */}
-                        <div style={{marginBottom:8}}>
-                          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#b0a898"}}>
-                            <span>🏷️ Prenda base</span>
-                            <span>Gs. {calc.precioPrenda.toLocaleString("es-AR")}</span>
-                          </div>
-                          {calc.descPrendaPct>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#10b981",marginTop:2}}>
-                            <span>  − Desc. cantidad ({calc.descPrendaPct}%)</span>
-                            <span>− Gs. {calc.descPrendaMonto.toLocaleString("es-AR")}</span>
-                          </div>}
-                          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:600,marginTop:3}}>
-                            <span>Prenda final</span>
-                            <span>Gs. {calc.precioPrendaFinal.toLocaleString("es-AR")}</span>
-                          </div>
+                      {item.prenda&&parseInt(item.cantidad)>0&&<div style={{marginTop:10,padding:"10px 12px",background:"#1a1208",borderRadius:6,color:"#f5f0e8"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                          <span style={{fontSize:11,color:"#b0a898"}}>Precio unitario</span>
+                          <span style={{fontSize:13,fontWeight:700}}>{"$"}{calc.precioFinal.toLocaleString("es-AR")}</span>
                         </div>
-                        {/* IMPRESIÓN */}
-                        {calc.costoImpresionBase>0&&<div style={{marginBottom:8,paddingTop:8,borderTop:"1px solid #3a2a18"}}>
-                          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#b0a898"}}>
-                            <span>🖨️ Impresión base</span>
-                            <span>Gs. {calc.costoImpresionBase.toLocaleString("es-AR")}</span>
-                          </div>
-                          {calc.descLugaresPct>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#10b981",marginTop:2}}>
-                            <span>  − Desc. lugares ({calc.descLugaresPct}%)</span>
-                            <span>− Gs. {calc.descLugaresMonto.toLocaleString("es-AR")}</span>
-                          </div>}
-                          {calc.descImpresionPct>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#10b981",marginTop:2}}>
-                            <span>  − Desc. cantidad ({calc.descImpresionPct}%)</span>
-                            <span>− Gs. {calc.descImpresionMonto.toLocaleString("es-AR")}</span>
-                          </div>}
-                          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:600,marginTop:3}}>
-                            <span>Impresión final</span>
-                            <span>Gs. {calc.impresionFinal.toLocaleString("es-AR")}</span>
-                          </div>
-                        </div>}
-                        {/* TOTAL */}
-                        <div style={{borderTop:"1px solid #3a2a18",paddingTop:8}}>
-                          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#b0a898",marginBottom:4}}>
-                            <span>Precio unitario</span>
-                            <span style={{fontWeight:700,color:"#f5f0e8"}}>Gs. {calc.precioFinal.toLocaleString("es-AR")}</span>
-                          </div>
-                          {descExtra>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#f59e0b",marginBottom:4}}>
-                            <span>⚡ Descuento extra ({descExtra}%)</span>
-                            <span>− Gs. {Math.round(calc.total*descExtra/100).toLocaleString("es-AR")}</span>
-                          </div>}
-                          <div style={{display:"flex",justifyContent:"space-between",paddingTop:6}}>
-                            <span style={{fontSize:11,color:"#b0a898"}}>Total ({item.cantidad} uds)</span>
-                            <span style={{fontSize:15,fontWeight:800,color:"#e85d26"}}>Gs. {totalConDesc.toLocaleString("es-AR")}</span>
-                          </div>
+                        <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #3a2a18",paddingTop:6}}>
+                          <span style={{fontSize:11,color:"#b0a898"}}>Total ({item.cantidad} uds)</span>
+                          <span style={{fontSize:15,fontWeight:800,color:"#e85d26"}}>{"$"}{totalConDesc.toLocaleString("es-AR")}</span>
                         </div>
                       </div>}
                     </div>
                   );
                 })}
 
-                <button onClick={()=>setFormPres(f=>({...f,items:[...f.items,{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]}))} style={{width:"100%",padding:"10px",background:"#f5f0e8",border:"1.5px dashed #c8bfaf",borderRadius:8,cursor:"pointer",fontSize:12,color:"#5a4a3a",marginBottom:12}}>+ AGREGAR OTRO TIPO DE PRENDA</button>
+                <button onClick={()=>setFormPres(f=>({...f,items:[...f.items,{...ITEM_INIT,id:newId()}]}))} style={{width:"100%",padding:"10px",background:"#f5f0e8",border:"1.5px dashed #c8bfaf",borderRadius:8,cursor:"pointer",fontSize:12,color:"#5a4a3a",marginBottom:12}}>+ AGREGAR OTRO TIPO DE PRENDA</button>
 
                 <div style={{marginBottom:12}}>
                   <label style={{fontSize:10,letterSpacing:1,color:"#8a7a6a",display:"block",marginBottom:4}}>NOTAS (opcional)</label>
@@ -3037,7 +2899,7 @@ ${nombres}
                     <div style={{fontSize:11,color:"#8a7a6a"}}>Fecha: {new Date().toLocaleDateString("es-PY")}</div>
                     <div style={{fontSize:11,color:"#ef4444"}}>Válido por 10 días</div>
                   </div>
-                  {formPres.items.filter(item=>item.prenda).map((item,i)=>{
+                  {formPres.items.map((item,i)=>{
                     const calc=calcPresupuestoItem(item);
                     const descExtra=parseFloat(item.descuentoExtra)||0;
                     const precioFinalConDesc=Math.round(calc.precioFinal*(1-descExtra/100));
@@ -3058,15 +2920,15 @@ ${nombres}
                       <div key={i} style={{borderBottom:"1px solid #f0ece4",padding:"10px 0"}}>
                         <div style={{fontSize:12}}>{descripcion}</div>
                         <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-                          <span style={{fontSize:11,color:"#8a7a6a"}}>Gs. {precioFinalConDesc.toLocaleString("es-AR")} c/u · IVA incluido</span>
-                          <span style={{fontSize:13,fontWeight:700,color:"#1a1208"}}>Gs. {totalItem.toLocaleString("es-AR")}</span>
+                          <span style={{fontSize:11,color:"#8a7a6a"}}>{"$"}{precioFinalConDesc.toLocaleString("es-AR")} c/u · IVA incluido</span>
+                          <span style={{fontSize:13,fontWeight:700,color:"#1a1208"}}>{"$"}{totalItem.toLocaleString("es-AR")}</span>
                         </div>
                       </div>
                     );
                   })}
                   <div style={{borderTop:"2px solid #1a1208",marginTop:12,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:14,fontWeight:700}}>TOTAL</span>
-                    <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"Gs. "}{formPres.items.filter(i=>i.prenda).reduce((s,i)=>{const c=calcPresupuestoItem(i);const d=parseFloat(i.descuentoExtra)||0;return s+Math.round(c.precioFinal*(1-d/100))*(i.cantidad||0);},0).toLocaleString("es-AR")}</span>
+                    <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"Gs. "}{formPres.items.reduce((s,i)=>{const c=calcPresupuestoItem(i);const d=parseFloat(i.descuentoExtra)||0;return s+Math.round(c.precioFinal*(1-d/100))*(i.cantidad||0);},0).toLocaleString("es-AR")}</span>
                   </div>
                   {formPres.notas&&<div style={{marginTop:12,fontSize:11,color:"#8a7a6a",fontStyle:"italic"}}>{formPres.notas}</div>}
                   <div style={{marginTop:16,textAlign:"right",fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8}}>
@@ -3077,7 +2939,7 @@ ${nombres}
 
                 <div style={{display:"flex",gap:8}}>
                   <button onClick={()=>setFormPresPaso(1)} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,cursor:"pointer",fontSize:12}}>← EDITAR</button>
-                  <button onClick={guardarPresupuesto} disabled={formPresGuardando} style={{flex:2,padding:"10px",background:"#1a1208",border:"none",borderRadius:6,cursor:formPresGuardando?"not-allowed":"pointer",fontSize:12,color:"#fff",fontWeight:700,letterSpacing:1,opacity:formPresGuardando?0.6:1}}>{formPresGuardando?"GUARDANDO...":"✓ CONFIRMAR Y GUARDAR"}</button>
+                  <button onClick={guardarPresupuesto} disabled={guardando} style={{flex:2,padding:"10px",background:"#1a1208",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,color:"#fff",fontWeight:700,letterSpacing:1}}>{guardando?"GUARDANDO...":"✓ CONFIRMAR Y GUARDAR"}</button>
                 </div>
               </>)}
             </div>
@@ -3099,14 +2961,14 @@ ${nombres}
             }catch(e){alert("No se pudo guardar el descuento: "+(e?.message||e));}
           }}
         />
-)}
+      )}
 
       {/* ── BOTÓN FLOTANTE CONSOLIDADOR ── */}
       <div style={{position:'fixed', bottom:'20px', right:'20px', zIndex:99999}}>
         <button
           type="button"
-          onClick={() => setMostrarConsolidador(true)}
-          style={{background:'#4f46e5', color:'white', border:'none', padding:'12px 20px', borderRadius:'50px', fontWeight:'bold', cursor:'pointer', boxShadow:'0 4px 12px rgba(0,0,0,0.3)'}}
+          onClick={()=>setMostrarConsolidador(true)}
+          style={{background:'#e85d26', color:'white', border:'none', padding:'12px 20px', borderRadius:'50px', fontWeight:'bold', cursor:'pointer', boxShadow:'0 4px 12px rgba(0,0,0,0.3)'}}
         >
           🧶 Consolidar Tejidos
         </button>
@@ -3116,10 +2978,9 @@ ${nombres}
       {mostrarConsolidador && (
         <ConsolidadorTejidos
           pedidos={pedidos}
-          onClose={() => setMostrarConsolidador(false)}
+          onClose={()=>setMostrarConsolidador(false)}
         />
       )}
-
     </div>
   );
 }
