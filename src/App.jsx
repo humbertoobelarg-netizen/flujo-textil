@@ -54,7 +54,20 @@ const TECNICAS_LOGO=[
   {key:"bord_med",label:"Bordado mediano",precio:30000},
   {key:"bord_grd",label:"Bordado grande",precio:40000},
 ];
-const DESCUENTOS_CANT=[
+// ── ESCALAS DE DESCUENTO SEPARADAS ──
+// Descuento SUAVE para PRENDAS (protege margen en prendas caras como canguros)
+const DESCUENTOS_PRENDA=[
+  {desde:10,hasta:19,pct:0},
+  {desde:20,hasta:29,pct:1},
+  {desde:30,hasta:49,pct:2},
+  {desde:50,hasta:99,pct:3},
+  {desde:100,hasta:299,pct:5},
+  {desde:300,hasta:499,pct:6},
+  {desde:500,hasta:749,pct:7},
+  {desde:750,hasta:10000,pct:8},
+];
+// Descuento FUERTE para IMPRESIONES/TÉCNICAS (donde el setup se amortiza con volumen)
+const DESCUENTOS_IMPRESION=[
   {desde:10,hasta:19,pct:0},
   {desde:20,hasta:29,pct:6},
   {desde:30,hasta:49,pct:10},
@@ -62,9 +75,10 @@ const DESCUENTOS_CANT=[
   {desde:100,hasta:299,pct:16},
   {desde:300,hasta:499,pct:19},
   {desde:500,hasta:749,pct:22},
-  {desde:750,hasta:1000,pct:24},
+  {desde:750,hasta:10000,pct:24},
 ];
-function getDescuento(cant){const d=DESCUENTOS_CANT.find(d=>cant>=d.desde&&cant<=d.hasta);return d?d.pct:0;}
+function getDescuentoPrenda(cant){const d=DESCUENTOS_PRENDA.find(d=>cant>=d.desde&&cant<=d.hasta);return d?d.pct:0;}
+function getDescuentoImpresion(cant){const d=DESCUENTOS_IMPRESION.find(d=>cant>=d.desde&&cant<=d.hasta);return d?d.pct:0;}
 function getDescuentoLugares(nLugares){
   if(nLugares<=1)return 0;
   if(nLugares===2)return 20;
@@ -74,27 +88,58 @@ function getDescuentoLugares(nLugares){
 }
 function calcPresupuestoItem(item){
   const prenda=PRENDAS_PRECIOS.find(p=>p.key===item.prenda);
-  if(!prenda)return{precioBase:0,descPct:0,descMonto:0,descLugaresPct:0,descLugaresMonto:0,precioFinal:0,total:0};
+  if(!prenda)return{precioBase:0,descPrendaPct:0,descPrendaMonto:0,descImpresionPct:0,descImpresionMonto:0,descLugaresPct:0,descLugaresMonto:0,precioFinal:0,total:0};
+  
+  const cant=item.cantidad||0;
   const precioPrenda=prenda.precio;
+  
+  // ── 1. PRENDA: aplicar descuento SUAVE por cantidad ──
+  const descPrendaPct=getDescuentoPrenda(cant);
+  const descPrendaMonto=Math.round(precioPrenda*descPrendaPct/100);
+  const precioPrendaFinal=precioPrenda-descPrendaMonto;
+  
+  // ── 2. IMPRESIONES: costo base de técnicas ──
   const ubicacionesConTec=(item.ubicaciones||[]).filter(u=>u.tecnica&&u.tecnica!=="sublimacion");
   const esSublimacion=(item.ubicaciones||[]).some(u=>u.tecnica==="sublimacion");
   const tecTotal=ubicacionesConTec.reduce((s,u)=>{
     const tec=TECNICAS_LOGO.find(t=>t.key===u.tecnica);
     return s+(tec?tec.precio:0);
   },0);
-  const precioPrendaFinal=precioPrenda;
   const sublTotal=esSublimacion?(TECNICAS_LOGO.find(t=>t.key==="sublimacion")?.precio||0):0;
-  // Precio base sin descuentos (prenda + técnicas con descuento de lugares)
+  const costoImpresionBase=tecTotal+sublTotal;
+  
+  // ── 3. IMPRESIONES: descuento por múltiples lugares ──
   const nLugares=ubicacionesConTec.length+(esSublimacion?1:0);
   const descLugaresPct=getDescuentoLugares(nLugares);
-  const tecConLugares=Math.round((tecTotal+sublTotal)*(1-descLugaresPct/100));
-  const precioBase=precioPrendaFinal+tecTotal+sublTotal;
-  const precioBaseConLugares=precioPrendaFinal+tecConLugares;
-  // Descuento por cantidad sobre el total (prenda + técnica con desc lugares)
-  const descPct=getDescuento(item.cantidad||0);
-  const descMonto=Math.round(precioBaseConLugares*descPct/100);
-  const precioFinal=precioBaseConLugares-descMonto;
-  return{precioBase,descPct,descMonto,descLugaresPct,descLugaresMonto:Math.round((tecTotal+sublTotal)*descLugaresPct/100),nLugares,precioFinal,total:Math.round(precioFinal*(item.cantidad||0))};
+  const descLugaresMonto=Math.round(costoImpresionBase*descLugaresPct/100);
+  const impresionConLugares=costoImpresionBase-descLugaresMonto;
+  
+  // ── 4. IMPRESIONES: descuento FUERTE por cantidad ──
+  const descImpresionPct=getDescuentoImpresion(cant);
+  const descImpresionMonto=Math.round(impresionConLugares*descImpresionPct/100);
+  const impresionFinal=impresionConLugares-descImpresionMonto;
+  
+  // ── 5. TOTALES ──
+  const precioBase=precioPrenda+costoImpresionBase;
+  const precioFinal=precioPrendaFinal+impresionFinal;
+  const total=Math.round(precioFinal*cant);
+  
+  return{
+    precioBase,
+    precioPrenda,
+    costoImpresionBase,
+    descPrendaPct,
+    descPrendaMonto,
+    precioPrendaFinal,
+    descLugaresPct,
+    descLugaresMonto,
+    descImpresionPct,
+    descImpresionMonto,
+    impresionFinal,
+    nLugares,
+    precioFinal,
+    total
+  };
 }
 const FIRMAS_PRESUPUESTO={
   "admin":"Humberto Obelar",
@@ -2852,14 +2897,56 @@ ${nombres}
                           </div>
                         </div>
                       ))}
-                      {item.prenda&&parseInt(item.cantidad)>0&&<div style={{marginTop:10,padding:"10px 12px",background:"#1a1208",borderRadius:6,color:"#f5f0e8"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                          <span style={{fontSize:11,color:"#b0a898"}}>Precio unitario</span>
-                          <span style={{fontSize:13,fontWeight:700}}>{"$"}{calc.precioFinal.toLocaleString("es-AR")}</span>
+                      {item.prenda&&parseInt(item.cantidad)>0&&<div style={{marginTop:10,padding:"12px",background:"#1a1208",borderRadius:6,color:"#f5f0e8"}}>
+                        <div style={{fontSize:10,color:"#e85d26",fontWeight:700,letterSpacing:1,marginBottom:8}}>📊 DESGLOSE</div>
+                        {/* PRENDA */}
+                        <div style={{marginBottom:8}}>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#b0a898"}}>
+                            <span>🏷️ Prenda base</span>
+                            <span>Gs. {calc.precioPrenda.toLocaleString("es-AR")}</span>
+                          </div>
+                          {calc.descPrendaPct>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#10b981",marginTop:2}}>
+                            <span>  − Desc. cantidad ({calc.descPrendaPct}%)</span>
+                            <span>− Gs. {calc.descPrendaMonto.toLocaleString("es-AR")}</span>
+                          </div>}
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:600,marginTop:3}}>
+                            <span>Prenda final</span>
+                            <span>Gs. {calc.precioPrendaFinal.toLocaleString("es-AR")}</span>
+                          </div>
                         </div>
-                        <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #3a2a18",paddingTop:6}}>
-                          <span style={{fontSize:11,color:"#b0a898"}}>Total ({item.cantidad} uds)</span>
-                          <span style={{fontSize:15,fontWeight:800,color:"#e85d26"}}>{"$"}{totalConDesc.toLocaleString("es-AR")}</span>
+                        {/* IMPRESIÓN */}
+                        {calc.costoImpresionBase>0&&<div style={{marginBottom:8,paddingTop:8,borderTop:"1px solid #3a2a18"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#b0a898"}}>
+                            <span>🖨️ Impresión base</span>
+                            <span>Gs. {calc.costoImpresionBase.toLocaleString("es-AR")}</span>
+                          </div>
+                          {calc.descLugaresPct>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#10b981",marginTop:2}}>
+                            <span>  − Desc. lugares ({calc.descLugaresPct}%)</span>
+                            <span>− Gs. {calc.descLugaresMonto.toLocaleString("es-AR")}</span>
+                          </div>}
+                          {calc.descImpresionPct>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#10b981",marginTop:2}}>
+                            <span>  − Desc. cantidad ({calc.descImpresionPct}%)</span>
+                            <span>− Gs. {calc.descImpresionMonto.toLocaleString("es-AR")}</span>
+                          </div>}
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:600,marginTop:3}}>
+                            <span>Impresión final</span>
+                            <span>Gs. {calc.impresionFinal.toLocaleString("es-AR")}</span>
+                          </div>
+                        </div>}
+                        {/* TOTAL */}
+                        <div style={{borderTop:"1px solid #3a2a18",paddingTop:8}}>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#b0a898",marginBottom:4}}>
+                            <span>Precio unitario</span>
+                            <span style={{fontWeight:700,color:"#f5f0e8"}}>Gs. {calc.precioFinal.toLocaleString("es-AR")}</span>
+                          </div>
+                          {descExtra>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#f59e0b",marginBottom:4}}>
+                            <span>⚡ Descuento extra ({descExtra}%)</span>
+                            <span>− Gs. {Math.round(calc.total*descExtra/100).toLocaleString("es-AR")}</span>
+                          </div>}
+                          <div style={{display:"flex",justifyContent:"space-between",paddingTop:6}}>
+                            <span style={{fontSize:11,color:"#b0a898"}}>Total ({item.cantidad} uds)</span>
+                            <span style={{fontSize:15,fontWeight:800,color:"#e85d26"}}>Gs. {totalConDesc.toLocaleString("es-AR")}</span>
+                          </div>
                         </div>
                       </div>}
                     </div>
