@@ -329,9 +329,7 @@ export default function App(){
         creado_por:usuario?.nombre||"admin",
         estado:"pendiente",
       };
-      console.log("Guardando presupuesto:",nuevo);
       const res=await dbInsert("presupuestos",nuevo);
-      console.log("Respuesta de dbInsert:",res);
       // Verificar si hubo error (Supabase retorna objeto con 'code' y 'message' en caso de error)
       if(res&&res.code){
         throw new Error(res.message||"Error al guardar en la base de datos");
