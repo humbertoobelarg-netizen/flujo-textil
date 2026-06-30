@@ -20,7 +20,7 @@ import { PantallaMarcado } from "./PantallaMarcado.jsx";
 import PanelAlertasIA from "./componente_alertas_ia.jsx";
 import DashboardFinanciero from "./componente_dashboard_financiero.jsx";
 import ModalAplicarDescuento from "./componente_aplicar_descuento.jsx";
-
+import ConsolidadorTejidos from "./ConsolidadorTejidos";
 
 // ── PRECIOS BASE PRESUPUESTOS ──────────────────────────────────────────
 const PRENDAS_PRECIOS=[
@@ -178,6 +178,7 @@ export default function App(){
   const [paginaEntregados,setPaginaEntregados]=useState(1);
   const ITEMS_POR_PAGINA=30;
   const [pedidos,setPedidos]=useState([]);
+  const [mostrarConsolidador, setMostrarConsolidador] = useState(false);
   const [usuarios,setUsuarios]=useState([]);
   const [usuario,setUsuario]=useState(null);
   const [pantalla,setPantalla]=useState("login");
@@ -190,6 +191,7 @@ export default function App(){
   const [busqueda,setBusqueda]=useState("");
   const [busquedaOp,setBusquedaOp]=useState("");
   const [showNuevoPedido,setShowNuevoPedido]=useState(false);
+  const [mostrarConsolidador, setMostrarConsolidador] = useState(false);
   const [showNuevoUser,setShowNuevoUser]=useState(false);
   const [showPagos,setShowPagos]=useState(null);
   const [nuevoPago,setNuevoPago]=useState({monto:"",tipo:"efectivo",fecha:hoy()});
@@ -3098,7 +3100,7 @@ ${nombres}
             }catch(e){alert("No se pudo guardar el descuento: "+(e?.message||e));}
           }}
         />
-      )}
-    </div>
-  );
-}
+)}
+
+      {/* ── BOTÓN FLOTANTE CONSOLIDADOR ── */}
+      <div style={{position:'fixed', bottom:'20px', right:'20px', zIndex:99999}}>
