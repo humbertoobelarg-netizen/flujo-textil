@@ -329,14 +329,22 @@ export default function App(){
         creado_por:usuario?.nombre||"admin",
         estado:"pendiente",
       };
+      console.log("Guardando presupuesto:",nuevo);
       const res=await dbInsert("presupuestos",nuevo);
-      const guardado=Array.isArray(res)&&res[0]?res[0]:nuevo;
-      setPresupuestos(prev=>[guardado,...prev]);
+      console.log("Respuesta de dbInsert:",res);
+      // Verificar si hubo error (Supabase retorna objeto con 'code' y 'message' en caso de error)
+      if(res&&res.code){
+        throw new Error(res.message||"Error al guardar en la base de datos");
+      }
+      // Recargar desde la DB para confirmar que se guardó
+      const pres=await dbGet("presupuestos","order=creado.desc");
+      setPresupuestos(Array.isArray(pres)?pres:[]);
       setShowNuevoPresupuesto(false);
       setFormPresPaso(1);
       setFormPres({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});
       showToast("✓ Presupuesto guardado","#10b981");
     }catch(e){
+      console.error("Error al guardar presupuesto:",e);
       showToast("Error al guardar: "+(e?.message||e),"#ef4444");
     }finally{
       setFormPresGuardando(false);
