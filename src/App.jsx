@@ -297,6 +297,52 @@ export default function App(){
 
   function showToast(msg,color="#10b981"){setToast({msg,color});setTimeout(()=>setToast(null),2500);}
 
+  async function guardarPresupuesto(){
+    const itemsValidos=formPres.items.filter(i=>i.prenda);
+    if(!formPres.cliente.trim()){showToast("Ingresá el nombre del cliente","#ef4444");setFormPresPaso(1);return;}
+    if(itemsValidos.length===0){showToast("Agregá al menos una prenda","#ef4444");setFormPresPaso(1);return;}
+    setFormPresGuardando(true);
+    try{
+      const items=itemsValidos.map(item=>{
+        const calc=calcPresupuestoItem(item);
+        const descExtra=parseFloat(item.descuentoExtra)||0;
+        const precioUnit=Math.round(calc.precioFinal*(1-descExtra/100));
+        const prendaInfo=PRENDAS_PRECIOS.find(p=>p.key===item.prenda);
+        return{
+          cantidad:item.cantidad||0,
+          prenda:prendaInfo?prendaInfo.label:item.prenda,
+          ubicaciones:item.ubicaciones||[],
+          precioUnit,
+          subtotal:precioUnit*(item.cantidad||0),
+        };
+      });
+      const total=items.reduce((s,i)=>s+i.subtotal,0);
+      const creado=hoy();
+      const nuevo={
+        id:newPresupuestoId(presupuestos),
+        cliente:formPres.cliente,
+        creado,
+        vence:addDias(creado,10),
+        items,
+        total,
+        notas:formPres.notas||"",
+        creado_por:usuario?.nombre||"admin",
+        estado:"pendiente",
+      };
+      const res=await dbInsert("presupuestos",nuevo);
+      const guardado=Array.isArray(res)&&res[0]?res[0]:nuevo;
+      setPresupuestos(prev=>[guardado,...prev]);
+      setShowNuevoPresupuesto(false);
+      setFormPresPaso(1);
+      setFormPres({cliente:"",notas:"",items:[{prenda:"",cantidad:10,ubicaciones:[],descuentoExtra:0}]});
+      showToast("✓ Presupuesto guardado","#10b981");
+    }catch(e){
+      showToast("Error al guardar: "+(e?.message||e),"#ef4444");
+    }finally{
+      setFormPresGuardando(false);
+    }
+  }
+
   async function handleLogin(){
     const u=usuarios.find(u=>u.pin===pinInput);
     if(!u){setPinError("PIN incorrecto");setPinInput("");return;}
@@ -3024,7 +3070,7 @@ ${nombres}
 
                 <div style={{display:"flex",gap:8}}>
                   <button onClick={()=>setFormPresPaso(1)} style={{flex:1,padding:"10px",background:"#f5f0e8",border:"1.5px solid #c8bfaf",borderRadius:6,cursor:"pointer",fontSize:12}}>← EDITAR</button>
-                  <button onClick={guardarPresupuesto} disabled={guardando} style={{flex:2,padding:"10px",background:"#1a1208",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,color:"#fff",fontWeight:700,letterSpacing:1}}>{guardando?"GUARDANDO...":"✓ CONFIRMAR Y GUARDAR"}</button>
+                  <button onClick={guardarPresupuesto} disabled={formPresGuardando} style={{flex:2,padding:"10px",background:"#1a1208",border:"none",borderRadius:6,cursor:formPresGuardando?"not-allowed":"pointer",fontSize:12,color:"#fff",fontWeight:700,letterSpacing:1,opacity:formPresGuardando?0.6:1}}>{formPresGuardando?"GUARDANDO...":"✓ CONFIRMAR Y GUARDAR"}</button>
                 </div>
               </>)}
             </div>
