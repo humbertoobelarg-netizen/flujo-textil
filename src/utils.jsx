@@ -455,24 +455,44 @@ export {
   newId, calcTalles, calcTotal, calcTotalGral, pedidoProgreso, pedidoIniciado,
   calcTejidoRemera, isRemera, puedeVerPrecios, puedeVerTejido, puedeVerFinanciero,
   enviarEmailPedido, ResumenPrecios, PrendaDetalle, PrendaForm, AlertasVencimiento
-};// --- SISTEMA DE PERMISOS POR ROL ---
-export const tienePermiso = (usuario, accion) => {
-  if (!usuario) return false;
-  const rol = usuario.rol?.toLowerCase() || 'operario';
-  const nombre = usuario.nombre; 
-
-  // El Admin y Gabi siempre tienen acceso total
-  if (rol === 'admin' || nombre === 'Gabi' || nombre === 'humberto') return true;
-
-  const permisos = {
-    ver_finanzas: ['admin'], 
-    ver_precios: ['admin', 'gestion'],
-    crear_pedido: ['admin', 'gestion'],
-    editar_stock: ['admin', 'gestion'],
-    marcar_proceso: ['admin', 'gestion', 'operario'],
-    ver_equipo: ['admin']
-  };
-
-  return permisos[accion]?.includes(rol) || false;
 };
 
+
+/* ════════════════════════════════════════════════════════════════════════
+ *  MÓDULOS DE INTELIGENCIA — Re-exportados desde utils.jsx
+ *  ────────────────────────────────────────────────────────────────────────
+ *  Para no duplicar lógica ni romper el build, los helpers de los nuevos
+ *  módulos viven en archivos propios y se re-exportan acá. Así App.jsx y
+ *  los componentes pueden importarlos desde "./utils.jsx" si lo prefieren,
+ *  manteniendo utils.jsx como hub central.
+ *
+ *  NOTA: Se excluyen funciones que ya existen arriba en este archivo
+ *  (diasHasta, calcTalles, calcTejidoRemera, isRemera, pedidoProgreso,
+ *  CONSUMO_REMERA) para evitar declaraciones duplicadas.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+// ── IA de producción (ia_produccion.js) ──────────────────────────────────
+export {
+  RENDS, PROCESOS_FLUJO, DIAS_ESTANDAR_PROCESO, CAPACIDAD_AREA,
+  diasTranscurridos, procesosPendientes, cantidadPedido,
+  analizarRetrasoPedido, analizarRetrasos,
+  scoreOrdenProduccion, optimizarOrdenProduccion,
+  detectarCuellosBotella, estimarFechaEntrega,
+  calcularStockTejido, calcularCompraTejido, generarResumenIA,
+} from "./ia_produccion.js";
+
+// ── Finanzas CEO (finanzas_ceo.js) ────────────────────────────────────────
+export {
+  COSTO_CONFECCION_CEO, CATEGORIAS_GASTO, grupoDeCategoria, fechaEnPeriodo,
+  totalPedido, cobradoPedido, saldoPedido, unidadesPedido, costoManoObraPedido,
+  calcularKPIs, calcularDSO, rentabilidadPorCliente, rentabilidadPorPrenda,
+  tendenciaMensual, generarAlertas, alertasDescuentos, proyecciones,
+} from "./finanzas_ceo.js";
+
+// ── Políticas de descuento (politicas_descuento.js) ──────────────────────
+export {
+  POLITICAS_DESCUENTO, MAPEO_NOMBRE_ROL, RAZONES_DESCUENTO,
+  getRolDescuento, getPoliticaUsuario, getMaxDescuento, getRazon,
+  validarDescuento, construirRegistroDescuento,
+  historialDescuentosPorCliente, listarTodosDescuentos, impactoEnMargen,
+} from "./politicas_descuento.js";
