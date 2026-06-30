@@ -2984,7 +2984,7 @@ ${nombres}
                     <div style={{fontSize:11,color:"#8a7a6a"}}>Fecha: {new Date().toLocaleDateString("es-PY")}</div>
                     <div style={{fontSize:11,color:"#ef4444"}}>Válido por 10 días</div>
                   </div>
-                  {formPres.items.map((item,i)=>{
+                  {formPres.items.filter(item=>item.prenda).map((item,i)=>{
                     const calc=calcPresupuestoItem(item);
                     const descExtra=parseFloat(item.descuentoExtra)||0;
                     const precioFinalConDesc=Math.round(calc.precioFinal*(1-descExtra/100));
@@ -3005,15 +3005,15 @@ ${nombres}
                       <div key={i} style={{borderBottom:"1px solid #f0ece4",padding:"10px 0"}}>
                         <div style={{fontSize:12}}>{descripcion}</div>
                         <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-                          <span style={{fontSize:11,color:"#8a7a6a"}}>{"$"}{precioFinalConDesc.toLocaleString("es-AR")} c/u · IVA incluido</span>
-                          <span style={{fontSize:13,fontWeight:700,color:"#1a1208"}}>{"$"}{totalItem.toLocaleString("es-AR")}</span>
+                          <span style={{fontSize:11,color:"#8a7a6a"}}>Gs. {precioFinalConDesc.toLocaleString("es-AR")} c/u · IVA incluido</span>
+                          <span style={{fontSize:13,fontWeight:700,color:"#1a1208"}}>Gs. {totalItem.toLocaleString("es-AR")}</span>
                         </div>
                       </div>
                     );
                   })}
                   <div style={{borderTop:"2px solid #1a1208",marginTop:12,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:14,fontWeight:700}}>TOTAL</span>
-                    <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"Gs. "}{formPres.items.reduce((s,i)=>{const c=calcPresupuestoItem(i);const d=parseFloat(i.descuentoExtra)||0;return s+Math.round(c.precioFinal*(1-d/100))*(i.cantidad||0);},0).toLocaleString("es-AR")}</span>
+                    <span style={{fontSize:18,fontWeight:800,color:"#e85d26"}}>{"Gs. "}{formPres.items.filter(i=>i.prenda).reduce((s,i)=>{const c=calcPresupuestoItem(i);const d=parseFloat(i.descuentoExtra)||0;return s+Math.round(c.precioFinal*(1-d/100))*(i.cantidad||0);},0).toLocaleString("es-AR")}</span>
                   </div>
                   {formPres.notas&&<div style={{marginTop:12,fontSize:11,color:"#8a7a6a",fontStyle:"italic"}}>{formPres.notas}</div>}
                   <div style={{marginTop:16,textAlign:"right",fontSize:11,color:"#5a4a3a",borderTop:"1px solid #e8e0d0",paddingTop:8}}>
