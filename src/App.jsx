@@ -12,11 +12,14 @@ import {
   calcDistancia, normalizarVinculados, diasHasta, formatFecha,
   newId, calcTalles, calcTotal, calcTotalGral, pedidoProgreso, pedidoIniciado,
   calcTejidoRemera, isRemera, puedeVerPrecios, puedeVerTejido, puedeVerFinanciero,
- enviarEmailPedido, ResumenPrecios, PrendaDetalle, PrendaForm, AlertasVencimiento, tienePermiso
+  enviarEmailPedido, ResumenPrecios, PrendaDetalle, PrendaForm, AlertasVencimiento
 } from "./utils.jsx";
-import { PedidoCard, GrupoColapsable } from "./components/PedidoCard.jsx";
-import { PantallaMarcado } from "./components/PantallaMarcado.jsx";
-import Dashboard from "./components/Dashboard.jsx"; // SIN LLAVES aquí
+import { GrupoColapsable, PedidoCard } from "./PedidoCard.jsx";
+import { PantallaMarcado } from "./PantallaMarcado.jsx";
+// ── MÓDULOS DE INTELIGENCIA (IA + FINANZAS) ────────────────────────────
+import PanelAlertasIA from "./componente_alertas_ia.jsx";
+import DashboardFinanciero from "./componente_dashboard_financiero.jsx";
+import ModalAplicarDescuento from "./componente_aplicar_descuento.jsx";
 
 
 // ── PRECIOS BASE PRESUPUESTOS ──────────────────────────────────────────
@@ -166,6 +169,7 @@ export default function App(){
   const [showNuevoAjuste,setShowNuevoAjuste]=useState(false);
   const [formAjuste,setFormAjuste]=useState({fecha:hoy(),tipo:"90",kilos:"",motivo:"sobrante",descripcion:""});
   const [ingresosExtra,setIngresosExtra]=useState([]);
+  const [descuentoPedido,setDescuentoPedido]=useState(null); // pedido al que se aplica descuento (modal)
   const [showNuevoIngreso,setShowNuevoIngreso]=useState(false);
   const [formIngreso,setFormIngreso]=useState({fecha:hoy(),descripcion:"",monto:"",origen:"pedido_viejo"});
   const [periodoFiltro,setPeriodoFiltro]=useState("mensual");
@@ -572,7 +576,7 @@ ${nombres}
     return true;
   }).sort((a,b)=>(ordenPor==="entrega"?(a.fecha_entrega||"9999").localeCompare(b.fecha_entrega||"9999"):(a.creado||"9999").localeCompare(b.creado||"9999")));
 
-  const cardProps={pedidos,setPedidos,usuarios,gastos,stockTejido,setFormGasto,setShowNuevoGasto,setShowAsignarTejido,setShowEntregarModal,setFormEntrega,setShowModalCorte,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido};
+  const cardProps={pedidos,setPedidos,usuarios,gastos,stockTejido,setFormGasto,setShowNuevoGasto,setShowAsignarTejido,setShowEntregarModal,setFormEntrega,setShowModalCorte,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido,onAplicarDescuento:(p)=>{window.history.pushState({modal:"descuento"},"");setDescuentoPedido(p);}};
 
   return(
     <div style={{fontFamily:"'DM Mono','Courier New',monospace",minHeight:"100vh",background:"#f5f0e8",color:"#1a1208"}}>
@@ -867,29 +871,24 @@ ${nombres}
             </div>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",borderBottom:"1.5px solid #d8d0c0",background:"#fff",paddingLeft:12}}>
-            {[
-              ["pedidos","PEDIDOS","siempre"],
-              ["stock","STOCK","editar_stock"],
-              ["tablero","TABLERO","siempre"],
-              ["equipo","EQUIPO","ver_equipo"],
-              ["asistencia","ASISTENCIA","ver_equipo"],
-              ["finanzas","FINANZAS","ver_finanzas"],
-              ["mis_gastos","MIS GASTOS","siempre"],
-              ["tecnicas","TÉCNICAS","ver_precios"],
-              ["cantidad","CANTIDAD","ver_precios"],
-              ["presupuestos","PRESUPUESTOS","ver_precios"],
-              ["precios","PRECIOS","ver_precios"]
-            ].filter(([key,label,permiso])=>{
-              if(permiso==="siempre")return true;
-              return tienePermiso(usuario,permiso);
+            {[["pedidos","PEDIDOS"],["stock","STOCK"],["tablero","TABLERO"],["equipo","EQUIPO"],["asistencia","ASISTENCIA"],["finanzas","FINANZAS"],["ceo","CEO"],["mis_gastos","MIS GASTOS"],["tecnicas","TÉCNICAS"],["cantidad","CANTIDAD"],["presupuestos","PRESUPUESTOS"],["precios","PRECIOS"]].filter(([k])=>{
+              if(usuario?.rol==="admin")return true;
+              if(k==="equipo")return false;
+              if(k==="tecnicas")return usuario?.nombre==="Gabi";
+              if(k==="cantidad")return usuario?.nombre==="Gabi";
+              if(k==="precios")return usuario?.rol==="admin"||usuario?.nombre==="Gabi";
+              if(k==="presupuestos")return usuario?.rol==="admin"||["Gabi","Vivi","Romina"].includes(usuario?.nombre);
+              if(k==="asistencia")return usuario?.rol==="admin"||["Vivi","Gabi"].includes(usuario?.nombre);
+              if(k==="finanzas")return usuario?.nombre==="Gabi";
+              if(k==="ceo")return usuario?.rol==="admin"||usuario?.nombre==="Gabi";
+              if(k==="stock")return usuario?.rol==="admin"||usuario?.nombre==="Vivi";
+              if(k==="mis_gastos")return usuario?.nombre==="Vivi";
+              return true;
             }).map(([k,l])=>(
               <div key={k} className={`tab${adminTab===k?" active":""}`} onClick={()=>{window.history.pushState({tab:k},"");setAdminTab(k);}} style={{fontSize:11,letterSpacing:2}}>{l}</div>
             ))}
           </div>
           <div style={{flex:1,overflowY:"auto",padding:20}}>
-
-  {/* DASHBOARD EJECUTIVO */}
-  {(adminTab==="pedidos")&&<Dashboard pedidos={pedidos} usuario={usuario}/>}
 
             {adminTab==="pedidos"&&(
               <div>
@@ -918,7 +917,12 @@ ${nombres}
                   ))}
                 </div>
                 <AlertasVencimiento pedidos={pedidos} usuario={usuario}/>
-                
+
+                {/* ── PANEL DE ALERTAS IA (predicción de retrasos, cuellos de botella, compra de tejido) ── */}
+                {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(
+                  <PanelAlertasIA pedidos={pedidos} stockTejido={stockTejido} usuario={usuario}/>
+                )}
+
                 {(()=>{
                   const activos=pedidosFiltrados.filter(p=>!p.entregado);
                   const entregados=pedidosFiltrados.filter(p=>p.entregado);
@@ -1027,6 +1031,10 @@ ${nombres}
                   })}
                 </div>
               </div>
+            )}
+
+            {adminTab==="ceo"&&(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&(
+              <DashboardFinanciero pedidos={pedidos} gastos={gastos} ingresosExtra={ingresosExtra} usuario={usuario}/>
             )}
 
             {adminTab==="finanzas"&&(()=>{
@@ -2934,6 +2942,23 @@ ${nombres}
               </>)}
             </div>
           </div>
+      )}
+
+      {/* MODAL APLICAR DESCUENTO */}
+      {descuentoPedido&&(
+        <ModalAplicarDescuento
+          pedido={descuentoPedido}
+          usuario={usuario}
+          montoOriginal={calcTotalGral(descuentoPedido.prendas||[])}
+          costoEstimado={calcCostoConfeccion(descuentoPedido.prendas||[])}
+          onCerrar={()=>setDescuentoPedido(null)}
+          onAplicar={async(registro)=>{
+            try{
+              await dbPatch("pedidos",descuentoPedido.id,{descuento:registro});
+              setPedidos(prev=>prev.map(p=>p.id===descuentoPedido.id?{...p,descuento:registro}:p));
+            }catch(e){alert("No se pudo guardar el descuento: "+(e?.message||e));}
+          }}
+        />
       )}
     </div>
   );
