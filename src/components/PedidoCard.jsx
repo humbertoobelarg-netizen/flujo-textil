@@ -7,7 +7,7 @@ import {
   calcTotalGral, pedidoProgreso,
   isRemera, puedeVerPrecios, puedeVerTejido,
   ResumenPrecios, PrendaDetalle
-} from "../utils.jsx";
+} from "./utils.jsx";
 
 function GrupoColapsable({titulo,icon,color,count,children}){
   const [abierto,setAbierto]=useState(false);
@@ -25,7 +25,7 @@ function GrupoColapsable({titulo,icon,color,count,children}){
 }
 
 // Card colapsable genérico
-function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtapa,miProceso,gastos=[],stockTejido=[],setFormGasto,setShowNuevoGasto,setShowAsignarTejido,setShowEntregarModal,setFormEntrega,setShowModalCorte,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido}){
+function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtapa,miProceso,gastos=[],stockTejido=[],setFormGasto,setShowNuevoGasto,setShowAsignarTejido,setShowEntregarModal,setFormEntrega,setShowModalCorte,showPagos,setShowPagos,nuevoPago,setNuevoPago,agregarPago,setShowAgregado,setFormAgregado,setEditandoPedido,setFormEditar,eliminarPedido,onAplicarDescuento}){
   const [exp,setExp]=useState(false);
   const p=pedidos.find(x=>x.id===pedido.id)||pedido;
   const prog=pedidoProgreso(p);
@@ -425,6 +425,9 @@ function PedidoCard({pedido,usuario,usuarios=[],pedidos=[],setPedidos,marcarEtap
               )}
               {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&setEditandoPedido&&(
                 <button className="btn" onClick={()=>{setEditandoPedido(p.id);setFormEditar({cliente:p.cliente,prioridad:p.prioridad,fechaEntrega:p.fecha_entrega,descripcion:p.descripcion||"",datosFactura:p.datos_factura||"",anticipo:p.anticipo||"",prendas:p.prendas||[{...PRENDA_INIT},{...PRENDA_INIT},{...PRENDA_INIT}],procesosActivos:p.procesos_activos||[]});}} style={{padding:"7px 14px",fontSize:11,background:"transparent",border:"1.5px solid #e85d26",color:"#e85d26",letterSpacing:1}}>✏️ EDITAR</button>
+              )}
+              {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&onAplicarDescuento&&(
+                <button className="btn" onClick={()=>onAplicarDescuento(p)} style={{padding:"7px 14px",fontSize:11,background:"transparent",border:"1.5px solid #f59e0b",color:"#b45309",letterSpacing:1}}>💸 DESCUENTO</button>
               )}
               {(usuario?.rol==="admin"||usuario?.nombre==="Gabi")&&eliminarPedido&&(
                 <button className="btn" onClick={()=>eliminarPedido(p.id)} style={{padding:"7px 14px",fontSize:11,background:"transparent",border:"1.5px solid #ef4444",color:"#ef4444",letterSpacing:1}}>ELIMINAR</button>
